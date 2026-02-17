@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "concurrently \"pnpm dev\" \"uv run uvicorn backend.src.main:app --reload\"",
+    "start": "concurrently \"pnpm dev\" \"cd backend && uv run uvicorn src.main:app --reload\"",
     "lint": "eslint",
     "setup:project": "pnpm install && cd backend && uv sync"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.564.0",
@@ -18,6 +19,7 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.1"
   },
   "devDependencies": {

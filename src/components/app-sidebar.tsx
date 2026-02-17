@@ -75,18 +75,19 @@ const data = {
       title: "Models",
       url: "#",
       icon: Bot,
+      isActive: true,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Search",
+          url: "/models/search",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Downloads",
+          url: "/models/downloads",
         },
         {
-          title: "Quantum",
-          url: "#",
+          title: "Library",
+          url: "/models/library",
         },
       ],
     },

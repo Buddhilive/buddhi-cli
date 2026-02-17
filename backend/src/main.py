@@ -60,10 +60,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="BuddhiAI Server API", lifespan=lifespan)
 
-# CORS configuration for Next.js
+# CORS configuration for Next.js dev server (port may vary if 3000 is in use)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origin_regex=r"http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
