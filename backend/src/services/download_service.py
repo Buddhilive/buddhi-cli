@@ -269,6 +269,9 @@ class DownloadService:
             def __init__(self, *args, **kwargs):
                 # Disable console output — we only care about the data
                 kwargs["disable"] = False
+                # Remove extra kwargs from newer HF hub backends (e.g. Xet)
+                # that are not valid tqdm parameters
+                kwargs.pop("name", None)
                 super().__init__(*args, **kwargs)
                 state = service._progress.get(download_id)
                 if state and self.total:
