@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "concurrently \"pnpm dev\" \"uv run uvicorn backend.src.main:app --reload\"",
-    "lint": "eslint"
+    "lint": "eslint",
+    "setup:project": "pnpm install && cd backend && uv sync"
   },
   "dependencies": {
     "next": "16.1.6",
