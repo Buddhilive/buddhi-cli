@@ -1,0 +1,9 @@
+Screen {
+    align: center middle;
+}
+
+#hello-label {
+    content-align: center middle;
+    text-style: bold;
+    color: $accent;
+}
