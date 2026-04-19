@@ -1,13 +1,13 @@
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, Label
-from textual.containers import Center, Middle
+from textual.widgets import Header, Footer
+from textual_pyfiglet import FigletWidget
 
 
 class BuddhiAIApp(App):
     """A Textual app to display Hello World for Buddhi AI Server."""
 
     TITLE = "Buddhi AI Server"
-
+    SUB_TITLE = "Run Gemma models using LiteRT-LM"
     CSS_PATH = "styles.tcss"
 
     BINDINGS = [
@@ -19,11 +19,14 @@ class BuddhiAIApp(App):
         """Create child widgets for the app."""
         yield Header(show_clock=True)
 
-        with Center():
-            with Middle():
-                yield Label(
-                    "Hello World! Welcome to Buddhi AI Server.", id="hello-label"
-                )
+        yield FigletWidget(
+            "Buddhi AI Server",
+            font="ansi_shadow",
+            justify="center",
+            colors=["#e6a08f", "#e05d38"],
+            animate=True,
+            classes="buddhi-ai-server-title",
+        )
 
         yield Footer()
 
