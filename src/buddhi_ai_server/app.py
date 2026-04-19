@@ -1,13 +1,22 @@
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer
 from textual_pyfiglet import FigletWidget
+import importlib.metadata
+
+
+# Get app version from pyproject.toml
+def _get_version() -> str:
+    try:
+        return importlib.metadata.version("buddhi-ai-server")
+    except importlib.metadata.PackageNotFoundError:
+        return "dev"
 
 
 class BuddhiAIApp(App):
     """A Textual app to display Hello World for Buddhi AI Server."""
 
     TITLE = "Buddhi AI Server"
-    SUB_TITLE = "Run Gemma models using LiteRT-LM"
+    SUB_TITLE = f"Version {_get_version()}"
     CSS_PATH = "styles.tcss"
 
     BINDINGS = [
