@@ -100,7 +100,7 @@ import type { LlmInference } from "@mediapipe/tasks-genai";
 import type { FileUIPart } from "ai";
 import {
     buildRagContextBlock,
-    retrieveRagContext,
+    retrieveHybridContext,
     toSourceItems,
     type RagSourceItem,
 } from "@/lib/rag";
@@ -535,7 +535,7 @@ function ChatSession({
                 // Retrieve RAG context and resolve the promise the transport is awaiting.
                 setIsRetrieving(true);
                 try {
-                    const segments = await retrieveRagContext(message.text);
+                    const segments = await retrieveHybridContext(message.text);
                     resolveRag(buildRagContextBlock(segments));
                     setSources(toSourceItems(segments));
                 } catch {

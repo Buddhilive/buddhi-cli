@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { DocumentStore } from "@/types/documents";
+import type { DocumentStore, GraphPhase } from "@/types/documents";
 
 export const useDocumentStore = create<DocumentStore>()((set) => ({
     docs: {},
@@ -13,8 +13,12 @@ export const useDocumentStore = create<DocumentStore>()((set) => ({
                     status: "pending",
                     phase: null,
                     overallPct: 0,
+                    graphPct: 0,
+                    graphPhase: null,
                     chunkCount: null,
+                    entityCount: null,
                     errorMsg: null,
+                    graphErrorMsg: null,
                 },
             },
             activeCount: s.activeCount + 1,
@@ -64,6 +68,48 @@ export const useDocumentStore = create<DocumentStore>()((set) => ({
                 },
             },
             activeCount: Math.max(0, s.activeCount - 1),
+        }));
+    },
+
+    updateGraphProgress(id, phase: GraphPhase, pct) {
+        set((s) => ({
+            docs: {
+                ...s.docs,
+                [id]: {
+                    ...s.docs[id],
+                    graphPhase: phase,
+                    graphPct: pct,
+                },
+            },
+        }));
+    },
+
+    completeGraph(id, entityCount) {
+        set((s) => ({
+            docs: {
+                ...s.docs,
+                [id]: {
+                    ...s.docs[id],
+                    graphPhase: null,
+                    graphPct: 100,
+                    entityCount,
+                },
+            },
+        }));
+    },
+
+    failGraph(id, errorMsg) {
+        // Graph failure is non-fatal — document remains vector-searchable.
+        // Status and activeCount are unchanged.
+        set((s) => ({
+            docs: {
+                ...s.docs,
+                [id]: {
+                    ...s.docs[id],
+                    graphPhase: null,
+                    graphErrorMsg: errorMsg,
+                },
+            },
         }));
     },
 

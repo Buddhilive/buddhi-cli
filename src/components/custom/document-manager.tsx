@@ -72,14 +72,17 @@ function StatusBadge({ status }: { status: DocumentInfo["status"] }) {
 
 // ─── Step description text ────────────────────────────────────────────────────
 
-function stepText(doc: DocumentInfo): string {
+function stepText(doc: DocumentInfo, entityCount?: number | null): string {
     switch (doc.status) {
         case "pending":
             return "Queued for processing…";
         case "processing":
             return "Chunking & generating embeddings…";
-        case "completed":
-            return `Ready — ${doc.chunk_count ?? 0} chunk${doc.chunk_count === 1 ? "" : "s"} indexed`;
+        case "completed": {
+            const chunkStr = `${doc.chunk_count ?? 0} chunk${doc.chunk_count === 1 ? "" : "s"}`;
+            const entityStr = entityCount != null ? ` · ${entityCount} entit${entityCount === 1 ? "y" : "ies"}` : "";
+            return `Ready — ${chunkStr}${entityStr} indexed`;
+        }
         case "failed":
             return doc.error_msg ? `Failed: ${doc.error_msg}` : "Processing failed";
         default:
@@ -136,11 +139,25 @@ function UploadRow({ doc, onUpdate }: UploadRowProps) {
 
     const isActive = liveStatus === "pending" || liveStatus === "processing";
     const overallPct = processingState?.overallPct ?? (liveStatus === "completed" ? 100 : 0);
+    const graphPct = processingState?.graphPct ?? (liveStatus === "completed" ? 100 : 0);
+    const graphPhase = processingState?.graphPhase;
+    const entityCount = processingState?.entityCount;
+    const graphErrorMsg = processingState?.graphErrorMsg;
 
-    // Build descriptive phase text
+    // Embedding phase label
     const phaseLabel = processingState?.phase
-        ? `${processingState.phase.charAt(0).toUpperCase()}${processingState.phase.slice(1)}… (${overallPct}%)`
-        : stepText({ ...doc, status: liveStatus });
+        ? `Embedding… (${overallPct}%)`
+        : stepText({ ...doc, status: liveStatus }, entityCount);
+
+    // Graph phase label
+    const graphLabel = graphPhase === "graph-extracting"
+        ? `Extracting entities… (${graphPct}%)`
+        : graphPhase === "graph-building"
+        ? `Building graph… (${graphPct}%)`
+        : null;
+
+    const showGraphBar = isActive && (graphPhase != null || graphPct > 0);
+    const showGraphComplete = liveStatus === "completed" && entityCount != null && entityCount > 0 && !graphErrorMsg;
 
     return (
         <div
@@ -159,7 +176,39 @@ function UploadRow({ doc, onUpdate }: UploadRowProps) {
                 >
                     {phaseLabel}
                 </p>
-                {isActive && <Progress value={overallPct} className="h-1" />}
+
+                {/* Embedding progress bar */}
+                {isActive && processingState?.phase === "embedding" && (
+                    <Progress value={overallPct} className="h-1" />
+                )}
+                {isActive && processingState?.phase && processingState.phase !== "embedding" && (
+                    <Progress value={overallPct} className="h-1" />
+                )}
+                {isActive && !processingState?.phase && (
+                    <Progress value={overallPct} className="h-1" />
+                )}
+
+                {/* Knowledge graph progress bar — shown while KG pipeline is running */}
+                {showGraphBar && graphLabel && (
+                    <div className="space-y-0.5">
+                        <p className="text-xs text-indigo-500 dark:text-indigo-400">{graphLabel}</p>
+                        <Progress value={graphPct} className="h-1 [&>div]:bg-indigo-500" />
+                    </div>
+                )}
+
+                {/* Graph completion summary */}
+                {showGraphComplete && (
+                    <p className="text-xs text-indigo-500 dark:text-indigo-400">
+                        Knowledge Graph: {entityCount} entit{entityCount === 1 ? "y" : "ies"} indexed
+                    </p>
+                )}
+
+                {/* Graph error warning — non-fatal, document still usable */}
+                {graphErrorMsg && liveStatus !== "failed" && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 truncate" title={graphErrorMsg}>
+                        Knowledge Graph incomplete — {graphErrorMsg.slice(0, 80)}
+                    </p>
+                )}
             </div>
         </div>
     );

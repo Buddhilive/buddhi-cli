@@ -3,19 +3,35 @@
  *
  * Manages the full document lifecycle:
  *   1. Validate & store raw file in IndexedDB ("buddhi-ai-doc-store")
- *   2. Run the vectorization pipeline (extract → chunk → embed → save to PGlite)
- *   3. Track real-time progress via the Zustand document-store
+ *   2. Run TWO vectorization pipelines in parallel:
+ *      a) Embedding pipeline (web worker): extract → chunk → embed → PGlite vector store
+ *      b) KG pipeline (web worker + Gemma relay): extract entities → build AGE graph
+ *   3. Track real-time progress for both pipelines via the Zustand document-store
  *   4. Support reconciliation of documents interrupted by a page close
  */
 
 import { extractTextFromPDF } from "@/lib/text-embeddings";
 import {
     chunkText,
-    createVectorIndexBatched,
     deleteDocumentEmbeddings,
+    initializeVectorDB,
 } from "@/lib/llamaindex-provider";
+import { kgStore } from "@/lib/kg-store";
+import { buildEntityExtractionPrompt, parseEntityExtractionResponse } from "@/lib/entity-extractor";
 import { useDocumentStore } from "@/stores/document-store";
+import { useLiteRTModelStore } from "@/stores/litert-store";
 import { DocPhase, DocumentInfo, DocStoreRecord } from "@/types/documents";
+import { TextNode } from "llamaindex";
+import type {
+    EmbeddingWorkerRequest,
+    EmbeddingWorkerResponse,
+} from "@/workers/embedding-pipeline-worker";
+import type {
+    KGWorkerProcessRequest,
+    KGWorkerRequest,
+    KGWorkerResponse,
+} from "@/workers/kg-pipeline-worker";
+import type { ExtractedGraph } from "@/lib/entity-extractor";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -44,7 +60,6 @@ function openDocStoreDB(): Promise<IDBDatabase> {
 
         req.onsuccess = () => {
             _db = req.result;
-            // Re-open on connection close (e.g. version upgrade from another tab)
             req.result.onclose = () => { _db = null; };
             resolve(req.result);
         };
@@ -80,7 +95,6 @@ async function idbUpdate(id: number, patch: Partial<DocStoreRecord>): Promise<vo
         getReq.onsuccess = () => {
             const existing: DocStoreRecord | undefined = getReq.result;
             if (!existing) {
-                // Doc may have been deleted — silently skip
                 resolve();
                 return;
             }
@@ -128,19 +142,275 @@ async function idbDelete(id: number): Promise<void> {
     });
 }
 
-/** Strip file_data before returning to callers */
 function toInfo(record: DocStoreRecord): DocumentInfo {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { file_data, ...info } = record;
     return info;
 }
 
-// ─── Vectorization pipeline ───────────────────────────────────────────────────
+// ─── Worker singletons ────────────────────────────────────────────────────────
+
+let _embeddingWorker: Worker | null = null;
+let _kgWorker: Worker | null = null;
+
+function getEmbeddingWorker(): Worker {
+    if (typeof window === "undefined") throw new Error("Workers only available in browser.");
+    if (!_embeddingWorker) {
+        _embeddingWorker = new Worker(
+            new URL("../workers/embedding-pipeline-worker.ts", import.meta.url),
+            { type: "module" }
+        );
+    }
+    return _embeddingWorker;
+}
+
+function getKGWorker(): Worker {
+    if (typeof window === "undefined") throw new Error("Workers only available in browser.");
+    if (!_kgWorker) {
+        _kgWorker = new Worker(
+            new URL("../workers/kg-pipeline-worker.ts", import.meta.url),
+            { type: "module" }
+        );
+    }
+    return _kgWorker;
+}
+
+// ─── Gemma entity extraction relay ───────────────────────────────────────────
+
+const GEMMA_RESPONSE_TIMEOUT_MS = 60_000;
 
 /**
- * Runs entirely asynchronously — never awaited by the caller.
- * Updates Zustand store at each stage so the UI stays in sync.
+ * Called when the KG worker posts a 'request-entities' message.
+ * Runs Gemma on the main thread and posts the result back to the KG worker.
  */
+async function handleEntityExtractionRequest(
+    requestId: string,
+    chunks: string[]
+): Promise<void> {
+    const kgWorker = getKGWorker();
+    const { liteRTModelInstance, liteRTModelStatus } = useLiteRTModelStore.getState();
+
+    if (!liteRTModelInstance || liteRTModelStatus !== "ready") {
+        console.warn("[documents] Gemma not ready for entity extraction — KG worker will use heuristic fallback.");
+        kgWorker.postMessage({
+            type: "entities-error",
+            requestId,
+            error: "Language model not loaded. Using heuristic entity extraction.",
+        } satisfies KGWorkerRequest);
+        return;
+    }
+
+    const prompt = buildEntityExtractionPrompt(chunks);
+
+    try {
+        let accumulated = "";
+        await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error("Gemma entity extraction timed out after 60s"));
+            }, GEMMA_RESPONSE_TIMEOUT_MS);
+
+            try {
+                liteRTModelInstance.generateResponse(
+                    prompt,
+                    (partial: string, done: boolean) => {
+                        accumulated += partial;
+                        if (done) {
+                            clearTimeout(timeout);
+                            resolve();
+                        }
+                    }
+                );
+            } catch (err) {
+                clearTimeout(timeout);
+                reject(err);
+            }
+        });
+
+        const graph: ExtractedGraph = parseEntityExtractionResponse(accumulated);
+        console.log(`[documents] Gemma extracted ${graph.entities.length} entities for request ${requestId}`);
+        kgWorker.postMessage({
+            type: "entities-result",
+            requestId,
+            graph,
+        } satisfies KGWorkerRequest);
+
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[documents] Gemma entity extraction failed:", msg);
+        kgWorker.postMessage({
+            type: "entities-error",
+            requestId,
+            error: msg,
+        } satisfies KGWorkerRequest);
+    }
+}
+
+// ─── Embedding pipeline runner ────────────────────────────────────────────────
+
+type SerializableChunk = {
+    id: string;
+    text: string;
+    documentId: string;
+    metadata?: Record<string, unknown>;
+};
+type SerializableEmbeddedChunk = SerializableChunk & { embedding: number[] };
+
+function runEmbeddingPipeline(
+    doc: DocumentInfo,
+    serializableChunks: SerializableChunk[]
+): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const worker = getEmbeddingWorker();
+        const store = useDocumentStore.getState();
+
+        const onMessage = async (event: MessageEvent<EmbeddingWorkerResponse>) => {
+            const msg = event.data;
+            if (msg.docId !== doc.id.toString()) return;
+
+            switch (msg.type) {
+                case "progress": {
+                    store.updateProgress(doc.id, "embedding" as DocPhase, msg.pct);
+                    break;
+                }
+
+                case "batch": {
+                    try {
+                        const { vectorStore } = await initializeVectorDB();
+                        const textNodes = (msg.chunks as SerializableEmbeddedChunk[]).map((c) => {
+                            const node = new TextNode({
+                                text: c.text,
+                                metadata: c.metadata ?? {},
+                                id_: c.id,
+                            });
+                            node.embedding = c.embedding;
+                            return node;
+                        });
+                        await vectorStore.addWithChatContext(
+                            textNodes,
+                            GLOBAL_KB_CHAT_ID,
+                            doc.id.toString(),
+                            doc.original_name
+                        );
+                    } catch (writeErr) {
+                        console.error("[documents] PGlite vector write error:", writeErr);
+                    }
+                    break;
+                }
+
+                case "complete": {
+                    worker.removeEventListener("message", onMessage);
+                    await idbUpdate(doc.id, {
+                        status: "completed",
+                        chunk_count: msg.totalChunks,
+                        error_msg: null,
+                    });
+                    store.completeDoc(doc.id, msg.totalChunks);
+                    resolve();
+                    break;
+                }
+
+                case "error": {
+                    worker.removeEventListener("message", onMessage);
+                    const errMsg = msg.message;
+                    try {
+                        await idbUpdate(doc.id, { status: "failed", error_msg: errMsg });
+                    } catch { /* non-fatal */ }
+                    try {
+                        await deleteDocumentEmbeddings(doc.id.toString());
+                    } catch { /* non-fatal */ }
+                    store.failDoc(doc.id, errMsg);
+                    reject(new Error(errMsg));
+                    break;
+                }
+            }
+        };
+
+        worker.addEventListener("message", onMessage);
+
+        worker.postMessage({
+            type: "process",
+            docId: doc.id.toString(),
+            chunks: serializableChunks,
+        } satisfies EmbeddingWorkerRequest);
+    });
+}
+
+// ─── KG pipeline runner ───────────────────────────────────────────────────────
+
+function runKGPipeline(
+    doc: DocumentInfo,
+    chunkTexts: string[]
+): Promise<void> {
+    return new Promise((resolve) => {
+        // KG failures are non-fatal — always resolve (never reject)
+        const worker = getKGWorker();
+        const store = useDocumentStore.getState();
+
+        const onMessage = async (event: MessageEvent<KGWorkerResponse>) => {
+            const msg = event.data;
+
+            // Handle entity extraction relay — no docId check needed
+            if (msg.type === "request-entities") {
+                handleEntityExtractionRequest(msg.requestId, msg.chunks);
+                return;
+            }
+
+            if (!("docId" in msg) || msg.docId !== doc.id.toString()) return;
+
+            switch (msg.type) {
+                case "progress": {
+                    store.updateGraphProgress(doc.id, msg.phase, msg.pct);
+                    break;
+                }
+
+                case "result": {
+                    try {
+                        await kgStore.init();
+                        await kgStore.addDocumentGraph(
+                            doc.id.toString(),
+                            doc.original_name,
+                            chunkTexts,
+                            { entities: msg.entities, relations: msg.relations }
+                        );
+                    } catch (writeErr) {
+                        const errMsg = writeErr instanceof Error ? writeErr.message : String(writeErr);
+                        console.error("[documents] KG AGE write error:", writeErr);
+                        worker.removeEventListener("message", onMessage);
+                        store.failGraph(doc.id, `Failed to write knowledge graph: ${errMsg}`);
+                        resolve();
+                    }
+                    break;
+                }
+
+                case "complete": {
+                    worker.removeEventListener("message", onMessage);
+                    store.completeGraph(doc.id, msg.entityCount);
+                    resolve();
+                    break;
+                }
+
+                case "error": {
+                    worker.removeEventListener("message", onMessage);
+                    store.failGraph(doc.id, msg.message);
+                    resolve(); // non-fatal
+                    break;
+                }
+            }
+        };
+
+        worker.addEventListener("message", onMessage);
+
+        worker.postMessage({
+            type: "process",
+            docId: doc.id.toString(),
+            fileName: doc.original_name,
+            chunkTexts,
+        } satisfies KGWorkerProcessRequest);
+    });
+}
+
+// ─── Main pipeline ────────────────────────────────────────────────────────────
+
 async function runPipeline(doc: DocumentInfo, fileData: ArrayBuffer): Promise<void> {
     const store = useDocumentStore.getState();
 
@@ -167,7 +437,7 @@ async function runPipeline(doc: DocumentInfo, fileData: ArrayBuffer): Promise<vo
             );
         }
 
-        // ── Stage 2: chunking ────────────────────────────────────────────────
+        // ── Stage 2: chunking (main thread — shared for both workers) ─────────
         store.updateProgress(doc.id, "chunking" as DocPhase, 30);
         const chunks = await chunkText(text, 200, 20, doc.id.toString());
 
@@ -175,43 +445,41 @@ async function runPipeline(doc: DocumentInfo, fileData: ArrayBuffer): Promise<vo
             throw new Error("No chunks were generated — the document may contain only whitespace.");
         }
 
-        // ── Stage 3: embedding + storage (batched, 50 chunks at a time) ──────
-        store.updateProgress(doc.id, "embedding" as DocPhase, 35);
+        const serializableChunks: SerializableChunk[] = chunks.map((node, i) => ({
+            id: node.id_ ?? `${doc.id}_chunk_${i}`,
+            text: node.text ?? "",
+            documentId: doc.id.toString(),
+            metadata: (node.metadata ?? {}) as Record<string, unknown>,
+        }));
+        const chunkTexts = serializableChunks.map((c) => c.text);
 
-        let totalChunks = 0;
-        await createVectorIndexBatched(
-            chunks,
-            GLOBAL_KB_CHAT_ID,
-            doc.id.toString(),
-            doc.original_name,
-            (processed, total) => {
-                // Map 0-100% onto the 35-95% window
-                const pct = 35 + Math.round((processed / total) * 60);
-                store.updateProgress(doc.id, "embedding" as DocPhase, Math.min(pct, 95));
-                totalChunks = total;
-            }
-        );
+        // Signal KG pipeline has started
+        store.updateGraphProgress(doc.id, "graph-extracting", 0);
 
-        // ── Done ─────────────────────────────────────────────────────────────
-        await idbUpdate(doc.id, {
-            status: "completed",
-            chunk_count: totalChunks,
-            error_msg: null,
-        });
-        store.completeDoc(doc.id, totalChunks);
+        // ── Stage 3: run both pipelines concurrently ──────────────────────────
+        const results = await Promise.allSettled([
+            runEmbeddingPipeline(doc, serializableChunks),
+            runKGPipeline(doc, chunkTexts),
+        ]);
+
+        // If embedding pipeline rejected, propagate the error
+        if (results[0].status === "rejected") {
+            throw results[0].reason instanceof Error
+                ? results[0].reason
+                : new Error(String(results[0].reason));
+        }
+
     } catch (error) {
         const msg =
             error instanceof Error ? error.message : "An unknown error occurred during processing.";
         console.error(`[documents] Pipeline error for doc ${doc.id} ("${doc.original_name}"):`, error);
 
-        // Persist failure state
         try {
             await idbUpdate(doc.id, { status: "failed", error_msg: msg });
         } catch (updateErr) {
             console.error("[documents] Could not persist failure to IDB:", updateErr);
         }
 
-        // Clean up any partial embeddings written before the failure
         try {
             await deleteDocumentEmbeddings(doc.id.toString());
         } catch (cleanupErr) {
@@ -225,12 +493,7 @@ async function runPipeline(doc: DocumentInfo, fileData: ArrayBuffer): Promise<vo
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export const documentsApi = {
-    /**
-     * Validate, persist, and begin processing a file.
-     * Returns immediately with the new DocumentInfo — progress is tracked via Zustand.
-     */
     async uploadDocument(file: File): Promise<DocumentInfo> {
-        // ── Validate extension ────────────────────────────────────────────────
         const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
         if (!SUPPORTED_EXTENSIONS.includes(ext)) {
             throw new Error(
@@ -238,7 +501,6 @@ export const documentsApi = {
             );
         }
 
-        // ── Validate size ─────────────────────────────────────────────────────
         if (file.size > MAX_FILE_SIZE_BYTES) {
             throw new Error(
                 `"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB — ` +
@@ -246,7 +508,6 @@ export const documentsApi = {
             );
         }
 
-        // ── Capacity check ────────────────────────────────────────────────────
         const activeCount = useDocumentStore.getState().activeCount;
         if (activeCount >= 5) {
             throw new Error(
@@ -254,7 +515,6 @@ export const documentsApi = {
             );
         }
 
-        // ── Read bytes ────────────────────────────────────────────────────────
         let fileData: ArrayBuffer;
         try {
             fileData = await file.arrayBuffer();
@@ -262,7 +522,6 @@ export const documentsApi = {
             throw new Error(`Could not read "${file.name}". The file may be locked or corrupted.`);
         }
 
-        // ── Build record ──────────────────────────────────────────────────────
         const id = Date.now();
         const doc: DocumentInfo = {
             id,
@@ -274,7 +533,6 @@ export const documentsApi = {
             created_at: new Date().toISOString(),
         };
 
-        // ── Persist to IDB ────────────────────────────────────────────────────
         try {
             await idbPut({ ...doc, file_data: fileData });
         } catch (err) {
@@ -287,14 +545,12 @@ export const documentsApi = {
             throw new Error(`Failed to save document to local storage: ${msg}`);
         }
 
-        // ── Register in Zustand & kick off pipeline ───────────────────────────
         useDocumentStore.getState().initDoc(id);
         runPipeline(doc, fileData); // intentionally not awaited
 
         return doc;
     },
 
-    /** List all documents (metadata only, sorted newest-first). */
     async listDocuments(): Promise<DocumentInfo[]> {
         try {
             const records = await idbGetAll();
@@ -310,27 +566,21 @@ export const documentsApi = {
         }
     },
 
-    /** Fetch a single document's current metadata. */
     async getDocument(id: number): Promise<DocumentInfo> {
         const record = await idbGet(id);
         if (!record) throw new Error(`Document ${id} not found.`);
         return toInfo(record);
     },
 
-    /**
-     * Remove a document — deletes its vector embeddings from PGlite,
-     * then removes the IDB record and Zustand state.
-     */
     async deleteDocument(id: number): Promise<void> {
-        // Remove vector embeddings first (best-effort)
-        try {
-            await deleteDocumentEmbeddings(id.toString());
-        } catch (err) {
-            console.error(
-                `[documents] Failed to delete embeddings for doc ${id} — continuing with IDB deletion:`,
-                err
-            );
-        }
+        await Promise.allSettled([
+            deleteDocumentEmbeddings(id.toString()).catch((err) =>
+                console.error(`[documents] Failed to delete embeddings for doc ${id}:`, err)
+            ),
+            kgStore.deleteDocumentGraph(id.toString()).catch((err) =>
+                console.error(`[documents] Failed to delete KG data for doc ${id}:`, err)
+            ),
+        ]);
 
         await idbDelete(id);
         useDocumentStore.getState().removeDoc(id);
@@ -339,13 +589,6 @@ export const documentsApi = {
 
 // ─── Reconciliation ───────────────────────────────────────────────────────────
 
-/**
- * Call on app/page mount to handle documents that were stuck in "pending" or
- * "processing" state because the tab was closed or refreshed mid-pipeline.
- *
- * - If there are free processing slots, re-queues the interrupted documents.
- * - If the queue is already full, marks them as failed with an actionable message.
- */
 export async function reconcileInterruptedDocuments(): Promise<void> {
     try {
         const records = await idbGetAll();
@@ -366,7 +609,6 @@ export async function reconcileInterruptedDocuments(): Promise<void> {
                 store.initDoc(record.id);
                 runPipeline(toInfo(record), record.file_data);
             } else {
-                // Queue is full — mark as failed so the user can re-upload
                 await idbUpdate(record.id, {
                     status: "failed",
                     error_msg:

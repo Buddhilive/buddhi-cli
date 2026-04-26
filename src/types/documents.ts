@@ -1,12 +1,17 @@
 export type DocPhase = "reading" | "chunking" | "embedding" | null;
+export type GraphPhase = "graph-extracting" | "graph-building" | null;
 export type DocProcessingStatus = "pending" | "processing" | "completed" | "failed";
 
 export interface DocProcessingState {
     status: DocProcessingStatus;
     phase: DocPhase;
     overallPct: number; // 0–100
+    graphPct: number; // 0–100 — KG pipeline progress
+    graphPhase: GraphPhase;
     chunkCount: number | null;
+    entityCount: number | null; // entities indexed in knowledge graph
     errorMsg: string | null;
+    graphErrorMsg: string | null; // non-fatal: document still vector-searchable
 }
 
 export interface DocumentStore {
@@ -16,6 +21,9 @@ export interface DocumentStore {
     updateProgress(id: number, phase: DocPhase, overallPct: number): void;
     completeDoc(id: number, chunkCount: number): void;
     failDoc(id: number, errorMsg: string): void;
+    updateGraphProgress(id: number, phase: GraphPhase, pct: number): void;
+    completeGraph(id: number, entityCount: number): void;
+    failGraph(id: number, errorMsg: string): void;
     removeDoc(id: number): void;
 }
 

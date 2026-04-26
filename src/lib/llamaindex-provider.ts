@@ -12,7 +12,21 @@ import * as LiteRT from "@litertjs/core";
 import { AutoTokenizer } from "@huggingface/transformers";
 import { PGlite } from "@electric-sql/pglite";
 import { vector } from "@electric-sql/pglite/vector";
+import { age } from "@electric-sql/pglite/age";
 import { PGliteVectorStore, DocumentInfo } from "@/lib/pglite-vector-store";
+
+// ─── Serializable chunk types (used by web workers) ──────────────────────────
+
+export interface SerializableChunk {
+    id: string;
+    text: string;
+    documentId: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface SerializableEmbeddedChunk extends SerializableChunk {
+    embedding: number[];
+}
 
 // ─── Cache helpers ────────────────────────────────────────────────────────────
 // Must mirror the constants in model-manager.ts / model-download-worker.ts
@@ -34,7 +48,7 @@ async function getEmbeddingModelURL(): Promise<string> {
 
 // ─── LiteRT embedding class ───────────────────────────────────────────────────
 
-const LITERTJS_WASM_PATH = "https://cdn.jsdelivr.net/npm/@litertjs/core/wasm/";
+const LITERTJS_WASM_PATH = "/litert-wasm/";
 const SEQ_LEN = 2048;
 const DOC_PREFIX = "title: none | text: ";
 
@@ -143,9 +157,18 @@ const initializeDB = async (): Promise<{
 
     dbInitPromise = (async () => {
         dbInstance = new PGlite("idb://buddhi-ai-embeddings-v2", {
-            extensions: { vector },
+            extensions: { vector, age },
         });
         await dbInstance.waitReady;
+
+        // AGE session setup — must run every session before any graph queries
+        try {
+            await dbInstance.exec(`CREATE EXTENSION IF NOT EXISTS age;`);
+            await dbInstance.exec(`LOAD 'age';`);
+            await dbInstance.exec(`SET search_path = ag_catalog, "$user", public;`);
+        } catch (ageErr) {
+            console.warn("[llamaindex-provider] Apache AGE initialization failed — graph queries will be unavailable:", ageErr);
+        }
 
         vectorStoreInstance = new PGliteVectorStore(dbInstance);
         await vectorStoreInstance.initializeSchema();
@@ -436,6 +459,7 @@ export {
     createVectorIndexBatched,
     retrieveSegments,
     initializeVectorDB,
+    initializeDB,
     deleteDocumentEmbeddings,
     getDocumentList,
     hasDocuments,

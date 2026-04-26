@@ -23,6 +23,7 @@
  */
 
 import { hasDocuments, retrieveSegments } from "@/lib/llamaindex-provider";
+import { retrieveGraphContext } from "@/lib/graph-rag";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -204,4 +205,125 @@ export function toSourceItems(segments: RagSegment[]): RagSourceItem[] {
         fileName: s.fileName,
         documentId: s.documentId,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// retrieveHybridContext
+// ---------------------------------------------------------------------------
+
+/**
+ * HybridRAG: combines vector similarity search (Naive RAG) with graph
+ * traversal (GraphRAG) for improved recall and precision.
+ *
+ * ALGORITHM
+ * ---------
+ *  1. Run vector retrieval and graph retrieval in parallel.
+ *  2. Score normalization:
+ *       vector scores are already 0–1 (cosine similarity)
+ *       graph scores (0.6–1.0) are normalized to 0–1
+ *  3. Per documentId, compute combinedScore:
+ *       both sources:  0.7 * vectorScore + 0.3 * graphScore
+ *       vector only:   0.7 * vectorScore
+ *       graph only:    0.3 * graphScore
+ *  4. Filter: combinedScore >= 0.25 (lower than vector-only 0.35 to allow
+ *     graph-only results to surface entities vector search missed)
+ *  5. Deduplicate by documentId (best combined score per document)
+ *  6. Sort descending, return top topK.
+ *
+ * Falls back to vector-only results if graph retrieval fails.
+ * Never throws — returns [] on all retrieval failures.
+ *
+ * @param query    The user's raw text query.
+ * @param topK     Maximum segments to return. Default 5.
+ * @param minScore Minimum combined score to accept. Default 0.25.
+ */
+export async function retrieveHybridContext(
+    query: string,
+    topK: number = DEFAULT_TOP_K,
+    minScore: number = 0.25
+): Promise<RagSegment[]> {
+    if (!query.trim()) return [];
+
+    console.log(`[rag] retrieveHybridContext — query: "${query.slice(0, 80)}${query.length > 80 ? "…" : ""}"`);
+
+    try {
+        // Run both retrievers in parallel — graph failure is non-fatal
+        const [vectorSegments, graphSegments] = await Promise.all([
+            retrieveRagContext(query, topK + 3).catch((err) => {
+                console.warn("[rag] Vector retrieval failed in hybrid mode:", err);
+                return [] as RagSegment[];
+            }),
+            retrieveGraphContext(query, topK).catch((err) => {
+                console.warn("[rag] Graph retrieval failed in hybrid mode:", err);
+                return [] as RagSegment[];
+            }),
+        ]);
+
+        console.log(`[rag] hybrid — vector: ${vectorSegments.length}, graph: ${graphSegments.length}`);
+
+        // Build score maps keyed by documentId
+        const vectorByDoc = new Map<string, RagSegment>();
+        for (const seg of vectorSegments) {
+            const existing = vectorByDoc.get(seg.documentId);
+            if (!existing || seg.score > existing.score) {
+                vectorByDoc.set(seg.documentId, seg);
+            }
+        }
+
+        const graphByDoc = new Map<string, RagSegment>();
+        for (const seg of graphSegments) {
+            const existing = graphByDoc.get(seg.documentId);
+            if (!existing || seg.score > existing.score) {
+                graphByDoc.set(seg.documentId, seg);
+            }
+        }
+
+        // Collect all document IDs seen in either retriever
+        const allDocIds = new Set([...vectorByDoc.keys(), ...graphByDoc.keys()]);
+
+        const combined: RagSegment[] = [];
+
+        for (const docId of allDocIds) {
+            const vSeg = vectorByDoc.get(docId);
+            const gSeg = graphByDoc.get(docId);
+
+            let combinedScore: number;
+            let bestSeg: RagSegment;
+
+            if (vSeg && gSeg) {
+                combinedScore = 0.7 * vSeg.score + 0.3 * gSeg.score;
+                bestSeg = vSeg; // prefer vector segment text (usually more complete)
+            } else if (vSeg) {
+                combinedScore = 0.7 * vSeg.score;
+                bestSeg = vSeg;
+            } else {
+                // gSeg only — normalize graph score (0.6–1.0) to 0–1 range
+                const gScore = gSeg!.score;
+                const normalizedGraphScore = (gScore - 0.5) / 0.5; // maps [0.5,1.0]→[0,1]
+                combinedScore = 0.3 * Math.max(0, normalizedGraphScore);
+                bestSeg = gSeg!;
+            }
+
+            if (combinedScore >= minScore) {
+                combined.push({ ...bestSeg, score: combinedScore });
+            }
+        }
+
+        const results = combined
+            .sort((a, b) => b.score - a.score)
+            .slice(0, topK);
+
+        console.log(
+            `[rag] hybrid final: ${results.length} segments`,
+            results.map((s) => ({ fileName: s.fileName, score: s.score.toFixed(3) }))
+        );
+
+        return results;
+    } catch (err) {
+        console.warn(
+            "[rag] HybridRAG failed — continuing without RAG context.",
+            err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+        );
+        return [];
+    }
 }
