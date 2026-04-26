@@ -158,29 +158,33 @@ export const kgStore = {
         const safeFileName = escapeCypher(fileName);
 
         // Upsert Document vertex
+        // AGE does not support ON CREATE SET / ON MATCH SET — use plain SET.
         await cypher(`
             SELECT * FROM cypher('${GRAPH_NAME}', $$
                 MERGE (d:Document {documentId: '${safeDocId}'})
-                ON CREATE SET d.fileName = '${safeFileName}'
-                ON MATCH  SET d.fileName = '${safeFileName}'
+                SET d.fileName = '${safeFileName}'
                 RETURN d
             $$) AS (d agtype)
         `);
 
-        // Upsert Chunk vertices and PART_OF edges
+        // Upsert Chunk vertices, then PART_OF edges (two separate queries — AGE
+        // doesn't support WITH…MATCH…MERGE chaining reliably).
         for (let i = 0; i < chunkTexts.length; i++) {
             const chunkId = `${docId}_chunk_${i}`;
             const safeChunkId = escapeCypher(chunkId);
-            // Truncate text stored in graph to 500 chars to keep graph lean;
-            // full text lives in the embeddings table.
             const safeText = escapeCypher(chunkTexts[i].slice(0, 500));
 
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MERGE (c:Chunk {chunkId: '${safeChunkId}'})
-                    ON CREATE SET c.text = '${safeText}', c.documentId = '${safeDocId}', c.position = ${i}
-                    ON MATCH  SET c.text = '${safeText}'
-                    WITH c
+                    SET c.text = '${safeText}', c.documentId = '${safeDocId}', c.position = ${i}
+                    RETURN c
+                $$) AS (c agtype)
+            `);
+
+            await cypher(`
+                SELECT * FROM cypher('${GRAPH_NAME}', $$
+                    MATCH (c:Chunk {chunkId: '${safeChunkId}'})
                     MATCH (d:Document {documentId: '${safeDocId}'})
                     MERGE (c)-[:PART_OF]->(d)
                     RETURN c
@@ -197,50 +201,43 @@ export const kgStore = {
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MERGE (e:Entity {normalizedName: '${safeNorm}'})
-                    ON CREATE SET e.name = '${safeName}', e.type = '${safeType}'
-                    ON MATCH  SET e.name = '${safeName}', e.type = '${safeType}'
+                    SET e.name = '${safeName}', e.type = '${safeType}'
                     RETURN e
                 $$) AS (e agtype)
             `);
         }
 
-        // Upsert CO_OCCURS edges between entities from relations
+        // Upsert CO_OCCURS edges between entities
         for (const rel of graph.relations) {
+            if (rel.from === rel.to) continue;
             const safeFrom = escapeCypher(rel.from);
             const safeTo = escapeCypher(rel.to);
-            const safeType = escapeCypher(rel.type);
-
-            // Skip self-loops
-            if (rel.from === rel.to) continue;
+            const safeRelType = escapeCypher(rel.type);
 
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
-                    MATCH (a:Entity {normalizedName: '${safeFrom}'}),
-                          (b:Entity {normalizedName: '${safeTo}'})
-                    MERGE (a)-[r:CO_OCCURS {relType: '${safeType}'}]->(b)
+                    MATCH (a:Entity {normalizedName: '${safeFrom}'})
+                    MATCH (b:Entity {normalizedName: '${safeTo}'})
+                    MERGE (a)-[r:CO_OCCURS {relType: '${safeRelType}'}]->(b)
                     RETURN r
                 $$) AS (r agtype)
             `);
         }
 
-        // Link entities to the chunk they appear in (HAS_ENTITY edges).
-        // We do a simple text-match: if the entity name appears in the chunk text,
-        // create a HAS_ENTITY edge between that chunk and the entity.
+        // HAS_ENTITY edges: link entities to chunks that contain their name
         for (let i = 0; i < chunkTexts.length; i++) {
-            const chunkText = chunkTexts[i].toLowerCase();
+            const lowerChunk = chunkTexts[i].toLowerCase();
             const chunkId = `${docId}_chunk_${i}`;
             const safeChunkId = escapeCypher(chunkId);
 
-            const mentionedEntities = graph.entities.filter((e) =>
-                chunkText.includes(e.normalizedName)
-            );
-
-            for (const entity of mentionedEntities) {
+            for (const entity of graph.entities) {
+                if (!lowerChunk.includes(entity.normalizedName)) continue;
                 const safeNorm = escapeCypher(entity.normalizedName);
+
                 await cypher(`
                     SELECT * FROM cypher('${GRAPH_NAME}', $$
-                        MATCH (c:Chunk {chunkId: '${safeChunkId}'}),
-                              (e:Entity {normalizedName: '${safeNorm}'})
+                        MATCH (c:Chunk {chunkId: '${safeChunkId}'})
+                        MATCH (e:Entity {normalizedName: '${safeNorm}'})
                         MERGE (c)-[:HAS_ENTITY]->(e)
                         RETURN c
                     $$) AS (c agtype)
@@ -278,17 +275,9 @@ export const kgStore = {
                 $$) AS (result agtype)
             `);
 
-            // Entity nodes are shared across documents — only delete if they have
-            // no remaining HAS_ENTITY edges (i.e., no other chunks reference them).
-            await cypher(`
-                SELECT * FROM cypher('${GRAPH_NAME}', $$
-                    MATCH (e:Entity)
-                    WHERE NOT (e)<-[:HAS_ENTITY]-()
-                    DELETE e
-                    RETURN 1
-                $$) AS (result agtype)
-            `);
-
+            // Note: Entity nodes are not cleaned up here — they may be referenced
+            // by other documents and AGE does not support pattern-based WHERE NOT.
+            // Orphaned entities are harmless since retrieval traverses HAS_ENTITY edges.
             console.info(`[kg-store] Deleted graph for document ${docId}`);
         } catch (err) {
             console.error(`[kg-store] Error deleting graph for document ${docId}:`, err);

@@ -13,19 +13,14 @@
 import { extractTextFromPDF } from "@/lib/text-embeddings";
 import {
     chunkText,
+    createVectorIndexBatched,
     deleteDocumentEmbeddings,
-    initializeVectorDB,
 } from "@/lib/llamaindex-provider";
 import { kgStore } from "@/lib/kg-store";
 import { buildEntityExtractionPrompt, parseEntityExtractionResponse } from "@/lib/entity-extractor";
 import { useDocumentStore } from "@/stores/document-store";
 import { useLiteRTModelStore } from "@/stores/litert-store";
 import { DocPhase, DocumentInfo, DocStoreRecord } from "@/types/documents";
-import { TextNode } from "llamaindex";
-import type {
-    EmbeddingWorkerRequest,
-    EmbeddingWorkerResponse,
-} from "@/workers/embedding-pipeline-worker";
 import type {
     KGWorkerProcessRequest,
     KGWorkerRequest,
@@ -150,19 +145,7 @@ function toInfo(record: DocStoreRecord): DocumentInfo {
 
 // ─── Worker singletons ────────────────────────────────────────────────────────
 
-let _embeddingWorker: Worker | null = null;
 let _kgWorker: Worker | null = null;
-
-function getEmbeddingWorker(): Worker {
-    if (typeof window === "undefined") throw new Error("Workers only available in browser.");
-    if (!_embeddingWorker) {
-        _embeddingWorker = new Worker(
-            new URL("../workers/embedding-pipeline-worker.ts", import.meta.url),
-            { type: "module" }
-        );
-    }
-    return _embeddingWorker;
-}
 
 function getKGWorker(): Worker {
     if (typeof window === "undefined") throw new Error("Workers only available in browser.");
@@ -177,11 +160,29 @@ function getKGWorker(): Worker {
 
 // ─── Gemma entity extraction relay ───────────────────────────────────────────
 
-const GEMMA_RESPONSE_TIMEOUT_MS = 60_000;
+// Resolves only when the last Gemma inference WE started fires done=true.
+// Prevents "still ongoing" errors when our timeout fires but Gemma is still running.
+let _gemmaIdlePromise: Promise<void> = Promise.resolve();
+
+// Soft timeout: give up waiting for the result and post entities-error.
+// The idle lock stays held so the next batch waits for Gemma to truly finish.
+const GEMMA_SOFT_TIMEOUT_MS = 90_000;
+// Hard timeout: release the idle lock unconditionally (safety net for hung models).
+const GEMMA_HARD_TIMEOUT_MS = 120_000;  // 30 s after soft timeout, releases idle lock
+// Retry for external-caller busyness (e.g. chat generating a response).
+const GEMMA_BUSY_RETRY_DELAY_MS = 3_000;
+const GEMMA_BUSY_MAX_RETRIES = 4;
 
 /**
  * Called when the KG worker posts a 'request-entities' message.
  * Runs Gemma on the main thread and posts the result back to the KG worker.
+ *
+ * MediaPipe LlmInference is not re-entrant. Two problems can occur:
+ *   A) Our soft timeout fires before Gemma finishes — we post entities-error but
+ *      Gemma keeps running. The next batch must wait for it to truly complete
+ *      before calling generateResponse again (handled by _gemmaIdlePromise lock).
+ *   B) An external caller (e.g. chat) is generating — generateResponse throws
+ *      synchronously. We retry with backoff (handled by the retry loop).
  */
 async function handleEntityExtractionRequest(
     requestId: string,
@@ -200,139 +201,131 @@ async function handleEntityExtractionRequest(
         return;
     }
 
+    // Wait for any Gemma inference we started to truly complete (done=true callback).
+    await _gemmaIdlePromise;
+
     const prompt = buildEntityExtractionPrompt(chunks);
 
-    try {
+    for (let attempt = 0; attempt <= GEMMA_BUSY_MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+            await new Promise<void>((r) => setTimeout(r, GEMMA_BUSY_RETRY_DELAY_MS));
+        }
+
+        let signalIdle!: () => void;
         let accumulated = "";
-        await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-                reject(new Error("Gemma entity extraction timed out after 60s"));
-            }, GEMMA_RESPONSE_TIMEOUT_MS);
+        let timedOut = false;
 
-            try {
-                liteRTModelInstance.generateResponse(
-                    prompt,
-                    (partial: string, done: boolean) => {
-                        accumulated += partial;
-                        if (done) {
-                            clearTimeout(timeout);
-                            resolve();
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const softTimeout = setTimeout(() => {
+                    timedOut = true;
+                    resolve(); // unblock this await; idle lock stays held — Gemma still running
+                }, GEMMA_SOFT_TIMEOUT_MS);
+
+                const hardTimeout = setTimeout(() => {
+                    // Safety net: release the lock even if done=true never fires
+                    signalIdle?.();
+                }, GEMMA_HARD_TIMEOUT_MS);
+
+                try {
+                    liteRTModelInstance.generateResponse(
+                        prompt,
+                        (partial: string, done: boolean) => {
+                            accumulated += partial;
+                            if (done) {
+                                clearTimeout(softTimeout);
+                                clearTimeout(hardTimeout);
+                                signalIdle(); // Gemma truly idle — next call can proceed
+                                resolve();
+                            }
                         }
-                    }
-                );
-            } catch (err) {
-                clearTimeout(timeout);
-                reject(err);
+                    );
+                    // generateResponse accepted the call — register idle tracking.
+                    // The next handleEntityExtractionRequest will await this Promise.
+                    _gemmaIdlePromise = new Promise<void>((r) => { signalIdle = r; });
+                } catch (syncErr) {
+                    clearTimeout(softTimeout);
+                    clearTimeout(hardTimeout);
+                    reject(syncErr); // "still ongoing" — handled by retry loop below
+                }
+            });
+
+            if (timedOut) {
+                console.warn(`[documents] Gemma timed out for request ${requestId}`);
+                kgWorker.postMessage({
+                    type: "entities-error",
+                    requestId,
+                    error: "Gemma entity extraction timed out",
+                } satisfies KGWorkerRequest);
+                return;
             }
-        });
 
-        const graph: ExtractedGraph = parseEntityExtractionResponse(accumulated);
-        console.log(`[documents] Gemma extracted ${graph.entities.length} entities for request ${requestId}`);
-        kgWorker.postMessage({
-            type: "entities-result",
-            requestId,
-            graph,
-        } satisfies KGWorkerRequest);
+            const graph: ExtractedGraph = parseEntityExtractionResponse(accumulated);
+            console.log(`[documents] Gemma extracted ${graph.entities.length} entities for request ${requestId}`);
+            kgWorker.postMessage({
+                type: "entities-result",
+                requestId,
+                graph,
+            } satisfies KGWorkerRequest);
+            return;
 
-    } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn("[documents] Gemma entity extraction failed:", msg);
-        kgWorker.postMessage({
-            type: "entities-error",
-            requestId,
-            error: msg,
-        } satisfies KGWorkerRequest);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+
+            if (msg.includes("still ongoing") && attempt < GEMMA_BUSY_MAX_RETRIES) {
+                console.warn(`[documents] Gemma busy for ${requestId}, retry ${attempt + 1}/${GEMMA_BUSY_MAX_RETRIES}`);
+                continue;
+            }
+
+            console.warn("[documents] Gemma entity extraction failed:", msg);
+            kgWorker.postMessage({
+                type: "entities-error",
+                requestId,
+                error: msg,
+            } satisfies KGWorkerRequest);
+            return;
+        }
     }
+
+    kgWorker.postMessage({
+        type: "entities-error",
+        requestId,
+        error: "Gemma busy — all retries exhausted",
+    } satisfies KGWorkerRequest);
 }
 
-// ─── Embedding pipeline runner ────────────────────────────────────────────────
+// ─── Embedding pipeline (main thread) ────────────────────────────────────────
 
-type SerializableChunk = {
-    id: string;
-    text: string;
-    documentId: string;
-    metadata?: Record<string, unknown>;
-};
-type SerializableEmbeddedChunk = SerializableChunk & { embedding: number[] };
-
-function runEmbeddingPipeline(
+async function runEmbeddingPipeline(
     doc: DocumentInfo,
-    serializableChunks: SerializableChunk[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chunks: any[]
 ): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const worker = getEmbeddingWorker();
-        const store = useDocumentStore.getState();
-
-        const onMessage = async (event: MessageEvent<EmbeddingWorkerResponse>) => {
-            const msg = event.data;
-            if (msg.docId !== doc.id.toString()) return;
-
-            switch (msg.type) {
-                case "progress": {
-                    store.updateProgress(doc.id, "embedding" as DocPhase, msg.pct);
-                    break;
-                }
-
-                case "batch": {
-                    try {
-                        const { vectorStore } = await initializeVectorDB();
-                        const textNodes = (msg.chunks as SerializableEmbeddedChunk[]).map((c) => {
-                            const node = new TextNode({
-                                text: c.text,
-                                metadata: c.metadata ?? {},
-                                id_: c.id,
-                            });
-                            node.embedding = c.embedding;
-                            return node;
-                        });
-                        await vectorStore.addWithChatContext(
-                            textNodes,
-                            GLOBAL_KB_CHAT_ID,
-                            doc.id.toString(),
-                            doc.original_name
-                        );
-                    } catch (writeErr) {
-                        console.error("[documents] PGlite vector write error:", writeErr);
-                    }
-                    break;
-                }
-
-                case "complete": {
-                    worker.removeEventListener("message", onMessage);
-                    await idbUpdate(doc.id, {
-                        status: "completed",
-                        chunk_count: msg.totalChunks,
-                        error_msg: null,
-                    });
-                    store.completeDoc(doc.id, msg.totalChunks);
-                    resolve();
-                    break;
-                }
-
-                case "error": {
-                    worker.removeEventListener("message", onMessage);
-                    const errMsg = msg.message;
-                    try {
-                        await idbUpdate(doc.id, { status: "failed", error_msg: errMsg });
-                    } catch { /* non-fatal */ }
-                    try {
-                        await deleteDocumentEmbeddings(doc.id.toString());
-                    } catch { /* non-fatal */ }
-                    store.failDoc(doc.id, errMsg);
-                    reject(new Error(errMsg));
-                    break;
-                }
+    const store = useDocumentStore.getState();
+    try {
+        const result = await createVectorIndexBatched(
+            chunks,
+            GLOBAL_KB_CHAT_ID,
+            doc.id.toString(),
+            doc.original_name,
+            (processed, total) => {
+                const pct = 35 + Math.round((processed / total) * 60);
+                store.updateProgress(doc.id, "embedding" as DocPhase, Math.min(pct, 95));
             }
-        };
-
-        worker.addEventListener("message", onMessage);
-
-        worker.postMessage({
-            type: "process",
-            docId: doc.id.toString(),
-            chunks: serializableChunks,
-        } satisfies EmbeddingWorkerRequest);
-    });
+        );
+        await idbUpdate(doc.id, {
+            status: "completed",
+            chunk_count: result.chunkCount,
+            error_msg: null,
+        });
+        store.completeDoc(doc.id, result.chunkCount);
+    } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        try { await idbUpdate(doc.id, { status: "failed", error_msg: errMsg }); } catch { /* non-fatal */ }
+        try { await deleteDocumentEmbeddings(doc.id.toString()); } catch { /* non-fatal */ }
+        store.failDoc(doc.id, errMsg);
+        throw err;
+    }
 }
 
 // ─── KG pipeline runner ───────────────────────────────────────────────────────
@@ -445,29 +438,17 @@ async function runPipeline(doc: DocumentInfo, fileData: ArrayBuffer): Promise<vo
             throw new Error("No chunks were generated — the document may contain only whitespace.");
         }
 
-        const serializableChunks: SerializableChunk[] = chunks.map((node, i) => ({
-            id: node.id_ ?? `${doc.id}_chunk_${i}`,
-            text: node.text ?? "",
-            documentId: doc.id.toString(),
-            metadata: (node.metadata ?? {}) as Record<string, unknown>,
-        }));
-        const chunkTexts = serializableChunks.map((c) => c.text);
+        const chunkTexts = chunks.map((c) => c.text ?? "");
 
-        // Signal KG pipeline has started
+        // ── Stage 3a: embedding (main thread — LiteRT/WebGPU) ────────────────
+        // Embedding must complete before KG starts: both LiteRT and Gemma use
+        // WebGPU, and running them concurrently causes Gemma to time out.
+        await runEmbeddingPipeline(doc, chunks);
+
+        // ── Stage 3b: knowledge graph (worker — Gemma/WebGPU) ────────────────
+        // KG failure is non-fatal — the document stays fully searchable via vectors.
         store.updateGraphProgress(doc.id, "graph-extracting", 0);
-
-        // ── Stage 3: run both pipelines concurrently ──────────────────────────
-        const results = await Promise.allSettled([
-            runEmbeddingPipeline(doc, serializableChunks),
-            runKGPipeline(doc, chunkTexts),
-        ]);
-
-        // If embedding pipeline rejected, propagate the error
-        if (results[0].status === "rejected") {
-            throw results[0].reason instanceof Error
-                ? results[0].reason
-                : new Error(String(results[0].reason));
-        }
+        await runKGPipeline(doc, chunkTexts);
 
     } catch (error) {
         const msg =

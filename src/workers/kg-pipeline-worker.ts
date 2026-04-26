@@ -100,7 +100,9 @@ export type KGWorkerResponse =
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const GEMMA_BATCH_SIZE = 4; // chunks per Gemma call
-const ENTITY_REQUEST_TIMEOUT_MS = 45_000; // 45s per batch before heuristic fallback
+// Main thread soft timeout is 90s, hard timeout 200s, plus up to 4 retries × 3s.
+// The worker must wait at least as long as the main thread might before responding.
+const ENTITY_REQUEST_TIMEOUT_MS = 210_000; // 3.5 min
 
 // ─── Pending entity request registry ─────────────────────────────────────────
 

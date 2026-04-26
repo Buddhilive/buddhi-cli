@@ -156,7 +156,7 @@ function UploadRow({ doc, onUpdate }: UploadRowProps) {
         ? `Building graph… (${graphPct}%)`
         : null;
 
-    const showGraphBar = isActive && (graphPhase != null || graphPct > 0);
+    const showGraphBar = graphPhase != null;
     const showGraphComplete = liveStatus === "completed" && entityCount != null && entityCount > 0 && !graphErrorMsg;
 
     return (
