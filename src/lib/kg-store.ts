@@ -31,6 +31,23 @@ export interface GraphChunkResult {
     score: number;
 }
 
+export interface KGEntity {
+    name: string;
+    normalizedName: string;
+    type: string;
+}
+
+export interface KGRelation {
+    from: string;
+    to: string;
+    relType: string;
+}
+
+export interface KGDocument {
+    fileName: string;
+    documentId: string;
+}
+
 // ─── Cypher string helpers ─────────────────────────────────────────────────────
 
 function escapeCypher(s: string): string {
@@ -257,12 +274,15 @@ export const kgStore = {
         const safeDocId = escapeCypher(docId);
 
         try {
+            // AGE does not support RETURN after DETACH DELETE.
+            // The AS clause is required by PostgreSQL for the function signature;
+            // it returns 0 rows, which is expected and correct.
+
             // Delete Chunk nodes and their edges
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MATCH (c:Chunk {documentId: '${safeDocId}'})
                     DETACH DELETE c
-                    RETURN 1
                 $$) AS (result agtype)
             `);
 
@@ -271,7 +291,6 @@ export const kgStore = {
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MATCH (d:Document {documentId: '${safeDocId}'})
                     DETACH DELETE d
-                    RETURN 1
                 $$) AS (result agtype)
             `);
 
@@ -367,6 +386,79 @@ export const kgStore = {
             return rows.length > 0;
         } catch {
             return false;
+        }
+    },
+
+    /** Returns all Entity vertices in the graph (up to 500). */
+    async getAllEntities(): Promise<KGEntity[]> {
+        if (!_schemaInitialized) return [];
+        try {
+            const rows = await cypher(`
+                SELECT * FROM cypher('${GRAPH_NAME}', $$
+                    MATCH (e:Entity) RETURN e.name, e.normalizedName, e.type
+                $$) AS (name agtype, normalizedname agtype, type agtype)
+                LIMIT 500
+            `);
+            return rows.map((row) => ({
+                name: fromAgtype(row.name) ?? "",
+                normalizedName: fromAgtype(row.normalizedname) ?? "",
+                type: fromAgtype(row.type) ?? "OTHER",
+            }));
+        } catch (err) {
+            console.warn("[kg-store] getAllEntities error:", err);
+            return [];
+        }
+    },
+
+    /** Returns all CO_OCCURS edges between entities (up to 1000, deduplicated). */
+    async getAllRelations(): Promise<KGRelation[]> {
+        if (!_schemaInitialized) return [];
+        try {
+            const rows = await cypher(`
+                SELECT * FROM cypher('${GRAPH_NAME}', $$
+                    MATCH (a:Entity)-[r:CO_OCCURS]-(b:Entity)
+                    RETURN a.normalizedName, b.normalizedName, r.relType
+                $$) AS (fromnorm agtype, tonorm agtype, reltype agtype)
+                LIMIT 1000
+            `);
+            const seen = new Set<string>();
+            const result: KGRelation[] = [];
+            for (const row of rows) {
+                const from = fromAgtype(row.fromnorm) ?? "";
+                const to = fromAgtype(row.tonorm) ?? "";
+                const relType = fromAgtype(row.reltype) ?? "RELATES_TO";
+                if (!from || !to || from === to) continue;
+                const key = [from, to].sort().join("|||");
+                if (seen.has(key)) continue;
+                seen.add(key);
+                result.push({ from, to, relType });
+            }
+            return result;
+        } catch (err) {
+            console.warn("[kg-store] getAllRelations error:", err);
+            return [];
+        }
+    },
+
+    /** Returns all Documents that contain a given entity (by normalizedName). */
+    async getEntityDocuments(normalizedName: string): Promise<KGDocument[]> {
+        if (!_schemaInitialized) return [];
+        const safeNorm = escapeCypher(normalizedName);
+        try {
+            const rows = await cypher(`
+                SELECT * FROM cypher('${GRAPH_NAME}', $$
+                    MATCH (d:Document)<-[:PART_OF]-(c:Chunk)-[:HAS_ENTITY]->(e:Entity)
+                    WHERE e.normalizedName = '${safeNorm}'
+                    RETURN DISTINCT d.fileName, d.documentId
+                $$) AS (filename agtype, documentid agtype)
+            `);
+            return rows.map((row) => ({
+                fileName: fromAgtype(row.filename) ?? "",
+                documentId: fromAgtype(row.documentid) ?? "",
+            }));
+        } catch (err) {
+            console.warn("[kg-store] getEntityDocuments error:", err);
+            return [];
         }
     },
 

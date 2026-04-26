@@ -1,6 +1,7 @@
 import {
     Brain,
     BrainCircuit,
+    ChartNetwork,
     Command,
     FileText,
     Sparkles,
@@ -31,6 +32,11 @@ export const SIDEBAR_DATA = {
             title: "Documents",
             url: "/documents",
             icon: FileText,
+        },
+        {
+            title: "Knowledge Graph",
+            url: "/graph",
+            icon: ChartNetwork,
         },
         {
             title: "Models",

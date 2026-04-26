@@ -211,9 +211,13 @@ async function handleEntityExtractionRequest(
             await new Promise<void>((r) => setTimeout(r, GEMMA_BUSY_RETRY_DELAY_MS));
         }
 
-        let signalIdle!: () => void;
         let accumulated = "";
         let timedOut = false;
+
+        // Create signalIdle BEFORE calling generateResponse so the callback
+        // can call it even if MediaPipe fires done=true synchronously inside the call.
+        let signalIdle!: () => void;
+        const pendingIdlePromise = new Promise<void>((r) => { signalIdle = r; });
 
         try {
             await new Promise<void>((resolve, reject) => {
@@ -224,7 +228,7 @@ async function handleEntityExtractionRequest(
 
                 const hardTimeout = setTimeout(() => {
                     // Safety net: release the lock even if done=true never fires
-                    signalIdle?.();
+                    signalIdle();
                 }, GEMMA_HARD_TIMEOUT_MS);
 
                 try {
@@ -240,12 +244,13 @@ async function handleEntityExtractionRequest(
                             }
                         }
                     );
-                    // generateResponse accepted the call — register idle tracking.
+                    // generateResponse accepted the call — promote to the shared idle lock.
                     // The next handleEntityExtractionRequest will await this Promise.
-                    _gemmaIdlePromise = new Promise<void>((r) => { signalIdle = r; });
+                    _gemmaIdlePromise = pendingIdlePromise;
                 } catch (syncErr) {
                     clearTimeout(softTimeout);
                     clearTimeout(hardTimeout);
+                    signalIdle(); // threw without starting — release the local promise too
                     reject(syncErr); // "still ongoing" — handled by retry loop below
                 }
             });
