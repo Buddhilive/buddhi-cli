@@ -19,6 +19,7 @@ import {
 import { kgStore } from "@/lib/kg-store";
 import { buildEntityExtractionPrompt, parseEntityExtractionResponse } from "@/lib/entity-extractor";
 import { useDocumentStore } from "@/stores/document-store";
+import { useKGRebuildStore } from "@/stores/kg-rebuild-store";
 import { useLiteRTModelStore } from "@/stores/litert-store";
 import { DocPhase, DocumentInfo, DocStoreRecord } from "@/types/documents";
 import type {
@@ -572,6 +573,88 @@ export const documentsApi = {
         useDocumentStore.getState().removeDoc(id);
     },
 };
+
+// ─── KG Rebuild ───────────────────────────────────────────────────────────────
+
+async function runKGPipelineWithRebuildProgress(
+    doc: DocumentInfo,
+    chunkTexts: string[]
+): Promise<void> {
+    const rebuild = useKGRebuildStore.getState();
+
+    const unsub = useDocumentStore.subscribe((state) => {
+        const d = state.docs[doc.id];
+        if (d?.graphPhase) rebuild.updateProgress(d.graphPhase, d.graphPct);
+    });
+
+    try {
+        await runKGPipeline(doc, chunkTexts);
+    } finally {
+        unsub();
+    }
+}
+
+export async function rebuildAllDocumentGraphs(): Promise<void> {
+    const rebuild = useKGRebuildStore.getState();
+    if (rebuild.rebuilding) return;
+
+    const records = await idbGetAll();
+    const eligible = records.filter((r) => r.status === "completed" || r.status === "failed");
+    if (eligible.length === 0) return;
+
+    rebuild.startRebuild(eligible.length);
+
+    try {
+        await kgStore.clearAll();
+    } catch (err) {
+        console.warn("[rebuild] clearAll failed:", err);
+    }
+
+    for (const record of eligible) {
+        const doc = toInfo(record);
+        rebuild.setCurrentDoc(doc.original_name);
+        rebuild.updateProgress(null, 0);
+
+        try {
+            const ext = doc.original_name.split(".").pop()?.toLowerCase();
+            const file = new File([record.file_data], doc.original_name);
+
+            let text: string;
+            if (ext === "pdf") {
+                text = await extractTextFromPDF(file);
+            } else {
+                text = await file.text();
+            }
+
+            if (!text?.trim()) {
+                rebuild.addError(`${doc.original_name}: no text extracted`);
+                rebuild.advanceDocs();
+                continue;
+            }
+
+            const chunks = await chunkText(text, 200, 20, doc.id.toString());
+            if (chunks.length === 0) {
+                rebuild.addError(`${doc.original_name}: no chunks generated`);
+                rebuild.advanceDocs();
+                continue;
+            }
+
+            const chunkTexts = chunks.map((c) => c.text ?? "");
+            useDocumentStore.getState().initDoc(doc.id);
+
+            await runKGPipelineWithRebuildProgress(doc, chunkTexts);
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[rebuild] Failed for "${doc.original_name}":`, err);
+            rebuild.addError(`${doc.original_name}: ${msg}`);
+        }
+
+        rebuild.advanceDocs();
+    }
+
+    rebuild.completeRebuild();
+    console.info("[rebuild] Knowledge graph rebuild complete.");
+}
 
 // ─── Reconciliation ───────────────────────────────────────────────────────────
 

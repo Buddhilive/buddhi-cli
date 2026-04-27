@@ -48,6 +48,34 @@ export interface KGDocument {
     documentId: string;
 }
 
+// ─── Co-occurrence fallback ───────────────────────────────────────────────────
+
+// Computes CO_OCCURS relations directly from chunk texts when the extraction
+// pipeline sends 0 relations. O(chunks × entities²) but capped by entity count.
+function computeCoOccurrenceFromChunks(
+    chunkTexts: string[],
+    entities: ExtractedEntity[]
+): ExtractedRelation[] {
+    const relations: ExtractedRelation[] = [];
+    const seenPairs = new Set<string>();
+    for (const chunkText of chunkTexts) {
+        const lower = chunkText.toLowerCase();
+        const present = entities.filter((e) => e.normalizedName && lower.includes(e.normalizedName));
+        for (let i = 0; i < present.length; i++) {
+            for (let j = i + 1; j < present.length; j++) {
+                const a = present[i].normalizedName;
+                const b = present[j].normalizedName;
+                if (a === b) continue;
+                const key = [a, b].sort().join("|||");
+                if (seenPairs.has(key)) continue;
+                seenPairs.add(key);
+                relations.push({ from: a, to: b, type: "CO_OCCURS" });
+            }
+        }
+    }
+    return relations;
+}
+
 // ─── Cypher string helpers ─────────────────────────────────────────────────────
 
 function escapeCypher(s: string): string {
@@ -224,8 +252,23 @@ export const kgStore = {
             `);
         }
 
-        // Upsert CO_OCCURS edges between entities
-        for (const rel of graph.relations) {
+        // Upsert CO_OCCURS edges between entities.
+        // Always compute co-occurrence from chunk texts and merge with pipeline relations.
+        // Pipeline relations may have normalizedName mismatches (Gemma/heuristic dedup drift)
+        // causing MATCH to find no vertices and silently skip the MERGE. Co-occurrence uses
+        // the exact entity list being stored so MATCH always succeeds for those relations.
+        const coOccurrence = computeCoOccurrenceFromChunks(chunkTexts, graph.entities);
+        const seenRelPairs = new Set<string>();
+        const relationsToStore: ExtractedRelation[] = [];
+        for (const rel of [...graph.relations, ...coOccurrence]) {
+            if (!rel.from || !rel.to || rel.from === rel.to) continue;
+            const key = [rel.from, rel.to].sort().join("|||");
+            if (seenRelPairs.has(key)) continue;
+            seenRelPairs.add(key);
+            relationsToStore.push(rel);
+        }
+
+        for (const rel of relationsToStore) {
             if (rel.from === rel.to) continue;
             const safeFrom = escapeCypher(rel.from);
             const safeTo = escapeCypher(rel.to);
@@ -262,7 +305,7 @@ export const kgStore = {
             }
         }
 
-        console.info(`[kg-store] Graph written for document "${fileName}" (${graph.entities.length} entities, ${graph.relations.length} relations)`);
+        console.info(`[kg-store] Graph written for document "${fileName}" (${graph.entities.length} entities, ${relationsToStore.length} relations)`);
     },
 
     /**
@@ -270,15 +313,23 @@ export const kgStore = {
      * Called during document deletion.
      */
     async deleteDocumentGraph(docId: string): Promise<void> {
-        if (!_schemaInitialized) return; // nothing to delete if schema never built
+        await initializeKGSchema();
         const safeDocId = escapeCypher(docId);
 
         try {
-            // AGE does not support RETURN after DETACH DELETE.
-            // The AS clause is required by PostgreSQL for the function signature;
-            // it returns 0 rows, which is expected and correct.
+            // Step 1: Collect entity normalizedNames referenced by this document's
+            // chunks BEFORE deleting, so we can check for orphans afterwards.
+            const entityRows = await cypher(`
+                SELECT * FROM cypher('${GRAPH_NAME}', $$
+                    MATCH (c:Chunk {documentId: '${safeDocId}'})-[:HAS_ENTITY]->(e:Entity)
+                    RETURN DISTINCT e.normalizedName
+                $$) AS (normalizedname agtype)
+            `);
+            const entityNorms = entityRows
+                .map((r) => fromAgtype(r.normalizedname) as string | null)
+                .filter((n): n is string => !!n && n.trim().length > 0);
 
-            // Delete Chunk nodes and their edges
+            // Step 2: Delete Chunk nodes (DETACH DELETE removes HAS_ENTITY + PART_OF edges)
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MATCH (c:Chunk {documentId: '${safeDocId}'})
@@ -286,7 +337,7 @@ export const kgStore = {
                 $$) AS (result agtype)
             `);
 
-            // Delete Document vertex
+            // Step 3: Delete Document vertex
             await cypher(`
                 SELECT * FROM cypher('${GRAPH_NAME}', $$
                     MATCH (d:Document {documentId: '${safeDocId}'})
@@ -294,10 +345,37 @@ export const kgStore = {
                 $$) AS (result agtype)
             `);
 
-            // Note: Entity nodes are not cleaned up here — they may be referenced
-            // by other documents and AGE does not support pattern-based WHERE NOT.
-            // Orphaned entities are harmless since retrieval traverses HAS_ENTITY edges.
-            console.info(`[kg-store] Deleted graph for document ${docId}`);
+            // Step 4: Delete Entity vertices that are now orphaned (no remaining
+            // HAS_ENTITY edges connecting them to any chunk in any document).
+            // Use edge-first deletion — DETACH DELETE on Entity fails because
+            // CO_OCCURS edges connect Entity↔Entity (same AGE limitation as clearAll).
+            let orphansDeleted = 0;
+            for (const norm of entityNorms) {
+                const safeNorm = escapeCypher(norm);
+                try {
+                    // Delete CO_OCCURS edges for this entity if it's orphaned
+                    await cypher(`
+                        SELECT * FROM cypher('${GRAPH_NAME}', $$
+                            MATCH (e:Entity {normalizedName: '${safeNorm}'})-[r:CO_OCCURS]-()
+                            WHERE NOT (e)-[:HAS_ENTITY]-()
+                            DELETE r
+                        $$) AS (result agtype)
+                    `);
+                    // Plain DELETE the vertex (no edges remain)
+                    await cypher(`
+                        SELECT * FROM cypher('${GRAPH_NAME}', $$
+                            MATCH (e:Entity {normalizedName: '${safeNorm}'})
+                            WHERE NOT (e)-[:HAS_ENTITY]-()
+                            DELETE e
+                        $$) AS (result agtype)
+                    `);
+                    orphansDeleted++;
+                } catch {
+                    // Silently skip — entity may still be referenced by another document
+                }
+            }
+
+            console.info(`[kg-store] Deleted graph for document ${docId} (${orphansDeleted}/${entityNorms.length} orphaned entities cleaned up)`);
         } catch (err) {
             console.error(`[kg-store] Error deleting graph for document ${docId}:`, err);
         }
@@ -372,6 +450,49 @@ export const kgStore = {
         return results
             .sort((a, b) => b.score - a.score)
             .slice(0, topK);
+    },
+
+    /**
+     * Delete every vertex and edge in the graph regardless of document.
+     * Use when re-importing all documents or clearing stale data.
+     */
+    async clearAll(): Promise<void> {
+        console.info("[kg-store] clearAll: starting");
+        await initializeKGSchema();
+
+        // Delete edges first — AGE's DETACH DELETE fails on Entity vertices because
+        // CO_OCCURS edges connect Entity→Entity (both endpoints in the same batch).
+        // Explicit edge deletion avoids that internal relation-lookup conflict.
+        for (const edgeLabel of ["CO_OCCURS", "HAS_ENTITY", "PART_OF"]) {
+            try {
+                await cypher(`
+                    SELECT * FROM cypher('${GRAPH_NAME}', $$
+                        MATCH ()-[r:${edgeLabel}]-() DELETE r
+                    $$) AS (result agtype)
+                `);
+                console.info(`[kg-store] clearAll: deleted all ${edgeLabel} edges`);
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.warn(`[kg-store] clearAll: could not delete ${edgeLabel} edges: ${msg}`);
+            }
+        }
+
+        // Plain DELETE (no DETACH) — edges are already gone
+        for (const vertexLabel of ["Entity", "Chunk", "Document"]) {
+            try {
+                await cypher(`
+                    SELECT * FROM cypher('${GRAPH_NAME}', $$
+                        MATCH (n:${vertexLabel}) DELETE n
+                    $$) AS (result agtype)
+                `);
+                console.info(`[kg-store] clearAll: deleted all ${vertexLabel} vertices`);
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err);
+                console.warn(`[kg-store] clearAll: could not delete ${vertexLabel} vertices: ${msg}`);
+            }
+        }
+
+        console.info("[kg-store] Knowledge graph cleared.");
     },
 
     /** Returns true if at least one Entity vertex exists in the graph. */

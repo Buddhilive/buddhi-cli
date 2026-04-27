@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
     RefreshCw,
+    RotateCcw,
     Search,
     X,
     ChevronDown,
@@ -14,7 +15,11 @@ import {
     FileText,
     AlertCircle,
     Network,
+    Trash2,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { useKGRebuildStore } from "@/stores/kg-rebuild-store";
+import { rebuildAllDocumentGraphs } from "@/lib/documents";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -187,9 +192,20 @@ export default function KnowledgeGraphView() {
     const [expandedEntities, setExpandedEntities] = useState<Set<string>>(new Set());
     const [entityDocs, setEntityDocs] = useState<KGDocument[]>([]);
     const [docsLoading, setDocsLoading] = useState(false);
+    const [clearing, setClearing] = useState(false);
 
     const [hiddenTypes, setHiddenTypes] = useState<Set<string>>(new Set());
     const [searchQuery, setSearchQuery] = useState("");
+
+    const {
+        rebuilding,
+        totalDocs,
+        processedDocs,
+        currentDocName,
+        currentPhase,
+        currentPct,
+        errors: rebuildErrors,
+    } = useKGRebuildStore();
 
     // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -386,6 +402,24 @@ export default function KnowledgeGraphView() {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
 
+    const handleRebuild = async () => {
+        await rebuildAllDocumentGraphs();
+        await fetchGraphData();
+    };
+
+    const handleClearGraph = async () => {
+        if (!window.confirm("Clear all knowledge graph data?\n\nThis removes all entities and relationships. The graph will be rebuilt when you re-upload documents.")) return;
+        setClearing(true);
+        try {
+            await kgStore.clearAll();
+            await fetchGraphData();
+        } catch (err) {
+            console.error("[kg-view] clearAll failed:", err);
+        } finally {
+            setClearing(false);
+        }
+    };
+
     const resetView = () => {
         const cy = cyRef.current;
         if (!cy) return;
@@ -435,16 +469,80 @@ export default function KnowledgeGraphView() {
                         </span>
                     )}
                 </div>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={fetchGraphData}
-                    disabled={loading}
-                    title="Refresh graph"
-                >
-                    <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={handleRebuild}
+                        disabled={rebuilding || loading || clearing}
+                        title="Rebuild knowledge graph from all documents"
+                    >
+                        <RotateCcw className={`h-4 w-4 ${rebuilding ? "animate-spin" : ""}`} />
+                    </Button>
+                    {entities.length > 0 && (
+                        <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={handleClearGraph}
+                            disabled={clearing || loading || rebuilding}
+                            title="Clear all graph data"
+                        >
+                            {clearing ? (
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="h-4 w-4" />
+                            )}
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={fetchGraphData}
+                        disabled={loading || clearing || rebuilding}
+                        title="Refresh graph"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                    </Button>
+                </div>
             </div>
+
+            {/* Rebuild progress banner */}
+            {rebuilding && (
+                <div className="border-b border-amber-500/40 bg-amber-500/10 px-4 py-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-500 dark:text-amber-400">
+                            <RotateCcw className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            <span className="text-xs font-medium">
+                                Rebuilding knowledge graph… ({processedDocs}/{totalDocs} documents)
+                            </span>
+                        </div>
+                        {currentDocName && (
+                            <span className="text-xs text-muted-foreground shrink-0 truncate max-w-40">
+                                {currentDocName}
+                            </span>
+                        )}
+                    </div>
+                    {currentPhase && (
+                        <>
+                            <p className="text-xs text-amber-500/80 dark:text-amber-400/80">
+                                {currentPhase === "graph-extracting"
+                                    ? `Extracting entities… (${currentPct}%)`
+                                    : `Building graph… (${currentPct}%)`}
+                            </p>
+                            <Progress value={currentPct} className="h-1 [&>div]:bg-amber-500" />
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Rebuild error summary */}
+            {!rebuilding && rebuildErrors.length > 0 && (
+                <div className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-2">
+                    <p className="text-xs text-amber-500">
+                        {rebuildErrors.length} document{rebuildErrors.length > 1 ? "s" : ""} could not be indexed.
+                    </p>
+                </div>
+            )}
 
             {/* Toolbar */}
             {!loading && !error && entities.length > 0 && (
