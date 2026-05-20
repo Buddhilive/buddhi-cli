@@ -1,9 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 
 from server.api.routes import responses
-from server.core.exceptions import InferenceError, inference_error_handler
+from server.core.exceptions import OpenAIAPIError, openai_error_handler, validation_error_handler, global_exception_handler
 from server.services.inference import inference_service
 
 @asynccontextmanager
@@ -35,7 +36,9 @@ app.add_middleware(
 )
 
 # Register Exception Handlers
-app.add_exception_handler(InferenceError, inference_error_handler)
+app.add_exception_handler(OpenAIAPIError, openai_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(Exception, global_exception_handler)
 
 # Include API Routers
 app.include_router(responses.router, prefix="/v1", tags=["Responses"])
