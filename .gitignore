@@ -163,3 +163,4 @@ cython_debug/
 
 # BuddhiAI
 .buddhi/
+server/static/model/
