@@ -18,10 +18,10 @@ dependencies = [
 ]
 
 [project.scripts]
-buddhi-ai = "server.main:start"
+buddhi = "cli.main:cli"
 
 [tool.setuptools.packages.find]
-include = ["server", "server.*"]
+include = ["server*", "cli*"]
 
 [tool.setuptools.exclude-package-data]
 "server.static.model" = ["*"]

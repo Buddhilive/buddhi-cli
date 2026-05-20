@@ -49,29 +49,3 @@ def health_check():
     Simple health check endpoint.
     """
     return {"status": "ok"}
-
-def start():
-    """
-    CLI entry point to start the server.
-    """
-    import os
-    from huggingface_hub import hf_hub_download
-    
-    # Path to the model directory relative to this file
-    # __file__ is server/main.py, so we want server/static/model
-    server_dir = os.path.dirname(os.path.abspath(__file__))
-    target_dir = os.path.join(server_dir, "static", "model")
-    model_path = os.path.join(target_dir, "gemma-4-E4B-it.litertlm")
-    
-    if not os.path.exists(model_path):
-        print("Model not found. Downloading from HuggingFace...", flush=True)
-        os.makedirs(target_dir, exist_ok=True)
-        hf_hub_download(
-            repo_id="litert-community/gemma-4-E4B-it-litert-lm", 
-            filename="gemma-4-E4B-it.litertlm", 
-            local_dir=target_dir
-        )
-        print("Model downloaded successfully!", flush=True)
-
-    import uvicorn
-    uvicorn.run("server.main:app", host="127.0.0.1", port=58421)
