@@ -1,13 +1,27 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "huggingface_hub"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "buddhi-ai"
-version = "0.1.0"
+version = "2.0.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.136.1",
     "uvicorn>=0.47.0",
     "pydantic-settings>=2.2.1",
     "sse-starlette>=2.0.0",
     "litert-lm-api",
+    "huggingface_hub[cli]",
 ]
+
+[project.scripts]
+buddhi-ai = "server.main:start"
+
+[tool.setuptools.packages.find]
+include = ["server", "server.*"]
+
+[tool.setuptools.exclude-package-data]
+"server.static.model" = ["*"]
