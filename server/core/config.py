@@ -16,6 +16,15 @@ class Settings(BaseSettings):
         description="Path to the LiteRT-LM model file."
     )
 
+    host: str = Field(
+        default="127.0.0.1",
+        description="The host bind address for the backend server."
+    )
+    port: int = Field(
+        default=58421,
+        description="The port on which the backend server runs."
+    )
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 settings = Settings()

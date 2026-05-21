@@ -1,22 +1,22 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
-  import { Streamdown } from 'svelte-streamdown';
+  import { onMount, tick } from "svelte";
+  import { Streamdown } from "svelte-streamdown";
 
   // Chat message interface
   interface Message {
     id: string;
-    role: 'user' | 'assistant';
+    role: "user" | "assistant";
     text: string;
   }
 
   // Svelte 5 Runes for State Management
   let messages = $state<Message[]>([]);
-  let inputText = $state('');
+  let inputText = $state("");
   let isStreaming = $state(false);
   let isThinking = $state(false);
   let error = $state<string | null>(null);
   let isDarkMode = $state(false);
-  
+
   // Auto-scroll references
   let chatContainer = $state<HTMLElement | null>(null);
   let autoScroll = $state(true);
@@ -25,13 +25,16 @@
 
   // Initialize Theme on Mount
   onMount(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    const savedTheme = localStorage.getItem("theme");
+    if (
+      savedTheme === "dark" ||
+      (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    ) {
       isDarkMode = true;
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.add("dark");
     } else {
       isDarkMode = false;
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.remove("dark");
     }
   });
 
@@ -39,11 +42,11 @@
   function toggleTheme() {
     isDarkMode = !isDarkMode;
     if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
     }
   }
 
@@ -51,20 +54,20 @@
   function startNewChat() {
     messages = [];
     error = null;
-    inputText = '';
+    inputText = "";
     isStreaming = false;
     isThinking = false;
     autoScroll = true;
     showScrollButton = false;
     if (textareaRef) {
-      textareaRef.style.height = 'auto';
+      textareaRef.style.height = "auto";
     }
   }
 
   // Automatically grow textarea vertically
   function handleInput(e: Event) {
     const target = e.target as HTMLTextAreaElement;
-    target.style.height = 'auto';
+    target.style.height = "auto";
     target.style.height = `${Math.min(target.scrollHeight, 180)}px`;
   }
 
@@ -72,10 +75,10 @@
   function handleScroll() {
     if (!chatContainer) return;
     const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-    
+
     // Check if user is near the bottom
     const isAtBottom = scrollHeight - scrollTop - clientHeight < 40;
-    
+
     if (isAtBottom) {
       autoScroll = true;
       showScrollButton = false;
@@ -97,7 +100,7 @@
 
   // Handle enter key submit
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -106,20 +109,20 @@
   // Stream-decode standard and SSE Responses API events
   async function sendMessage() {
     if (!inputText.trim() || isStreaming) return;
-    
+
     const userMessageText = inputText;
-    inputText = '';
+    inputText = "";
     error = null;
-    
+
     if (textareaRef) {
-      textareaRef.style.height = 'auto';
+      textareaRef.style.height = "auto";
     }
 
     const userMsgId = `usr-${Math.random().toString(36).slice(2, 11)}`;
     messages.push({
       id: userMsgId,
-      role: 'user',
-      text: userMessageText
+      role: "user",
+      text: userMessageText,
     });
 
     autoScroll = true;
@@ -130,21 +133,27 @@
     isThinking = true;
     isStreaming = true;
 
+    const isViteDev =
+      typeof window !== "undefined" && window.location.port === "58422";
+    const apiEndpoint = isViteDev
+      ? "http://localhost:58421/v1/responses"
+      : "/v1/responses";
+
     try {
       const requestPayload = {
-        input: messages.map(msg => ({
+        input: messages.map((msg) => ({
           role: msg.role,
-          content: [{ type: 'text', text: msg.text }]
+          content: [{ type: "text", text: msg.text }],
         })),
-        stream: true
+        stream: true,
       };
 
-      const response = await fetch('http://localhost:58421/v1/responses', {
-        method: 'POST',
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestPayload)
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
@@ -152,17 +161,17 @@
       }
 
       if (!response.body) {
-        throw new Error('Empty body received from the inference stream.');
+        throw new Error("Empty body received from the inference stream.");
       }
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
 
       messages.push({
         id: agentMsgId,
-        role: 'assistant',
-        text: ''
+        role: "assistant",
+        text: "",
       });
 
       while (true) {
@@ -170,28 +179,30 @@
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
         for (const line of lines) {
           const cleanLine = line.trim();
           if (!cleanLine) continue;
 
-          if (cleanLine === 'data: [DONE]') {
+          if (cleanLine === "data: [DONE]") {
             continue;
           }
 
-          if (cleanLine.startsWith('data: ')) {
+          if (cleanLine.startsWith("data: ")) {
             try {
               const dataJson = JSON.parse(cleanLine.substring(6));
-              const textChunk = dataJson.delta?.content?.[0]?.text || '';
+              const textChunk = dataJson.delta?.content?.[0]?.text || "";
 
               if (textChunk) {
                 if (isThinking) {
                   isThinking = false;
                 }
 
-                const agentMsgIndex = messages.findIndex(m => m.id === agentMsgId);
+                const agentMsgIndex = messages.findIndex(
+                  (m) => m.id === agentMsgId,
+                );
                 if (agentMsgIndex !== -1) {
                   messages[agentMsgIndex].text += textChunk;
                 }
@@ -201,19 +212,20 @@
                 }
               }
             } catch (err) {
-              console.error('Failed to parse SSE payload line:', err);
+              console.error("Failed to parse SSE payload line:", err);
             }
           }
         }
       }
     } catch (err: any) {
-      console.error('Streaming connection failed:', err);
-      error = err.message || 'A network error occurred while reaching the server.';
+      console.error("Streaming connection failed:", err);
+      error =
+        err.message || "A network error occurred while reaching the server.";
       isThinking = false;
 
       // Clean up empty placeholder messages
       const lastMsg = messages[messages.length - 1];
-      if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.text) {
+      if (lastMsg && lastMsg.role === "assistant" && !lastMsg.text) {
         messages.pop();
       }
     } finally {
@@ -226,12 +238,12 @@
   function retryLastMessage() {
     if (messages.length === 0 || isStreaming) return;
 
-    const userMsgs = messages.filter(m => m.role === 'user');
+    const userMsgs = messages.filter((m) => m.role === "user");
     if (userMsgs.length === 0) return;
 
     const lastUserMsg = userMsgs[userMsgs.length - 1];
-    const index = messages.findIndex(m => m.id === lastUserMsg.id);
-    
+    const index = messages.findIndex((m) => m.id === lastUserMsg.id);
+
     if (index !== -1) {
       inputText = lastUserMsg.text;
       messages = messages.slice(0, index);
@@ -244,7 +256,7 @@
     inputText = promptText;
     if (textareaRef) {
       textareaRef.focus();
-      textareaRef.style.height = 'auto';
+      textareaRef.style.height = "auto";
       textareaRef.style.height = `${Math.min(textareaRef.scrollHeight, 180)}px`;
     }
   }
@@ -256,27 +268,70 @@
     <div class="logo-area">
       <span class="logo-prefix">BUDDHI</span>
       <span class="logo-suffix">AI</span>
-      <span class="logo-badge">sandbox</span>
+      <span class="logo-badge">playground</span>
     </div>
-    
+
     <div class="actions-area">
-      <button onclick={startNewChat} class="btn-secondary" title="Start New Chat">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"/>
+      <button
+        onclick={startNewChat}
+        class="btn-secondary"
+        title="Start New Chat"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6"
+          />
         </svg>
         <span>New Chat</span>
       </button>
-      
-      <button onclick={toggleTheme} class="btn-icon" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+
+      <button
+        onclick={toggleTheme}
+        class="btn-icon"
+        title="Toggle Light/Dark Theme"
+        aria-label="Toggle Theme"
+      >
         {#if isDarkMode}
           <!-- Sun Icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="4" /><path
+              d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+            />
           </svg>
         {:else}
           <!-- Moon Icon -->
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
           </svg>
         {/if}
       </button>
@@ -291,21 +346,39 @@
         <section class="empty-state">
           <div class="empty-branding animate-spring-slide-in">
             <h1>Inference Terminal</h1>
-            <p class="subtitle">Connected to LiteRT-LM Local Edge Server on Port 58421</p>
+            <p class="subtitle">Buddhi AI Playground</p>
           </div>
-          
+
           <div class="presets-grid">
             <h2 class="presets-title">Quick Starter Prompts</h2>
             <div class="presets-list">
-              <button onclick={() => selectPreset("Explain quantum computing in simple technical terms.")} class="preset-card">
+              <button
+                onclick={() =>
+                  selectPreset(
+                    "Explain quantum computing in simple technical terms.",
+                  )}
+                class="preset-card"
+              >
                 <h3>Explain Quantum Tech</h3>
                 <p>Learn complex physics in clear analogies.</p>
               </button>
-              <button onclick={() => selectPreset("Write a highly optimized TypeScript binary search function with comments.")} class="preset-card">
+              <button
+                onclick={() =>
+                  selectPreset(
+                    "Write a highly optimized TypeScript binary search function with comments.",
+                  )}
+                class="preset-card"
+              >
                 <h3>Algorithm Optimization</h3>
                 <p>Request clear, structured, type-safe code snippets.</p>
               </button>
-              <button onclick={() => selectPreset("What are the key best practices when structuring Svelte 5 runes?")} class="preset-card">
+              <button
+                onclick={() =>
+                  selectPreset(
+                    "What are the key best practices when structuring Svelte 5 runes?",
+                  )}
+                class="preset-card"
+              >
                 <h3>Svelte 5 Runes Advice</h3>
                 <p>Discuss reactive state design patterns.</p>
               </button>
@@ -316,7 +389,7 @@
         <!-- Conversation Thread -->
         <div class="message-list">
           {#each messages as msg (msg.id)}
-            {#if msg.role === 'user'}
+            {#if msg.role === "user"}
               <div class="message-row user-row">
                 <div class="message-bubble user-bubble animate-spring-slide-in">
                   <span class="user-meta">User</span>
@@ -326,8 +399,20 @@
             {:else}
               <div class="message-row agent-row">
                 <div class="agent-avatar">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2a10 10 0 0 1 7.54 16.59A6 6 0 0 0 12 13a6 6 0 0 0-7.54 3.59A10 10 0 0 1 12 2Z"/><circle cx="12" cy="8" r="3.5"/>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="M12 2a10 10 0 0 1 7.54 16.59A6 6 0 0 0 12 13a6 6 0 0 0-7.54 3.59A10 10 0 0 1 12 2Z"
+                    /><circle cx="12" cy="8" r="3.5" />
                   </svg>
                 </div>
                 <div class="message-bubble agent-bubble markdown-body">
@@ -349,12 +434,29 @@
           {#if isThinking}
             <div class="message-row agent-row thinking-row">
               <div class="agent-avatar">
-                <svg class="spin-slow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M6.34 17.66l2.83-2.83M14.93 9.07l2.83-2.83"/>
+                <svg
+                  class="spin-slow"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M6.34 17.66l2.83-2.83M14.93 9.07l2.83-2.83"
+                  />
                 </svg>
               </div>
-              <div class="message-bubble agent-bubble thinking-bubble animate-shimmer">
-                <div class="thinking-text">Agent is formulating a response...</div>
+              <div
+                class="message-bubble agent-bubble thinking-bubble animate-shimmer"
+              >
+                <div class="thinking-text">
+                  Agent is formulating a response...
+                </div>
                 <div class="shimmer-block"></div>
                 <div class="shimmer-block w-4-5"></div>
                 <div class="shimmer-block w-3-5"></div>
@@ -367,20 +469,48 @@
             <div class="message-row system-row">
               <div class="error-card animate-spring-slide-in">
                 <div class="error-header">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <circle cx="12" cy="12" r="10" /><line
+                      x1="12"
+                      y1="8"
+                      x2="12"
+                      y2="12"
+                    /><line x1="12" y1="16" x2="12.01" y2="16" />
                   </svg>
                   <h4>Stream Connection Error</h4>
                 </div>
                 <p class="error-body">{error}</p>
                 <div class="error-actions">
                   <button onclick={retryLastMessage} class="btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path
+                        d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"
+                      />
                     </svg>
                     <span>Retry Request</span>
                   </button>
-                  <button onclick={startNewChat} class="btn-text">Cancel</button>
+                  <button onclick={startNewChat} class="btn-text">Cancel</button
+                  >
                 </div>
               </div>
             </div>
@@ -394,9 +524,25 @@
   <footer class="input-dock">
     <!-- Float Scroll Button -->
     {#if showScrollButton}
-      <button onclick={() => { autoScroll = true; scrollToBottom(); }} class="btn-scroll-bottom animate-spring-slide-in">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 5v14M5 12l7 7 7-7"/>
+      <button
+        onclick={() => {
+          autoScroll = true;
+          scrollToBottom();
+        }}
+        class="btn-scroll-bottom animate-spring-slide-in"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 5v14M5 12l7 7 7-7" />
         </svg>
         <span>Scroll to bottom</span>
       </button>
@@ -409,20 +555,34 @@
           bind:value={inputText}
           oninput={handleInput}
           onkeydown={handleKeyDown}
-          placeholder={isStreaming ? "Streaming response, please wait..." : "Ask Buddhi AI anything... (Shift + Enter for new line)"}
+          placeholder={isStreaming
+            ? "Streaming response, please wait..."
+            : "Ask Buddhi AI anything... (Shift + Enter for new line)"}
           disabled={isStreaming}
           rows="1"
           class="chat-textarea"
         ></textarea>
-        
-        <button 
-          onclick={sendMessage} 
-          disabled={isStreaming || !inputText.trim()} 
+
+        <button
+          onclick={sendMessage}
+          disabled={isStreaming || !inputText.trim()}
           class="btn-send"
           aria-label="Send message"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="22" y1="2" x2="11" y2="13" /><polygon
+              points="22 2 15 22 11 13 2 9 22 2"
+            />
           </svg>
         </button>
       </div>
@@ -690,8 +850,12 @@
     border-radius: 1px;
   }
 
-  .shimmer-block.w-4-5 { width: 80%; }
-  .shimmer-block.w-3-5 { width: 60%; }
+  .shimmer-block.w-4-5 {
+    width: 80%;
+  }
+  .shimmer-block.w-3-5 {
+    width: 60%;
+  }
 
   /* Error Box styling */
   .system-row {
@@ -915,7 +1079,11 @@
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>
