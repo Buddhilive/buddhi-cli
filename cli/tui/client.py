@@ -41,9 +41,19 @@ class BuddhiClient:
             ConnectionError: If the backend is not reachable.
             httpx.HTTPStatusError: On non-2xx responses.
         """
+        # The server's ResponseRequest model requires each message's `content`
+        # to be a list of content parts: [{type: "text", text: "..."}].
+        # Convert flat {role, content: str} dicts to that structure.
+        formatted_input = [
+            {
+                "role": m["role"],
+                "content": [{"type": "text", "text": m["content"]}],
+            }
+            for m in messages
+        ]
         payload = {
             "model": "gemma-4-E4B",
-            "input": messages,
+            "input": formatted_input,
             "stream": True,
         }
 
@@ -79,19 +89,34 @@ class BuddhiClient:
 
 def _extract_delta(chunk: dict) -> str:
     """
-    Pull incremental text from various possible response structures.
-    Handles both OpenAI-style and custom streaming formats.
-    """
-    # Try output[].content[].text (Responses API format)
-    for output in chunk.get("output", []):
-        for content in output.get("content", []):
-            text = content.get("text", "")
-            if text:
-                return text
+    Pull incremental text from the SSE chunk produced by the inference service.
 
-    # Fallback: delta.text
+    Server yields chunks shaped as:
+        {"id": "...", "object": "response.chunk",
+         "delta": {"content": [{"type": "text", "text": "..."}]}}
+
+    Also handles the legacy / fallback structures just in case.
+    """
+    # Primary: delta.content[].text  (actual server format)
     delta = chunk.get("delta", {})
     if isinstance(delta, dict):
-        return delta.get("text", "")
+        content = delta.get("content", [])
+        if isinstance(content, list):
+            for part in content:
+                if isinstance(part, dict):
+                    text = part.get("text", "")
+                    if text:
+                        return text
+        # Fallback: delta.text (flat string)
+        text = delta.get("text", "")
+        if text:
+            return text
+
+    # Legacy: output[].content[].text  (Responses API non-stream format)
+    for output in chunk.get("output", []):
+        for part in output.get("content", []):
+            text = part.get("text", "")
+            if text:
+                return text
 
     return ""

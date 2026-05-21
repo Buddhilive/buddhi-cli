@@ -226,7 +226,7 @@ class BuddhiApp(App):
     async def _open_conversation(self, conv: Conversation) -> None:
         self._current_conv = conv
         messages = await store.get_messages(conv.id)
-        # Replace the content area (right of sidebar) with a ChatScreen
+        # Replace the content area (right of sidebar) with a ChatScreen widget
         try:
             old = self.query_one("#main-area").children[-1]
             await old.remove()
@@ -243,3 +243,8 @@ class BuddhiApp(App):
         except NoMatches:
             pass
         await self.query_one("#main-area").mount(WelcomeScreen())
+
+    async def action_show_welcome(self) -> None:
+        """Called by ChatScreen's Escape binding."""
+        self._current_conv = None
+        await self._show_welcome()

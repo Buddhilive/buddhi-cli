@@ -1,8 +1,8 @@
-"""Welcome / splash screen shown when no conversation is active."""
+"""Welcome / splash panel shown when no conversation is active."""
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.screen import Screen
+from textual.containers import Vertical
 from textual.widgets import Static
 
 LOGO = """
@@ -24,10 +24,19 @@ SHORTCUTS = [
 ]
 
 
-class WelcomeScreen(Screen):
+class WelcomeScreen(Vertical):
     """
-    Full-screen welcome shown on launch when no conversation is selected.
+    Welcome panel shown on launch when no conversation is selected.
     Displays the Buddhi logo and a keyboard shortcut cheat-sheet.
+    This is a plain widget (not a Screen) so it can be mounted inside
+    the main-area Horizontal container.
+    """
+
+    DEFAULT_CSS = """
+    WelcomeScreen {
+        align: center middle;
+        width: 1fr;
+    }
     """
 
     def compose(self) -> ComposeResult:

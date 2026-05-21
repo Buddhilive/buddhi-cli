@@ -1,4 +1,4 @@
-"""ChatScreen — the main full-screen chat view."""
+"""ChatPanel — the main chat view, embedded as a widget (not a Screen)."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -6,8 +6,7 @@ from typing import Optional
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import ScrollableContainer, VerticalScroll
-from textual.screen import Screen
+from textual.containers import ScrollableContainer, Vertical
 from textual.widgets import LoadingIndicator, Static
 
 from cli.tui.client import BuddhiClient
@@ -16,17 +15,29 @@ from cli.tui.widgets.input_bar import InputBar
 from cli.tui.widgets.message import ChatMessage
 
 
-class ChatScreen(Screen):
+class ChatScreen(Vertical):
     """
-    The main chat interface:
+    The main chat interface (embedded as a widget inside the main-area
+    Horizontal container — NOT a Textual Screen):
     - Scrollable message history (top, 1fr)
     - InputBar at the bottom (auto-height)
     - Streams assistant replies token-by-token
     - Persists all messages to SQLite
     """
 
+    DEFAULT_CSS = """
+    ChatScreen {
+        width: 1fr;
+        height: 1fr;
+    }
+    ChatScreen #message-list {
+        width: 1fr;
+        height: 1fr;
+    }
+    """
+
     BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back", show=False),
+        Binding("escape", "app.show_welcome", "Back", show=False),
     ]
 
     def __init__(
@@ -59,6 +70,8 @@ class ChatScreen(Screen):
     def on_mount(self) -> None:
         self.query_one("#loading").display = False
         self._scroll_to_bottom()
+        # Focus the input field so the user can type immediately
+        self.query_one(InputBar).focus()
 
     # ------------------------------------------------------------------
     # Message submission

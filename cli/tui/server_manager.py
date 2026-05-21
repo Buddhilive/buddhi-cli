@@ -4,17 +4,26 @@ Buddhi FastAPI backend.
 """
 from __future__ import annotations
 
-import threading
+import subprocess
+import sys
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Optional
 
 import httpx
 
 DEFAULT_PORT = 58421
 DEFAULT_HOST = "127.0.0.1"
-STARTUP_TIMEOUT = 8.0   # seconds to wait for server to become ready
+STARTUP_TIMEOUT = 30.0  # seconds to wait for server to become ready
 POLL_INTERVAL = 0.3
+
+# Log file — all server stdout/stderr lands here, never in the TUI terminal
+_LOG_DIR = Path.home() / ".buddhi"
+_SERVER_LOG = _LOG_DIR / "server.log"
+
+# Module-level reference so we can check the process is still alive
+_server_proc: Optional[subprocess.Popen] = None
 
 
 def is_server_running(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> bool:
@@ -30,21 +39,40 @@ def start_server_background(
     host: str = DEFAULT_HOST, port: int = DEFAULT_PORT
 ) -> None:
     """
-    Starts the FastAPI/uvicorn server in a daemon background thread.
-    The thread is daemonized so it exits automatically when the TUI process
-    terminates.
-    """
-    def _run() -> None:
-        import uvicorn
-        uvicorn.run(
-            "server.main:app",
-            host=host,
-            port=port,
-            log_level="error",   # suppress startup noise inside TUI
-        )
+    Starts the FastAPI/uvicorn server as a child *subprocess* so its
+    stdout and stderr are completely isolated from the TUI's terminal.
 
-    thread = threading.Thread(target=_run, daemon=True, name="buddhi-server")
-    thread.start()
+    All server output is appended to ~/.buddhi/server.log.
+    The process is not daemonized at the OS level, but we store a reference
+    so the TUI can leave it running after exit (it will be orphaned and keep
+    serving) or kill it if needed.
+    """
+    global _server_proc
+
+    _LOG_DIR.mkdir(parents=True, exist_ok=True)
+    log_fh = open(_SERVER_LOG, "a", buffering=1)
+
+    # Re-use the same Python interpreter that is running the TUI so we stay
+    # inside the same venv / uv environment.
+    cmd = [
+        sys.executable,
+        "-m", "uvicorn",
+        "server.main:app",
+        "--host", host,
+        "--port", str(port),
+        "--log-level", "warning",
+        "--no-access-log",
+    ]
+
+    _server_proc = subprocess.Popen(
+        cmd,
+        stdout=log_fh,
+        stderr=log_fh,
+        stdin=subprocess.DEVNULL,
+        # Keep the child alive even after the parent exits
+        # (on Windows this is the default; on Unix we avoid setsid so we can
+        # still kill it, but we don't set close_fds=False either)
+    )
 
 
 def ensure_server_ready(
@@ -55,11 +83,11 @@ def ensure_server_ready(
     """
     High-level helper used by the TUI app on startup:
     1. If the server is already running → return True immediately.
-    2. If not → start it in the background, then poll until ready or timeout.
+    2. If not → start it as a subprocess, then poll until ready or timeout.
 
     Args:
-        on_starting: Optional callback invoked once when the server starts
-                     being launched (e.g. to update a status label in the TUI).
+        on_starting: Optional callback invoked once when the server is being
+                     launched (e.g. to update a status label in the TUI).
 
     Returns:
         True if the server is ready within STARTUP_TIMEOUT, False otherwise.
