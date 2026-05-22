@@ -109,20 +109,14 @@ def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
         print(f"Error running Streamlit UI: {e}", flush=True)
 
 
-def launch_tui():
-    """Launches the Textual TUI chat interface."""
-    from cli.tui.app import BuddhiApp
-    BuddhiApp().run()
-
-
 def cli():
     """CLI entry point for the buddhi command."""
     import argparse
 
     parser = argparse.ArgumentParser(
         description=(
-            "Buddhi AI — Local LLM inference with a beautiful terminal UI.\n"
-            "Run without arguments to launch the TUI chat interface."
+            "Buddhi AI — Local LLM inference.\n"
+            "Run 'buddhi live' to launch the Streamlit chat UI."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -132,12 +126,6 @@ def cli():
     subparsers.add_parser(
         "setup",
         help="Download the required local edge inference model.",
-    )
-
-    # ai subcommand — explicit TUI alias
-    subparsers.add_parser(
-        "ai",
-        help="Launch the Textual TUI chat interface (same as running buddhi with no args).",
     )
 
     # live subcommand — browser-based Streamlit UI
@@ -173,12 +161,9 @@ def cli():
             ui_port=args.ui_port,
             no_browser=args.no_browser
         )
-    elif args.command == "ai":
-        # Explicit TUI alias
-        launch_tui()
     else:
-        # Default: no subcommand → launch TUI (auto-starts server internally)
-        launch_tui()
+        # Default: no subcommand → show help
+        parser.print_help()
 
 
 if __name__ == "__main__":
