@@ -150,6 +150,12 @@ def cli():
         help="Bypass automatic opening of the system browser",
     )
 
+    # mcp subcommand — StdIO transport FastMCP server
+    subparsers.add_parser(
+        "mcp",
+        help="Start the CodeGraph Model Context Protocol (MCP) server over StdIO transport.",
+    )
+
     args = parser.parse_args()
 
     if args.command == "setup":
@@ -161,6 +167,13 @@ def cli():
             ui_port=args.ui_port,
             no_browser=args.no_browser
         )
+    elif args.command == "mcp":
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        mcp_dir = os.path.join(base_dir, "mcp")
+        if mcp_dir not in sys.path:
+            sys.path.insert(0, mcp_dir)
+        import server
+        server.run_server()
     else:
         # Default: no subcommand → show help
         parser.print_help()
