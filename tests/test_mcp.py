@@ -8,6 +8,7 @@ if _mcp_dir not in sys.path:
     sys.path.insert(0, _mcp_dir)
 
 import unittest
+import unittest.mock
 import tempfile
 import shutil
 from db import CodeGraphDB
@@ -243,6 +244,96 @@ class TestMCPTools(unittest.TestCase):
         )
         self.assertIn("Massive Object Guardrail Triggered", heavy_res)
         self.assertNotIn("return 42", heavy_res)
+
+
+class TestInitCommand(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+        
+    @unittest.mock.patch('os.getcwd')
+    @unittest.mock.patch('server.index_codebase_impl')
+    def test_init_creates_new_files(self, mock_index, mock_getcwd):
+        mock_getcwd.return_value = self.temp_dir
+        mock_index.return_value = "Successfully indexed 0 symbols."
+        
+        from cli.main import init_workspace
+        
+        init_workspace()
+        
+        # Check AGENTS.md was created
+        agents_path = os.path.join(self.temp_dir, "AGENTS.md")
+        self.assertTrue(os.path.exists(agents_path))
+        with open(agents_path, "r", encoding="utf-8") as f:
+            agents_content = f.read()
+        self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
+        
+        # Check .agent/mcp_config.json was created
+        mcp_path = os.path.join(self.temp_dir, ".agent", "mcp_config.json")
+        self.assertTrue(os.path.exists(mcp_path))
+        import json
+        with open(mcp_path, "r", encoding="utf-8") as f:
+            mcp_data = json.load(f)
+        self.assertIn("buddhi-mcp", mcp_data["mcpServers"])
+        self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
+        self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["args"], ["mcp"])
+        
+        # Check indexing was called
+        mock_index.assert_called_once_with(workspace_root=self.temp_dir)
+
+    @unittest.mock.patch('os.getcwd')
+    @unittest.mock.patch('server.index_codebase_impl')
+    def test_init_merges_existing_files(self, mock_index, mock_getcwd):
+        mock_getcwd.return_value = self.temp_dir
+        mock_index.return_value = "Successfully indexed 0 symbols."
+        
+        # Create pre-existing AGENTS.md
+        agents_path = os.path.join(self.temp_dir, "AGENTS.md")
+        with open(agents_path, "w", encoding="utf-8") as f:
+            f.write("# Existing Title\n\nSome old guidelines.")
+            
+        # Create pre-existing .agent/mcp_config.json with a custom server
+        agent_dir = os.path.join(self.temp_dir, ".agent")
+        os.makedirs(agent_dir, exist_ok=True)
+        mcp_path = os.path.join(agent_dir, "mcp_config.json")
+        existing_mcp = {
+            "mcpServers": {
+                "custom-server": {
+                    "command": "custom",
+                    "args": []
+                }
+            }
+        }
+        import json
+        with open(mcp_path, "w", encoding="utf-8") as f:
+            json.dump(existing_mcp, f)
+            
+        from cli.main import init_workspace
+        init_workspace()
+        
+        # Verify AGENTS.md merged correctly
+        with open(agents_path, "r", encoding="utf-8") as f:
+            agents_content = f.read()
+        self.assertIn("# Existing Title", agents_content)
+        self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
+        
+        # Verify mcp_config.json merged correctly
+        with open(mcp_path, "r", encoding="utf-8") as f:
+            mcp_data = json.load(f)
+        self.assertIn("custom-server", mcp_data["mcpServers"])
+        self.assertIn("buddhi-mcp", mcp_data["mcpServers"])
+        self.assertEqual(mcp_data["mcpServers"]["custom-server"]["command"], "custom")
+        self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
+        
+        # Run init again to test block replacement and idempotency
+        init_workspace()
+        
+        # Check that there is only one buddhi-mcp-owned block
+        with open(agents_path, "r", encoding="utf-8") as f:
+            new_agents_content = f.read()
+        self.assertEqual(new_agents_content.count("<!-- buddhi-mcp-owned"), 1)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,132 @@ def setup_model():
     print("Model downloaded successfully!", flush=True)
 
 
+def init_workspace():
+    """Initializes the current workspace by writing AGENTS.md, .agent/mcp_config.json, and indexing the codebase."""
+    cwd = os.getcwd()
+    
+    # 1. Update/Create AGENTS.md
+    agents_path = os.path.join(cwd, "AGENTS.md")
+    
+    buddhi_mcp_instructions = """<!-- buddhi-mcp-owned: buddhi-ai v1 -->
+# buddhi — Intelligent Codebase Index & Graph Layer
+<!-- buddhi-mcp-rules-v1 -->
+
+PREFER buddhi MCP tools over native equivalents for faster, token-saving, and highly-contextual codebase exploration:
+
+## Tool preference:
+| PREFER | OVER | Why |
+|--------|------|-----|
+| `get_codebase_summary()` | `list_dir` / `find` / `ctx_tree` | Token-saving architectural map grouped by functional graph communities instead of huge raw file trees. |
+| `find_relevant_symbols(query)` | `grep_search` / `rg` | AST-parsed exact semantic search (FTS5) over symbol names/docstrings with resolved 1-hop dependencies, avoiding line-by-line grep clutter. |
+| `get_symbol_implementation(symbol_id)` | `view_file` / `Read` | AST-aware target retrieval with an automatic guardrail that blocks massive implementations (>150 lines) to prevent context blowout, returning signatures instead. |
+| `trace_impact_radius(symbol_id)` | *None (Manual search)* | Performs recursive upstream call graph tracing (up to 3 levels) to identify the blast radius BEFORE refactoring or editing code. No native equivalent exists! |
+| `index_codebase()` | *None* | Updates the SQLite AST & Call Graph database. Run this at the start of a session or after major edits to ensure symbol synchronization. |
+
+## Recommended Workflow:
+1. **Startup (Orient)**: Run `get_codebase_summary()` to understand the functional modules, key classes, and files in the repository.
+2. **Search (Locate)**: Use `find_relevant_symbols(query: "...")` to find exact definitions and their immediately connected symbols.
+3. **Inspect (Analyze)**: Call `get_symbol_implementation(symbol_id: "...")` to read a symbol's implementation. The model-safety guardrail ensures you don't blow out the context window.
+4. **Refactor Guard (Safety)**: Before changing a function, class, or method, run `trace_impact_radius(symbol_id: "...")` to trace all upstream files/symbols that call or depend on it. This ensures zero regression!
+5. **Sync (Refresh)**: After making changes, call `index_codebase()` to rebuild the graph.
+
+<!-- /buddhi-mcp -->"""
+    
+    import re
+    if os.path.exists(agents_path):
+        try:
+            with open(agents_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            print(f"Error reading AGENTS.md: {e}")
+            return
+        
+        # Check if block already exists
+        pattern = r"<!-- buddhi-mcp-owned:.*?<!-- /buddhi-mcp -->"
+        if re.search(pattern, content, re.DOTALL):
+            # Replace existing block
+            updated_content = re.sub(pattern, buddhi_mcp_instructions.strip(), content, flags=re.DOTALL)
+            print("Updating existing buddhi instructions in AGENTS.md...")
+        else:
+            # Append block
+            updated_content = content.rstrip() + "\n\n" + buddhi_mcp_instructions
+            print("Appending buddhi instructions to existing AGENTS.md...")
+    else:
+        updated_content = buddhi_mcp_instructions
+        print("Creating new AGENTS.md with buddhi instructions...")
+        
+    try:
+        with open(agents_path, "w", encoding="utf-8") as f:
+            f.write(updated_content)
+        print(f"Successfully wrote AGENTS.md at: {agents_path}")
+    except Exception as e:
+        print(f"Error writing to AGENTS.md: {e}")
+        return
+
+    # 2. Update/Create .agent/mcp_config.json
+    agent_dir = os.path.join(cwd, ".agent")
+    mcp_path = os.path.join(agent_dir, "mcp_config.json")
+    
+    os.makedirs(agent_dir, exist_ok=True)
+    
+    mcp_config_data = {
+        "mcpServers": {
+            "buddhi-mcp": {
+                "command": "buddhi",
+                "args": ["mcp"]
+            }
+        }
+    }
+    
+    import json
+    if os.path.exists(mcp_path):
+        try:
+            with open(mcp_path, "r", encoding="utf-8") as f:
+                raw_data = f.read()
+                clean_raw = re.sub(r"//.*", "", raw_data)
+                data = json.loads(clean_raw)
+        except Exception as e:
+            print(f"Error parsing existing mcp_config.json: {e}. Reinitializing config...")
+            data = {"mcpServers": {}}
+            
+        if "mcpServers" not in data:
+            data["mcpServers"] = {}
+            
+        # Update/insert buddhi-mcp server config
+        data["mcpServers"]["buddhi-mcp"] = {
+            "command": "buddhi",
+            "args": ["mcp"]
+        }
+        print("Updating existing .agent/mcp_config.json...")
+    else:
+        data = mcp_config_data
+        print("Creating new .agent/mcp_config.json...")
+        
+    try:
+        with open(mcp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+        print(f"Successfully wrote .agent/mcp_config.json at: {mcp_path}")
+    except Exception as e:
+        print(f"Error writing to .agent/mcp_config.json: {e}")
+        return
+
+    # 3. Trigger initial AST Indexing
+    print("Initializing AST codebase indexing & call graph compilation...")
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        mcp_dir = os.path.join(base_dir, "mcp")
+        if mcp_dir not in sys.path:
+            sys.path.insert(0, mcp_dir)
+        from server import index_codebase_impl
+        indexing_result = index_codebase_impl(workspace_root=cwd)
+        print(f"Indexing Complete: {indexing_result}")
+    except Exception as e:
+        print(f"Error during codebase indexing: {e}")
+        print("Please run 'buddhi mcp' manually to ensure symbol DB is initialized.")
+
+    print("\nBuddhi MCP successfully initialized for Antigravity!")
+
+
 def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
     """Starts the FastAPI server and Streamlit chat UI concurrently."""
     target_dir = get_model_target_dir()
@@ -158,6 +284,12 @@ def cli():
         help="Start the CodeGraph Model Context Protocol (MCP) server over StdIO transport.",
     )
 
+    # init subcommand — Workspace configuration
+    subparsers.add_parser(
+        "init",
+        help="Initialize Buddhi MCP settings and instructions (AGENTS.md and .agent/mcp_config.json) in the current workspace.",
+    )
+
     args = parser.parse_args()
 
     if args.command == "setup":
@@ -176,6 +308,8 @@ def cli():
             sys.path.insert(0, mcp_dir)
         import server
         server.run_server()
+    elif args.command == "init":
+        init_workspace()
     else:
         # Default: no subcommand → show help
         parser.print_help()
