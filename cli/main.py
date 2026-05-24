@@ -57,12 +57,14 @@ def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
     server_thread.start()
 
     # Build command to run Streamlit in headless mode to bypass interactive prompts (like email registration)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ui_app_path = os.path.join(base_dir, "ui", "app.py")
     cmd = [
         sys.executable,
         "-m",
         "streamlit",
         "run",
-        "ui/app.py",
+        ui_app_path,
         "--server.port",
         str(ui_port),
         "--server.address",

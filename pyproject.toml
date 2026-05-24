@@ -4,10 +4,28 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "buddhi-ai"
-version = "2.0.0"
-description = "Add your description here"
+version = "2.0.0-beta.1"
+description = "Buddhi AI - Intelligent Development Assistant"
 readme = "README.md"
 requires-python = ">=3.10"
+urls.documentation = "https://github.com/Buddhilive/buddhi-ai#readme"
+urls.homepage = "https://buddhilive.com"
+urls.issues = "https://github.com/Buddhilive/buddhi-ai/issues"
+urls.repository = "https://github.com/Buddhilive/buddhi-ai"
+license = "MIT"
+authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
 dependencies = [
     "fastapi>=0.136.1",
     "uvicorn>=0.47.0",
@@ -27,7 +45,7 @@ dependencies = [
 buddhi = "cli.main:cli"
 
 [tool.setuptools.packages.find]
-include = ["server*", "cli*"]
+include = ["server*", "cli*", "ui*"]
 
 [tool.setuptools.exclude-package-data]
 "server.static.model" = ["*"]
@@ -35,18 +53,10 @@ include = ["server*", "cli*"]
 [tool.mypy]
 explicit_package_bases = true
 ignore_missing_imports = true
-exclude = [
-    '^main\.py$',
-    '^tests/',
-    '^server/',
-    '^ui/',
-]
+exclude = ['^main\.py$', '^tests/', '^server/', '^ui/']
 
 [tool.ruff]
-exclude = [
-    "server",
-    "ui",
-]
+exclude = ["server", "ui"]
 
 [tool.ruff.lint]
 ignore = ["F401", "E741", "E402"]
