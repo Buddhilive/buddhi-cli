@@ -1,5 +1,18 @@
 # Buddhi AI
 
+<p align="center">
+<a href="https://pypi.org/project/berkelium/">
+    <img src="https://img.shields.io/pypi/v/berkelium?style=flat-square&logo=pypi" alt="PyPI Version">
+  </a>
+  <a href="https://pypi.org/project/berkelium/">
+    <img src="https://img.shields.io/pypi/dm/berkelium?style=flat-square" alt="PyPI Downloads">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/BerkeliumLabs/berkelium-cli?style=flat-square" alt="License">
+  </a>
+  <img src="https://img.shields.io/badge/MCP-Compatible-green?style=flat-square" alt="MCP Compatible">
+</p>
+
 Buddhi AI is a local AI inference server, interactive web interface, and Model Context Protocol (MCP) server designed to supercharge developer workspaces.
 
 The backend is powered by FastAPI and LiteRT-LM, providing an ultra-fast, OpenAI-compatible local API endpoint. The frontend is built with Streamlit. Additionally, Buddhi integrates a highly-optimized MCP server (`CodeGraph`) that compiles your codebase into an AST & call-graph SQLite database for token-saving workspace exploration and command execution.
