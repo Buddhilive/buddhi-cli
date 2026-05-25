@@ -306,6 +306,12 @@ def cli():
         help="Explicitly scan the workspace and update the CodeGraph database.",
     )
 
+    # benchmark subcommand — Quantitative Benchmark Suite
+    subparsers.add_parser(
+        "benchmark",
+        help="Run the quantitative benchmark suite to calculate exact token savings across the current codebase.",
+    )
+
     # server subcommand — Start FastAPI backend only
     server_parser = subparsers.add_parser(
         "server",
@@ -354,6 +360,9 @@ def cli():
             print(f"Update Complete: {indexing_result}")
         except Exception as e:
             print(f"Error during codebase update: {e}")
+    elif args.command == "benchmark":
+        from cli.metrics import run_benchmark
+        run_benchmark()
     elif args.command == "server":
         target_dir = get_model_target_dir()
         model_path = os.path.join(target_dir, "gemma-4-E4B-it.litertlm")
