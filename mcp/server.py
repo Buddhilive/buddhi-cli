@@ -492,6 +492,8 @@ def execute_command_optimized(command: str) -> str:
     """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
     using local Gemma 4 edge inference to identify key successes or failures,
     and returns a compact, token-saving structured JSON summary.
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'run_command' or terminal execution tools. This is NOT optional.
     """
     start_time = time.time()
     status = "success"
@@ -515,6 +517,7 @@ def index_codebase() -> str:
     """Indexes the workspace directory and builds/updates the CodeGraph database.
 
     Call this tool at startup or after modifying files to keep the graph fresh.
+    CRITICAL: You MUST run this tool at the beginning of a session or after major structural edits.
     """
     start_time = time.time()
     status = "success"
@@ -538,6 +541,7 @@ def update_codegraph() -> str:
     """Rebuilds and updates the CodeGraph index database after making changes to the codebase.
 
     Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date.
+    CRITICAL: You MUST call this automatically after any file modifications.
     """
     start_time = time.time()
     status = "success"
@@ -562,6 +566,8 @@ def get_codebase_summary() -> str:
 
     Returns the files, classes, and main modules grouped by functional community clusters.
     Use this when introduced to an unfamiliar repository to get a high-level layout.
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'list_dir' or 'find' tools to explore the workspace structure. This is NOT optional.
     """
     start_time = time.time()
     status = "success"
@@ -586,6 +592,8 @@ def find_relevant_symbols(query: str) -> str:
 
     Returns a list of matching symbols, files, docstrings, and their 1-hop dependencies.
     Use this when searching for specific components or functionality in the workspace.
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'grep_search' or 'rg' to find definitions and references. This is NOT optional.
     """
     start_time = time.time()
     status = "success"
@@ -608,6 +616,7 @@ def trace_impact_radius(symbol_id: str, max_depth: int = 3) -> str:
 
     Recursively maps every caller that directly or indirectly relies on this symbol up to max_depth.
     Use this BEFORE modifying or refactoring code to ensure you do not break dependent systems.
+    CRITICAL: ALWAYS use this proactively before altering a class or function.
     """
     start_time = time.time()
     status = "success"
@@ -631,6 +640,8 @@ def get_symbol_implementation(symbol_id: str, max_lines: int = 150) -> str:
     """Fetches the exact source code implementation of a symbol (class, function, or method).
 
     Safely truncates massive files or large objects to prevent blowing out your context window.
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'view_file' or 'read' tools when examining source code. This is NOT optional.
     """
     start_time = time.time()
     status = "success"
