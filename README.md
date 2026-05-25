@@ -120,3 +120,19 @@ The `buddhi mcp` server exposes highly optimized tools that save context tokens 
 ### Frontend
 
 - **Main App:** `ui/app.py`
+
+---
+
+## PyPI Publishing
+
+To build and publish the `buddhi` CLI tool to PyPI:
+
+1. **Build the package:**
+   ```bash
+   uv build
+   ```
+
+2. **Publish to PyPI:**
+   ```bash
+   uv publish
+   ```

@@ -45,7 +45,8 @@ dependencies = [
 buddhi = "cli.main:cli"
 
 [tool.setuptools.packages.find]
-include = ["server*", "cli*", "ui*"]
+include = ["server*", "cli*", "ui*", "mcp*"]
+namespaces = true
 
 [tool.setuptools.exclude-package-data]
 "server.static.model" = ["*"]

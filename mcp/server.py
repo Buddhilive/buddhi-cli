@@ -350,7 +350,7 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
             # Verify it is valid JSON
             json.loads(assistant_text)
             return assistant_text
-    except Exception as api_err:
+    except Exception:
         # API is offline or returned invalid JSON. Fallback.
         pass
 
@@ -403,7 +403,7 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
                     # Verify it's valid JSON
                     json.loads(response_text)
                     return response_text
-    except Exception as engine_err:
+    except Exception:
         # Fallback to smart regex
         pass
 
