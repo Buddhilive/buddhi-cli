@@ -166,38 +166,34 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
     print("\nBuddhi MCP successfully initialized for Antigravity!")
 
 
-def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
-    """Starts the FastAPI server and Streamlit chat UI concurrently."""
-    target_dir = get_model_target_dir()
-    model_path = os.path.join(target_dir, "gemma-4-E4B-it.litertlm")
-
-    if not os.path.exists(model_path):
-        print("Warning: Model not found. You may need to run 'buddhi setup' first.")
-
-    import threading
+def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_port=58422, no_browser=False):
+    """Starts the Streamlit chat UI."""
     import subprocess
     import sys
-    import uvicorn
     import time
+    import threading
 
-    # Configure and start FastAPI via uvicorn in a daemon thread
-    config = uvicorn.Config("server.main:app", host=host, port=port, log_level="info")
-    server = uvicorn.Server(config)
-    
-    def run_server():
-        try:
-            server.run()
-        except SystemExit:
-            pass
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
+    print(f"\nNote: The Streamlit chat UI requires the Buddhi backend server to be running.", flush=True)
+    print(f"      Make sure you run 'buddhi server' centrally.", flush=True)
 
     # Build command to run Streamlit in headless mode to bypass interactive prompts (like email registration)
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ui_app_path = os.path.join(base_dir, "ui", "app.py")
+    
+    # Auto-detect workspace virtualenv Python to load installed packages correctly
+    python_exe = sys.executable
+    cwd = os.getcwd()
+    if sys.platform == "win32":
+        venv_candidate = os.path.join(cwd, ".venv", "Scripts", "python.exe")
+    else:
+        venv_candidate = os.path.join(cwd, ".venv", "bin", "python")
+        
+    if os.path.exists(venv_candidate):
+        python_exe = venv_candidate
+        print(f"Using workspace virtualenv interpreter: {python_exe}", flush=True)
+
     cmd = [
-        sys.executable,
+        python_exe,
         "-m",
         "streamlit",
         "run",
@@ -205,18 +201,17 @@ def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
         "--server.port",
         str(ui_port),
         "--server.address",
-        host,
+        ui_host,
         "--server.headless",
         "true",
     ]
 
     # Set dynamic environment variables for Streamlit backend connection
     env = os.environ.copy()
-    env["BUDDHI_BACKEND_HOST"] = host
-    env["BUDDHI_BACKEND_PORT"] = str(port)
+    env["BUDDHI_BACKEND_HOST"] = backend_host
+    env["BUDDHI_BACKEND_PORT"] = str(backend_port)
 
-    print(f"\nStarting backend server at http://{host}:{port}", flush=True)
-    print(f"Starting Streamlit chat UI at http://{host}:{ui_port}...", flush=True)
+    print(f"\nStarting Streamlit chat UI at http://{ui_host}:{ui_port}...", flush=True)
 
     try:
         process = subprocess.Popen(cmd, env=env)
@@ -227,23 +222,17 @@ def start(host="127.0.0.1", port=58421, ui_port=58422, no_browser=False):
             def open_browser():
                 time.sleep(2.0)
                 if process.poll() is None:
-                    webbrowser.open(f"http://{host}:{ui_port}")
+                    webbrowser.open(f"http://{ui_host}:{ui_port}")
             threading.Thread(target=open_browser, daemon=True).start()
 
         try:
-            # Monitor the running process and fail fast if uvicorn fails to bind or exits
+            # Monitor the running process
             while process.poll() is None:
-                if server.should_exit or not server_thread.is_alive():
-                    print("\nBackend server stopped or failed to bind. Shutting down Streamlit...", flush=True)
-                    process.terminate()
-                    process.wait()
-                    break
                 time.sleep(0.5)
         except KeyboardInterrupt:
-            print("\nShutting down Buddhi AI live servers...", flush=True)
+            print("\nShutting down Buddhi AI Streamlit UI...", flush=True)
             process.terminate()
             process.wait()
-            server.should_exit = True
     except Exception as e:
         print(f"Error running Streamlit UI: {e}", flush=True)
 
@@ -273,16 +262,20 @@ def cli():
         help="Start the FastAPI backend and serve the Streamlit chat UI in a browser.",
     )
     live_parser.add_argument(
-        "--port", type=int, default=58421,
-        help="Port to run the backend FastAPI server on (default: 58421)",
+        "--backend-port", type=int, default=58421,
+        help="Port of the backend FastAPI server to connect to (default: 58421)",
+    )
+    live_parser.add_argument(
+        "--backend-host", type=str, default="127.0.0.1",
+        help="Host address of the backend server (default: 127.0.0.1)",
     )
     live_parser.add_argument(
         "--ui-port", type=int, default=58422,
         help="Port to run the Streamlit UI on (default: 58422)",
     )
     live_parser.add_argument(
-        "--host", type=str, default="127.0.0.1",
-        help="Host address to bind to (default: 127.0.0.1)",
+        "--ui-host", type=str, default="127.0.0.1",
+        help="Host address to bind the Streamlit UI to (default: 127.0.0.1)",
     )
     live_parser.add_argument(
         "--no-browser", action="store_true",
@@ -327,8 +320,9 @@ def cli():
         setup_model()
     elif args.command == "live":
         start(
-            host=args.host,
-            port=args.port,
+            backend_host=args.backend_host,
+            backend_port=args.backend_port,
+            ui_host=args.ui_host,
             ui_port=args.ui_port,
             no_browser=args.no_browser
         )

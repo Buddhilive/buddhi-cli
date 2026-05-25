@@ -6,6 +6,7 @@ import sqlite3
 import pandas as pd
 import httpx
 import streamlit as st
+import asyncio
 
 # ------------------------------------------------------------------------------
 # Config & Environment
@@ -404,10 +405,19 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section-title">System Settings</div>', unsafe_allow_html=True)
     
     # System Instruction/Prompt editor
+    _workspace_path = os.getcwd().replace("\\", "/")
+    _default_system_prompt = (
+        f"You are Buddhi AI, a powerful local AI coding and thinking assistant.\n"
+        f"You are actively assisting with the following project:\n"
+        f"  - Project: buddhi-ai (Buddhi AI — Intelligent Development Assistant)\n"
+        f"  - Workspace: {_workspace_path}\n"
+        f"  - Stack: Python, FastAPI, Streamlit, LangGraph, MCP, LiteRT-LM\n"
+        f"Answer concisely, provide high-quality code blocks, and think critically."
+    )
     system_instruction = st.text_area(
         "System Instruction (System Prompt)",
-        value="You are Buddhi AI, a powerful, helpful local AI coding and thinking assistant. Answer concisely, provide high-quality code blocks, and think critically.",
-        height=120,
+        value=_default_system_prompt,
+        height=150,
         help="System instructions guide the model's tone, style, and rules."
     )
 
@@ -425,50 +435,130 @@ with st.sidebar:
     st.markdown("**Model Type:** `gemma-4-E4B-it.litertlm` (Edge)")
 
 # ------------------------------------------------------------------------------
+# MCP Integration & Tool Execution
+# ------------------------------------------------------------------------------
+from ui.mcp_client import get_mcp_config, list_mcp_tools, call_mcp_tool
+
+def get_system_instruction_with_tools(base_instruction, tools):
+    if not tools:
+        return base_instruction
+    
+    tools_json = []
+    for t in tools:
+        tools_json.append({
+            "name": t.name,
+            "description": t.description,
+            "parameters": t.inputSchema
+        })
+    
+    tools_str = json.dumps(tools_json, indent=2)
+    
+    instruction = base_instruction + "\n\n"
+    instruction += "You have access to the following tools:\n\n"
+    instruction += "```xml\n<tools>\n" + tools_str + "\n</tools>\n```\n\n"
+    instruction += "To call a tool, use the exact following format:\n"
+    instruction += "```xml\n<tool_call>\n"
+    instruction += '{"name": "tool_name", "arguments": {"arg_name": "arg_value"}}\n'
+    instruction += "</tool_call>\n```\n"
+    instruction += "Once you receive the tool's output in the next turn, formulate your final response."
+    
+    return instruction
+
+# ------------------------------------------------------------------------------
 # API Streaming Function (Chat UI Page helper)
 # ------------------------------------------------------------------------------
-def stream_model_response(messages, system_instruction):
-    input_items = []
-    for msg in messages:
-        input_items.append({
-            "role": msg["role"],
-            "content": [{"type": "text", "text": msg["content"]}]
-        })
-        
-    payload = {
-        "input": input_items,
-        "stream": True
-    }
+def stream_model_response(messages, system_instruction, thinking_placeholder=None):
+    import asyncio
+    import queue as queue_module
+    import threading
+
+    from ui.agent import get_react_agent
+    from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+
+    # Initialize the agent once per Streamlit session (synchronously, outside async scope)
+    # This avoids re-spawning MCP stdio subprocesses on every message.
+    if "_buddhi_react_agent" not in st.session_state:
+        st.session_state["_buddhi_react_agent"] = get_react_agent()
+    agent = st.session_state["_buddhi_react_agent"]
+
+    # Build the message list synchronously before handing off to the thread
+    langchain_messages = []
     if system_instruction:
-        payload["instructions"] = system_instruction
-        
-    headers = {"Content-Type": "application/json"}
-    
+        langchain_messages.append(SystemMessage(content=system_instruction))
+    for msg in messages:
+        if msg["role"] == "user":
+            langchain_messages.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "assistant":
+            langchain_messages.append(AIMessage(content=msg["content"]))
+
+    inputs = {"messages": langchain_messages}
+
+    # Thread-safe queue: events are put by the background thread, consumed here
+    result_queue = queue_module.Queue()
+    _SENTINEL = object()  # signals end of stream
+
+    async def _run_agent():
+        """Runs the LangGraph ReAct agent and pushes events onto the queue."""
+        try:
+            async for event in agent.astream_events(inputs, version="v2"):
+                kind = event.get("event")
+                name = event.get("name")
+
+                if kind == "on_chat_model_stream":
+                    chunk = event.get("data", {}).get("chunk")
+                    if chunk and chunk.content:
+                        result_queue.put(("token", chunk.content))
+                elif kind == "on_tool_start":
+                    tool_input = event.get("data", {}).get("input", {})
+                    result_queue.put(("tool_start", (name, tool_input)))
+                elif kind == "on_tool_end":
+                    tool_output = event.get("data", {}).get("output", "")
+                    result_queue.put(("tool_end", (name, tool_output)))
+        except Exception as e:
+            result_queue.put(("error", str(e)))
+        finally:
+            result_queue.put((_SENTINEL, None))
+
+    def _thread_worker():
+        """Runs the async event consumer in a dedicated event loop on a background thread."""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_run_agent())
+        finally:
+            loop.close()
+
+    thread = threading.Thread(target=_thread_worker, daemon=True)
+    thread.start()
+
+    # Premium collapsible status block for agent thoughts & tool triggers
+    status = None
+    if thinking_placeholder:
+        status = thinking_placeholder.status("🧠 **Buddhi AI Thinking...**", expanded=True)
+
+    # Drain the queue in Streamlit's sync context
     try:
-        with httpx.stream("POST", f"{BACKEND_URL}/v1/responses", json=payload, headers=headers, timeout=60.0) as r:
-            if r.status_code != 200:
-                error_detail = r.read().decode()
-                yield f"**API Error ({r.status_code}):** {error_detail}"
-                return
-                
-            for line in r.iter_lines():
-                if not line:
-                    continue
-                if line.startswith("data:"):
-                    data_str = line[5:].strip()
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        data = json.loads(data_str)
-                        delta = data.get("delta", {})
-                        content_list = delta.get("content", [])
-                        if content_list:
-                            chunk_text = content_list[0].get("text", "")
-                            yield chunk_text
-                    except Exception:
-                        pass
-    except Exception as e:
-        yield f"**Inference Connection Error:** {str(e)}"
+        while True:
+            item_type, val = result_queue.get()
+            if item_type is _SENTINEL:
+                break
+            if item_type == "token":
+                yield val
+            elif item_type == "tool_start" and status:
+                tool_name, tool_input = val
+                status.write(f"🛠️ **Invoking MCP Tool:** `{tool_name}`")
+                status.write(f"📥 **Parameters:** `{tool_input}`")
+            elif item_type == "tool_end" and status:
+                tool_name, tool_output = val
+                preview = str(tool_output)[:400] + "..." if len(str(tool_output)) > 400 else str(tool_output)
+                status.write(f"📤 **Tool Result (`{tool_name}`):**\n```\n{preview}\n```")
+            elif item_type == "error":
+                yield f"\n\n**Error during ReAct execution:** {val}"
+    finally:
+        thread.join(timeout=30)
+        if status:
+            status.update(label="🧠 **Thinking Complete**", state="complete", expanded=False)
+
 
 # ------------------------------------------------------------------------------
 # Observability Dashboard Page Render
@@ -596,10 +686,11 @@ def render_chat_page(system_instruction):
         
         # Process assistant response with full streaming
         with st.chat_message("assistant"):
+            thinking_placeholder = st.empty()
             response_placeholder = st.empty()
             
             # We pass our list of messages and system instructions to the generator
-            response_generator = stream_model_response(st.session_state.messages, system_instruction)
+            response_generator = stream_model_response(st.session_state.messages, system_instruction, thinking_placeholder=thinking_placeholder)
             
             # Render dynamic token-by-token streaming UI
             assistant_response = response_placeholder.write_stream(response_generator)
