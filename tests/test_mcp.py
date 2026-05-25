@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 import sys
 import os
+import json
 
 # Add local mcp/ directory to sys.path so we can import db, parser, graph, server directly
 _mcp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mcp")
@@ -14,6 +15,7 @@ import shutil
 from db import CodeGraphDB
 from parser import ASTParser
 from graph import CodeGraphAnalyzer
+from indexer import CodeIndexer
 from server import (
     get_codebase_summary_impl,
     find_relevant_symbols_impl,
@@ -245,6 +247,76 @@ class TestMCPTools(unittest.TestCase):
         )
         self.assertIn("Massive Object Guardrail Triggered", heavy_res)
         self.assertNotIn("return 42", heavy_res)
+
+
+class TestCodeIndexer(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        # Create a mock .buddhi folder in our temp_dir
+        self.buddhi_dir = os.path.join(self.temp_dir, ".buddhi")
+        os.makedirs(self.buddhi_dir, exist_ok=True)
+        self.db_path = os.path.join(self.buddhi_dir, "graph.db")
+        
+        # Write a mock Python file to index
+        self.mock_file = os.path.join(self.temp_dir, "mock_module.py")
+        mock_code = """
+class Worker:
+    \"\"\"Represents a background worker.\"\"\"
+    def work(self):
+        print("working")
+
+def run_worker():
+    w = Worker()
+    w.work()
+"""
+        with open(self.mock_file, "w", encoding="utf-8") as f:
+            f.write(mock_code)
+            
+        self.indexer = CodeIndexer(workspace_root=self.temp_dir, db_path=self.db_path)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_indexing_generates_visualization_files(self):
+        # Index the codebase
+        num_nodes, num_edges = self.indexer.index_codebase()
+        
+        # Verify indexing succeeded
+        self.assertTrue(num_nodes > 0)
+        
+        # Verify visualization files exist
+        json_path = os.path.join(self.buddhi_dir, "graph.json")
+        html_path = os.path.join(self.buddhi_dir, "graph.html")
+        
+        self.assertTrue(os.path.exists(json_path))
+        self.assertTrue(os.path.exists(html_path))
+        
+        # 1. Verify JSON file contents
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        self.assertIn("nodes", data)
+        self.assertIn("edges", data)
+        self.assertTrue(len(data["nodes"]) > 0)
+        
+        # Check that we have a class, method, and function
+        types = [node["type"] for node in data["nodes"]]
+        self.assertIn("class", types)
+        self.assertIn("method", types)
+        self.assertIn("function", types)
+        
+        # 2. Verify HTML file contents
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+            
+        self.assertIn("<!DOCTYPE html>", html_content)
+        self.assertIn("vis.Network", html_content)
+        self.assertIn("Interactive Legend", html_content)
+        # Ensure the __EMBEDDED_GRAPH_JSON__ placeholder is replaced
+        self.assertNotIn("__EMBEDDED_GRAPH_JSON__", html_content)
+        # Ensure it contains the actual node data embedded
+        self.assertIn("Worker", html_content)
+        self.assertIn("run_worker", html_content)
 
 
 class TestInitCommand(unittest.TestCase):
