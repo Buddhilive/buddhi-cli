@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """
     app_name: str = "LiteRT-LM Responses API"
     model_path: str = Field(
-        default=str(BASE_DIR / "server" / "static" / "model" / "gemma-4-E4B-it.litertlm"),
+        default=str(Path.home() / ".buddhi" / "models" / "gemma-4-E4B-it.litertlm"),
         description="Path to the LiteRT-LM model file."
     )
 

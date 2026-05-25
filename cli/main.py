@@ -3,9 +3,7 @@ import sys
 
 
 def get_model_target_dir():
-    # The 'server' folder is adjacent to the 'cli' folder
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(base_dir, "server", "static", "model")
+    return os.path.join(os.path.expanduser("~"), ".buddhi", "models")
 
 
 def setup_model():
@@ -17,16 +15,26 @@ def setup_model():
 
     if os.path.exists(model_path):
         print("Model already exists at:", model_path)
-        return
+    else:
+        print("Downloading model from HuggingFace...", flush=True)
+        os.makedirs(target_dir, exist_ok=True)
+        hf_hub_download(
+            repo_id="litert-community/gemma-4-E4B-it-litert-lm",
+            filename="gemma-4-E4B-it.litertlm",
+            local_dir=target_dir,
+        )
+        print("Model downloaded successfully!", flush=True)
 
-    print("Downloading model from HuggingFace...", flush=True)
-    os.makedirs(target_dir, exist_ok=True)
-    hf_hub_download(
-        repo_id="litert-community/gemma-4-E4B-it-litert-lm",
-        filename="gemma-4-E4B-it.litertlm",
-        local_dir=target_dir,
-    )
-    print("Model downloaded successfully!", flush=True)
+    # Pre-generate XNNPack cache if possible
+    try:
+        import litert_lm
+        print("Pre-generating XNNPack compilation cache (this might take a few seconds)...", flush=True)
+        engine = litert_lm.Engine(model_path)
+        with engine:
+            pass
+        print("XNNPack compilation cache pre-generated successfully!", flush=True)
+    except Exception as e:
+        print(f"Note: XNNPack cache will be generated automatically on first inference. (Detail: {e})", flush=True)
 
 
 def init_workspace():
