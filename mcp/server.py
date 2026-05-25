@@ -1,10 +1,55 @@
 import os
+import sqlite3
+import datetime
+import json
+import time
 from mcp.server.fastmcp import FastMCP
 from db import CodeGraphDB, get_db_path
 from indexer import CodeIndexer
 
 # Initialize FastMCP Server
 mcp = FastMCP("CodeGraph")
+
+
+def log_tool_trigger(tool_name: str, status: str = "success", duration_ms: float = 0.0, arguments: dict | None = None):
+    try:
+        user_folder = os.path.expanduser("~")
+        db_dir = os.path.join(user_folder, ".buddhi", "data")
+        os.makedirs(db_dir, exist_ok=True)
+        db_path = os.path.join(db_dir, "telemetry.db")
+        
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        cursor = conn.cursor()
+        
+        # Create table if not exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tool_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tool_name TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                status TEXT NOT NULL,
+                duration_ms REAL NOT NULL,
+                arguments TEXT NOT NULL
+            )
+        """)
+        
+        # Truncate large arguments
+        args_str = json.dumps(arguments or {})
+        if len(args_str) > 2000:
+            args_str = args_str[:1997] + "..."
+            
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        cursor.execute("""
+            INSERT INTO tool_usage (tool_name, timestamp, status, duration_ms, arguments)
+            VALUES (?, ?, ?, ?, ?)
+        """, (tool_name, timestamp, status, duration_ms, args_str))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        # Telemetry is secondary, fail silently to stderr to avoid disrupting StdIO
+        import sys
+        print(f"[Telemetry Error] {e}", file=sys.stderr, flush=True)
 
 
 # ==========================================
@@ -448,7 +493,21 @@ def execute_command_optimized(command: str) -> str:
     using local Gemma 4 edge inference to identify key successes or failures,
     and returns a compact, token-saving structured JSON summary.
     """
-    return execute_command_optimized_impl(command)
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = execute_command_optimized_impl(command)
+        if '"status": "error"' in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command})
 
 
 @mcp.tool()
@@ -457,7 +516,21 @@ def index_codebase() -> str:
 
     Call this tool at startup or after modifying files to keep the graph fresh.
     """
-    return index_codebase_impl()
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = index_codebase_impl()
+        if "error" in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("index_codebase", status, duration_ms, {})
 
 
 @mcp.tool()
@@ -466,7 +539,21 @@ def update_codegraph() -> str:
 
     Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date.
     """
-    return index_codebase_impl()
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = index_codebase_impl()
+        if "error" in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("update_codegraph", status, duration_ms, {})
 
 
 @mcp.tool()
@@ -476,7 +563,21 @@ def get_codebase_summary() -> str:
     Returns the files, classes, and main modules grouped by functional community clusters.
     Use this when introduced to an unfamiliar repository to get a high-level layout.
     """
-    return get_codebase_summary_impl()
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = get_codebase_summary_impl()
+        if "no codebase summary available" in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("get_codebase_summary", status, duration_ms, {})
 
 
 @mcp.tool()
@@ -486,7 +587,19 @@ def find_relevant_symbols(query: str) -> str:
     Returns a list of matching symbols, files, docstrings, and their 1-hop dependencies.
     Use this when searching for specific components or functionality in the workspace.
     """
-    return find_relevant_symbols_impl(query)
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = find_relevant_symbols_impl(query)
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("find_relevant_symbols", status, duration_ms, {"query": query})
 
 
 @mcp.tool()
@@ -496,7 +609,21 @@ def trace_impact_radius(symbol_id: str, max_depth: int = 3) -> str:
     Recursively maps every caller that directly or indirectly relies on this symbol up to max_depth.
     Use this BEFORE modifying or refactoring code to ensure you do not break dependent systems.
     """
-    return trace_impact_radius_impl(symbol_id, max_depth)
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = trace_impact_radius_impl(symbol_id, max_depth)
+        if "not found" in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("trace_impact_radius", status, duration_ms, {"symbol_id": symbol_id, "max_depth": max_depth})
 
 
 @mcp.tool()
@@ -505,7 +632,21 @@ def get_symbol_implementation(symbol_id: str, max_lines: int = 150) -> str:
 
     Safely truncates massive files or large objects to prevent blowing out your context window.
     """
-    return get_symbol_implementation_impl(symbol_id, max_lines)
+    start_time = time.time()
+    status = "success"
+    res = ""
+    try:
+        res = get_symbol_implementation_impl(symbol_id, max_lines)
+        if "not found" in res.lower() or "error reading file" in res.lower():
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("get_symbol_implementation", status, duration_ms, {"symbol_id": symbol_id, "max_lines": max_lines})
 
 
 def run_server():
