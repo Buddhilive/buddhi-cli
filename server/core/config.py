@@ -25,6 +25,6 @@ class Settings(BaseSettings):
         description="The port on which the backend server runs."
     )
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()

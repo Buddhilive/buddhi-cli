@@ -461,6 +461,15 @@ def index_codebase() -> str:
 
 
 @mcp.tool()
+def update_codegraph() -> str:
+    """Rebuilds and updates the CodeGraph index database after making changes to the codebase.
+
+    Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date.
+    """
+    return index_codebase_impl()
+
+
+@mcp.tool()
 def get_codebase_summary() -> str:
     """Provides a concise architectural summary of the codebase.
 

@@ -73,7 +73,9 @@ Buddhi provides a CLI command suite:
 |---------|-------------|
 | `buddhi setup` | Downloads the local edge inference model. |
 | `buddhi init` | Configures `AGENTS.md` and `.agent/mcp_config.json` and indexes the codebase. |
+| `buddhi update` | Explicitly scans the workspace and updates the CodeGraph database. |
 | `buddhi live` | Launches the FastAPI server and Streamlit chat UI concurrently. |
+| `buddhi server` | Launches the FastAPI backend server only (no Streamlit UI). |
 | `buddhi mcp` | Starts the FastMCP server over StdIO transport. |
 
 ---
@@ -98,11 +100,15 @@ The `buddhi mcp` server exposes highly optimized tools that save context tokens 
    - Recursively traces upstream call graph chains up to 3 levels deep starting at a specific symbol.
    - *Use case:* Identify the blast-radius before modifying/refactoring code.
 
-5. **`index_codebase`**
-   - Re-builds/syncs the SQLite symbol and call dependency database.
-   - *Use case:* Run after making significant modifications to files.
+5. **`update_codegraph`**
+   - Rebuilds and updates the SQLite symbol and call dependency database.
+   - *Use case:* Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date.
 
-6. **`execute_command_optimized`**
+6. **`index_codebase`**
+   - Re-builds/syncs the SQLite symbol and call dependency database.
+   - *Use case:* Run at startup or after major edits to ensure symbol synchronization.
+
+7. **`execute_command_optimized`**
    - Executes local terminal commands and utilizes local Gemma models to summarize and format stdout/stderr into token-saving JSON.
    - *Use case:* Compile, build, and test execution analysis.
 

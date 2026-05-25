@@ -57,6 +57,7 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
 | `find_relevant_symbols(query)` | `grep_search` / `rg` | AST-parsed exact semantic search (FTS5) over symbol names/docstrings with resolved 1-hop dependencies, avoiding line-by-line grep clutter. |
 | `get_symbol_implementation(symbol_id)` | `view_file` / `Read` | AST-aware target retrieval with an automatic guardrail that blocks massive implementations (>150 lines) to prevent context blowout, returning signatures instead. |
 | `trace_impact_radius(symbol_id)` | *None (Manual search)* | Performs recursive upstream call graph tracing (up to 3 levels) to identify the blast radius BEFORE refactoring or editing code. No native equivalent exists! |
+| `update_codegraph()` | *None* | Rebuilds and updates the SQLite AST & Call Graph database. Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date. |
 | `index_codebase()` | *None* | Updates the SQLite AST & Call Graph database. Run this at the start of a session or after major edits to ensure symbol synchronization. |
 | `execute_command_optimized(command)` | `run_command` / `Shell` / `ctx_shell` | Executes shell commands locally and passes stdout/stderr to local Gemma 4 model (via centralized FastAPI server http://localhost:58421/v1/responses or fallback), producing a compact structured JSON pinpointing successes, errors, and warnings to save substantial tokens. |
 
@@ -65,7 +66,7 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
 2. **Search (Locate)**: Use `find_relevant_symbols(query: "...")` to find exact definitions and their immediately connected symbols.
 3. **Inspect (Analyze)**: Call `get_symbol_implementation(symbol_id: "...")` to read a symbol's implementation. The model-safety guardrail ensures you don't blow out the context window.
 4. **Refactor Guard (Safety)**: Before changing a function, class, or method, run `trace_impact_radius(symbol_id: "...")` to trace all upstream files/symbols that call or depend on it. This ensures zero regression!
-5. **Sync (Refresh)**: After making changes, call `index_codebase()` to rebuild the graph.
+5. **Sync (Refresh)**: After making changes, call `update_codegraph()` immediately to rebuild the graph and keep the active symbol representation accurate.
 6. **Optimized Execution**: For running builds, tests, or diagnostics, prefer `execute_command_optimized(command: "...")` to drastically compress terminal output and avoid wasting assistant tokens.
 
 <!-- /buddhi-mcp -->"""
@@ -300,6 +301,26 @@ def cli():
         help="Initialize Buddhi MCP settings and instructions (AGENTS.md and .agent/mcp_config.json) in the current workspace.",
     )
 
+    # update subcommand — Explicitly update CodeGraph
+    subparsers.add_parser(
+        "update",
+        help="Explicitly scan the workspace and update the CodeGraph database.",
+    )
+
+    # server subcommand — Start FastAPI backend only
+    server_parser = subparsers.add_parser(
+        "server",
+        help="Start the FastAPI backend server only.",
+    )
+    server_parser.add_argument(
+        "--port", type=int, default=58421,
+        help="Port to run the backend FastAPI server on (default: 58421)",
+    )
+    server_parser.add_argument(
+        "--host", type=str, default="127.0.0.1",
+        help="Host address to bind to (default: 127.0.0.1)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "setup":
@@ -320,6 +341,31 @@ def cli():
         server.run_server()
     elif args.command == "init":
         init_workspace()
+    elif args.command == "update":
+        print("Explicitly triggering AST indexing and call graph compilation...")
+        try:
+            cwd = os.getcwd()
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            mcp_dir = os.path.join(base_dir, "mcp")
+            if mcp_dir not in sys.path:
+                sys.path.insert(0, mcp_dir)
+            from server import index_codebase_impl
+            indexing_result = index_codebase_impl(workspace_root=cwd)
+            print(f"Update Complete: {indexing_result}")
+        except Exception as e:
+            print(f"Error during codebase update: {e}")
+    elif args.command == "server":
+        target_dir = get_model_target_dir()
+        model_path = os.path.join(target_dir, "gemma-4-E4B-it.litertlm")
+        if not os.path.exists(model_path):
+            print("Warning: Model not found. You may need to run 'buddhi setup' first.")
+            
+        import uvicorn
+        print(f"\nStarting backend server at http://{args.host}:{args.port}...", flush=True)
+        try:
+            uvicorn.run("server.main:app", host=args.host, port=args.port, log_level="info")
+        except Exception as e:
+            print(f"Error starting backend server: {e}", flush=True)
     else:
         # Default: no subcommand → show help
         parser.print_help()
