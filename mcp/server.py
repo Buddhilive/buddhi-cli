@@ -232,9 +232,224 @@ def get_symbol_implementation_impl(symbol_id, max_lines=150, db_path=None, works
     return "\n".join(output)
 
 
+def execute_command_optimized_impl(command: str) -> str:
+    """Executes the given command locally, captures standard output and error,
+    and structures the outcome using the local Gemma 4 model (or API / regex fallback)
+    into a token-saving JSON response format.
+    """
+    import sys
+    import subprocess
+    import urllib.request
+    import urllib.error
+    import json
+    import re
+
+    # 1. OS-specific shell command runner
+    try:
+        if sys.platform == "win32":
+            # Using powershell explicitly provides a more reliable environment on Windows than standard cmd
+            res = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
+            )
+            stdout, stderr, returncode = res.stdout, res.stderr, res.returncode
+        else:
+            res = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
+            )
+            stdout, stderr, returncode = res.stdout, res.stderr, res.returncode
+    except Exception as e:
+        # If command launch fails completely
+        return json.dumps({
+            "status": "error",
+            "summary": f"Failed to execute command: {str(e)}",
+            "critical_findings": [f"Execution failed to start: {str(e)}"],
+            "exit_code": -1
+        }, indent=2)
+
+    # 2. Performance-based soft compression for extremely large outputs
+    # Gemma 4 supports 128k context, but we compress repetitive lines over 64k chars for fast edge execution.
+    def compress_output(text: str, max_chars: int = 64000) -> str:
+        if len(text) <= max_chars:
+            return text
+        half = max_chars // 2
+        first_part = text[:half]
+        last_part = text[-half:]
+        middle_text = text[half:-half]
+        middle_lines = middle_text.split("\n")
+        important_middle = []
+        for line in middle_lines:
+            line_lower = line.lower()
+            if any(kw in line_lower for kw in ["error", "fail", "warn", "exception", "critical", "fatal"]):
+                stripped = line.strip()
+                if stripped and stripped not in important_middle:
+                    important_middle.append(stripped)
+                    if len(important_middle) >= 20:
+                        break
+        separator = "\n\n... [TRUNCATED REPETITIVE MIDDLE LINES] ...\n"
+        if important_middle:
+            separator += "\n".join(important_middle) + "\n\n... [TRUNCATED CONTINUE] ...\n\n"
+        return first_part + separator + last_part
+
+    comp_stdout = compress_output(stdout)
+    comp_stderr = compress_output(stderr)
+
+    # 3. Model prompting
+    prompt = f"Command executed: {command}\nExit Code: {returncode}\n\nSTDOUT:\n{comp_stdout}\n\nSTDERR:\n{comp_stderr}"
+    instructions = """You are a token-saving shell command analyzer. Analyze the command output and return a clean, strictly formatted JSON object pinpointing key findings.
+
+Do NOT include any extra conversational text, markdown wrapping (such as ```json), or boilerplate. Return ONLY the valid raw JSON matching this schema:
+{
+  "status": "success" | "error" | "warning",
+  "summary": "Concise 1-sentence summary of the command outcome.",
+  "critical_findings": ["Highly specific line of error, failing test description, warning, or crucial output details"],
+  "exit_code": 0
+}"""
+
+    # 4. Attempt 1: Query centrally running FastAPI server at http://localhost:58421/v1/responses
+    try:
+        payload = {
+            "instructions": instructions,
+            "input": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}]
+                }
+            ],
+            "stream": False
+        }
+        url = "http://localhost:58421/v1/responses"
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=12) as response:
+            res_data = response.read().decode("utf-8")
+            response_json = json.loads(res_data)
+            assistant_text = response_json["output"][0]["content"][0]["text"].strip()
+            
+            # Clean up potential markdown code block wrappers
+            if assistant_text.startswith("```"):
+                lines = assistant_text.split("\n")
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].startswith("```"):
+                    lines = lines[:-1]
+                assistant_text = "\n".join(lines).strip()
+            
+            # Verify it is valid JSON
+            json.loads(assistant_text)
+            return assistant_text
+    except Exception as api_err:
+        # API is offline or returned invalid JSON. Fallback.
+        pass
+
+    # 5. Attempt 2: Standalone local litert_lm.Engine direct invocation
+    try:
+        model_path = os.path.join(os.path.expanduser("~"), ".buddhi", "models", "gemma-4-E4B-it.litertlm")
+        if os.path.exists(model_path):
+            import litert_lm
+            engine = litert_lm.Engine(model_path)
+            with engine:
+                messages = [
+                    {"role": "system", "content": [{"type": "text", "text": instructions}]},
+                    {"role": "user", "content": [{"type": "text", "text": prompt}]}
+                ]
+                with engine.create_conversation(messages=messages[:-1]) as conversation:
+                    response_obj = conversation.send_message(prompt) if hasattr(conversation, 'send_message') else conversation.send_message_async(prompt)
+                    
+                    response_text = ""
+                    if hasattr(response_obj, '__iter__') and not isinstance(response_obj, (dict, str)):
+                        for chunk in response_obj:
+                            if isinstance(chunk, str):
+                                response_text += chunk
+                            elif isinstance(chunk, dict):
+                                c = chunk.get("content", "")
+                                if isinstance(c, list) and len(c) > 0:
+                                    response_text += c[0].get("text", "") if isinstance(c[0], dict) else str(c[0])
+                                elif isinstance(c, str):
+                                    response_text += c
+                    else:
+                        if isinstance(response_obj, str):
+                            response_text = response_obj
+                        elif isinstance(response_obj, dict):
+                            c = response_obj.get("content", "")
+                            if isinstance(c, list) and len(c) > 0:
+                                response_text = c[0].get("text", "") if isinstance(c[0], dict) else str(c[0])
+                            elif isinstance(c, str):
+                                response_text = c
+                        else:
+                            response_text = getattr(response_obj, "text", str(response_obj))
+                            
+                    response_text = response_text.strip()
+                    if response_text.startswith("```"):
+                        lines = response_text.split("\n")
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        response_text = "\n".join(lines).strip()
+                    
+                    # Verify it's valid JSON
+                    json.loads(response_text)
+                    return response_text
+    except Exception as engine_err:
+        # Fallback to smart regex
+        pass
+
+    # 6. Attempt 3: High-fidelity regex-based backup text compression
+    lines = (stdout + "\n" + stderr).split("\n")
+    findings = []
+    for line in lines:
+        line_lower = line.lower()
+        if any(kw in line_lower for kw in ["error", "fail", "warn", "exception", "critical", "fatal", "issue", "denied"]):
+            stripped = line.strip()
+            if stripped and stripped not in findings:
+                findings.append(stripped)
+                if len(findings) >= 15:
+                    break
+                    
+    if not findings:
+        non_empty = [l.strip() for l in lines if l.strip()]
+        if len(non_empty) <= 10:
+            findings = non_empty
+        else:
+            findings = non_empty[:5] + ["... [middle lines omitted] ..."] + non_empty[-5:]
+            
+    status = "success" if returncode == 0 else "error"
+    summary = f"Command completed with exit code {returncode} (local parsing fallback)."
+    
+    fallback_json = {
+        "status": status,
+        "summary": summary,
+        "critical_findings": findings,
+        "exit_code": returncode
+    }
+    return json.dumps(fallback_json, indent=2)
+
+
 # ==========================================
 # FastMCP Wrapped Tools
 # ==========================================
+
+@mcp.tool()
+def execute_command_optimized(command: str) -> str:
+    """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
+    using local Gemma 4 edge inference to identify key successes or failures,
+    and returns a compact, token-saving structured JSON summary.
+    """
+    return execute_command_optimized_impl(command)
+
 
 @mcp.tool()
 def index_codebase() -> str:

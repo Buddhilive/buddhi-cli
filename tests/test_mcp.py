@@ -18,7 +18,8 @@ from server import (
     get_codebase_summary_impl,
     find_relevant_symbols_impl,
     trace_impact_radius_impl,
-    get_symbol_implementation_impl
+    get_symbol_implementation_impl,
+    execute_command_optimized_impl
 )
 
 class TestCodeGraphDB(unittest.TestCase):
@@ -334,6 +335,70 @@ class TestInitCommand(unittest.TestCase):
         with open(agents_path, "r", encoding="utf-8") as f:
             new_agents_content = f.read()
         self.assertEqual(new_agents_content.count("<!-- buddhi-mcp-owned"), 1)
+
+class TestMCPCommandInterceptor(unittest.TestCase):
+    def test_shell_execution_success(self):
+        # Run a simple echo command and verify returncode is 0 and output parsed
+        res_json_str = execute_command_optimized_impl("echo test_interceptor_success")
+        import json
+        res_data = json.loads(res_json_str)
+        
+        self.assertIn("status", res_data)
+        self.assertIn("summary", res_data)
+        self.assertIn("critical_findings", res_data)
+        self.assertEqual(res_data["exit_code"], 0)
+        self.assertEqual(res_data["status"], "success")
+
+    def test_shell_execution_failure(self):
+        # Run a failing command (e.g. exit 1 or a non-existent command)
+        command = "non_existent_command_xyz_123"
+        res_json_str = execute_command_optimized_impl(command)
+        import json
+        res_data = json.loads(res_json_str)
+        
+        self.assertIn("status", res_data)
+        self.assertNotEqual(res_data["exit_code"], 0)
+        self.assertEqual(res_data["status"], "error")
+        # Ensure it captured the error or warning in findings
+        self.assertTrue(len(res_data["critical_findings"]) > 0)
+
+    @unittest.mock.patch('urllib.request.urlopen')
+    def test_api_integration_success(self, mock_urlopen):
+        import json
+        # Mock successful API call returning valid OpenAI-compatible ResponseOutput
+        mock_response = unittest.mock.MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "id": "res-123",
+            "object": "response",
+            "status": "completed",
+            "output": [
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps({
+                                "status": "success",
+                                "summary": "Custom mock API response summary",
+                                "critical_findings": ["All looks green from mock"],
+                                "exit_code": 0
+                            })
+                        }
+                    ]
+                }
+            ],
+            "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20}
+        }).encode("utf-8")
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        # Execute command - should hit the mock API
+        res_json_str = execute_command_optimized_impl("echo test_api")
+        res_data = json.loads(res_json_str)
+        
+        self.assertEqual(res_data["status"], "success")
+        self.assertEqual(res_data["summary"], "Custom mock API response summary")
+        self.assertEqual(res_data["critical_findings"], ["All looks green from mock"])
+        self.assertEqual(res_data["exit_code"], 0)
 
 
 if __name__ == "__main__":
