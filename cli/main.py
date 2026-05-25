@@ -210,6 +210,12 @@ def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_
     env = os.environ.copy()
     env["BUDDHI_BACKEND_HOST"] = backend_host
     env["BUDDHI_BACKEND_PORT"] = str(backend_port)
+    
+    # Ensure the root project directory is in PYTHONPATH so 'ui' module can be found
+    if "PYTHONPATH" in env:
+        env["PYTHONPATH"] = f"{base_dir}{os.pathsep}{env['PYTHONPATH']}"
+    else:
+        env["PYTHONPATH"] = base_dir
 
     print(f"\nStarting Streamlit chat UI at http://{ui_host}:{ui_port}...", flush=True)
 

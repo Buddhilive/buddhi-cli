@@ -138,7 +138,7 @@ custom_css = """
     /* Override Streamlit chat input border/focus colors */
     textarea[data-testid="stChatInputTextArea"] {
         border-radius: 2px !important;
-        border: 1px solid rgba(218, 98, 67, 0.2) !important;
+        border: none !important;
         background-color: #16110F !important;
         color: #ececec !important;
     }
