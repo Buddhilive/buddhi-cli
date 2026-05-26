@@ -399,69 +399,21 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
         # API is offline or returned invalid JSON. Fallback.
         pass
 
-    # 5. Attempt 2: Standalone local litert_lm.Engine direct invocation
-    try:
-        model_path = os.path.join(os.path.expanduser("~"), ".buddhi", "models", "gemma-4-E4B-it.litertlm")
-        if os.path.exists(model_path):
-            import litert_lm
-            engine = litert_lm.Engine(model_path)
-            with engine:
-                messages = [
-                    {"role": "system", "content": [{"type": "text", "text": instructions}]},
-                    {"role": "user", "content": [{"type": "text", "text": prompt}]}
-                ]
-                with engine.create_conversation(messages=messages[:-1]) as conversation:
-                    response_obj = conversation.send_message(prompt) if hasattr(conversation, 'send_message') else conversation.send_message_async(prompt)
-                    
-                    response_text = ""
-                    if hasattr(response_obj, '__iter__') and not isinstance(response_obj, (dict, str)):
-                        for chunk in response_obj:
-                            if isinstance(chunk, str):
-                                response_text += chunk
-                            elif isinstance(chunk, dict):
-                                c = chunk.get("content", "")
-                                if isinstance(c, list) and len(c) > 0:
-                                    response_text += c[0].get("text", "") if isinstance(c[0], dict) else str(c[0])
-                                elif isinstance(c, str):
-                                    response_text += c
-                    else:
-                        if isinstance(response_obj, str):
-                            response_text = response_obj
-                        elif isinstance(response_obj, dict):
-                            c = response_obj.get("content", "")
-                            if isinstance(c, list) and len(c) > 0:
-                                response_text = c[0].get("text", "") if isinstance(c[0], dict) else str(c[0])
-                            elif isinstance(c, str):
-                                response_text = c
-                        else:
-                            response_text = getattr(response_obj, "text", str(response_obj))
-                            
-                    response_text = response_text.strip()
-                    if response_text.startswith("```"):
-                        lines = response_text.split("\n")
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        response_text = "\n".join(lines).strip()
-                    
-                    # Verify it's valid JSON
-                    json.loads(response_text)
-                    return response_text
-    except Exception:
-        # Fallback to smart regex
-        pass
-
-    # 6. Attempt 3: High-fidelity regex-based backup text compression
+    # 5. Attempt 2: High-fidelity regex-based backup text compression (Fallback)
     lines = (stdout + "\n" + stderr).split("\n")
     findings = []
+    keywords = [
+        "fail", "error", "warn", "exception", "critical", "fatal",
+        "issue", "denied", "invalid", "permission", "refused",
+        "timeout", "not found", "unable", "cannot", "failed"
+    ]
     for line in lines:
         line_lower = line.lower()
-        if any(kw in line_lower for kw in ["error", "fail", "warn", "exception", "critical", "fatal", "issue", "denied"]):
+        if any(kw in line_lower for kw in keywords):
             stripped = line.strip()
             if stripped and stripped not in findings:
                 findings.append(stripped)
-                if len(findings) >= 15:
+                if len(findings) >= 30:
                     break
                     
     if not findings:
@@ -660,6 +612,84 @@ def get_symbol_implementation(symbol_id: str, max_lines: int = 150) -> str:
         log_tool_trigger("get_symbol_implementation", status, duration_ms, {"symbol_id": symbol_id, "max_lines": max_lines})
 
 
+def get_process_name(pid: int) -> str:
+    """Returns the process name for a given PID using built-in OS commands."""
+    import sys
+    import subprocess
+    try:
+        if sys.platform == "win32":
+            res = subprocess.run(
+                ["tasklist", "/nh", "/fi", f"PID eq {pid}"],
+                capture_output=True,
+                text=True,
+                errors="replace"
+            )
+            output = res.stdout.strip()
+            if not output or "No tasks meet" in output:
+                return ""
+            parts = output.split()
+            if len(parts) > 0:
+                return parts[0].lower()
+        else:
+            res = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "comm="],
+                capture_output=True,
+                text=True,
+                errors="replace"
+            )
+            return res.stdout.strip().lower()
+    except Exception:
+        pass
+    return ""
+
+
+def monitor_parent_and_stdin():
+    """Monitors both parent process state (PID + name) and stdin status.
+    Exits the process immediately if orphaned or stdin closes.
+    """
+    import os
+    import sys
+    import time
+    import threading
+    
+    parent_pid = os.getppid()
+    if parent_pid <= 1:
+        return
+
+    # Store original parent process name to watch for PID recycling
+    original_parent_name = get_process_name(parent_pid)
+
+    # 1. Watch Stdin in a separate daemon thread
+    def watch_stdin():
+        try:
+            # sys.stdin.read(1) blocks until there is input or EOF
+            char = sys.stdin.read(1)
+            if char == "":
+                # EOF reached: Stdin closed. Exit.
+                sys.exit(0)
+        except Exception:
+            sys.exit(0)
+
+    stdin_thread = threading.Thread(target=watch_stdin, daemon=True)
+    stdin_thread.start()
+
+    # 2. Watch Parent Process in main loop
+    while True:
+        time.sleep(5)
+        try:
+            if sys.platform == "win32":
+                current_name = get_process_name(parent_pid)
+                if not current_name or (original_parent_name and current_name != original_parent_name):
+                    sys.exit(0)
+            else:
+                os.kill(parent_pid, 0)
+                current_name = get_process_name(parent_pid)
+                if original_parent_name and current_name != original_parent_name:
+                    sys.exit(0)
+        except (OSError, ProcessLookupError):
+            sys.exit(0)
+
+
 def run_server():
     """Launches the FastMCP server on StdIO."""
     # Ensure database is indexed when server starts if empty
@@ -670,5 +700,10 @@ def run_server():
             index_codebase_impl()
         except Exception as e:
             print(f"Error during initial indexing: {e}", flush=True)
+            
+    # Spawn parent & stdin monitor thread
+    import threading
+    monitor_thread = threading.Thread(target=monitor_parent_and_stdin, daemon=True)
+    monitor_thread.start()
             
     mcp.run()
