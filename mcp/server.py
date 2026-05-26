@@ -795,14 +795,15 @@ def monitor_parent_and_stdin():
 
 def run_server():
     """Launches the FastMCP server on StdIO."""
+    import sys
     # Ensure database is indexed when server starts if empty
     db_path = get_db_path()
     if not os.path.exists(db_path):
         try:
-            print("Database not found. Running initial workspace indexing...", flush=True)
+            print("Database not found. Running initial workspace indexing...", file=sys.stderr, flush=True)
             index_codebase_impl()
         except Exception as e:
-            print(f"Error during initial indexing: {e}", flush=True)
+            print(f"Error during initial indexing: {e}", file=sys.stderr, flush=True)
             
     # Spawn parent & stdin monitor thread
     import threading

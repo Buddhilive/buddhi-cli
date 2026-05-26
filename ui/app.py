@@ -406,13 +406,19 @@ with st.sidebar:
     
     # System Instruction/Prompt editor
     _workspace_path = os.getcwd().replace("\\", "/")
+    _project_name = os.path.basename(_workspace_path)
+    if not _project_name:
+        _project_name = "active_workspace"
+        
     _default_system_prompt = (
         f"You are Buddhi AI, a powerful local AI coding and thinking assistant.\n"
         f"You are actively assisting with the following project:\n"
-        f"  - Project: buddhi-ai (Buddhi AI — Intelligent Development Assistant)\n"
+        f"  - Project: {_project_name}\n"
         f"  - Workspace: {_workspace_path}\n"
-        f"  - Stack: Python, FastAPI, Streamlit, LangGraph, MCP, LiteRT-LM\n"
-        f"Answer concisely, provide high-quality code blocks, and think critically."
+        f"Answer concisely, provide high-quality code blocks, and think critically.\n\n"
+        f"CRITICAL RULES:\n"
+        f"1. You have access to CodeGraph codebase tools (like `get_codebase_summary`, `find_relevant_symbols`, etc.). You MUST use these tools to inspect and understand the active codebase before answering questions about this project's code, structure, or files.\n"
+        f"2. DO NOT make assumptions or hallucinate details about this project based on the assistant name 'Buddhi' or any other general knowledge. If the codebase tools are not loaded, or if they return an empty response indicating that the codebase has not been indexed, you MUST explicitly inform the user: 'I cannot find the CodeGraph for this project. Please ensure you have initialized the project by running `buddhi init` in your terminal to index the codebase first, then restart the session.' Do not guess or hallucinate."
     )
     system_instruction = st.text_area(
         "System Instruction (System Prompt)",
@@ -484,7 +490,35 @@ def stream_model_response(messages, system_instruction, thinking_placeholder=Non
     # Build the message list synchronously before handing off to the thread
     langchain_messages = []
     if system_instruction:
-        langchain_messages.append(SystemMessage(content=system_instruction))
+        # Dynamically inject active CodeGraph configuration/database statuses to guarantee robust fallback
+        from ui.mcp_client import get_mcp_config
+        mcp_conf = get_mcp_config()
+        mcp_status = "ACTIVE" if mcp_conf else "MISSING_CONFIG"
+        
+        db_exists = False
+        try:
+            from mcp.db import get_db_path
+            db_exists = os.path.exists(get_db_path())
+        except Exception:
+            db_exists = os.path.exists(os.path.join(os.getcwd(), ".buddhi", "graph.db"))
+            
+        db_status = "INITIALIZED" if db_exists else "NOT_FOUND"
+        
+        extra_prompt = (
+            f"\n\n[SYSTEM CODEGRAPH STATUS]\n"
+            f"- MCP Server Config: {mcp_status}\n"
+            f"- CodeGraph SQLite DB: {db_status}\n"
+        )
+        if mcp_status != "ACTIVE":
+            extra_prompt += (
+                "- CRITICAL INFO: The workspace `.agent/mcp_config.json` configuration is missing or invalid. CodeGraph tools are NOT available. You MUST tell the user that you cannot access their codebase because Buddhi is not initialized, and guide them to run `buddhi init` to start.\n"
+            )
+        elif db_status != "INITIALIZED":
+            extra_prompt += (
+                "- CRITICAL INFO: The CodeGraph SQLite database `.buddhi/graph.db` does not exist. The codebase has not been indexed yet. Even if tools are listed, calling them will yield no symbols. You MUST tell the user that you cannot find the CodeGraph for this project and ask them to run `buddhi init` or `buddhi update` in their terminal to index the codebase.\n"
+            )
+            
+        langchain_messages.append(SystemMessage(content=system_instruction + extra_prompt))
     for msg in messages:
         if msg["role"] == "user":
             langchain_messages.append(HumanMessage(content=msg["content"]))

@@ -37,6 +37,37 @@ def setup_model():
         print(f"Note: XNNPack cache will be generated automatically on first inference. (Detail: {e})", flush=True)
 
 
+def load_buddhi_mcp_server():
+    """Loads the local buddhi-ai mcp/server.py module using importlib to prevent naming collisions with the official mcp library."""
+    import importlib.util
+
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    mcp_dir = os.path.join(base_dir, "mcp")
+    mcp_server_path = os.path.join(mcp_dir, "server.py")
+
+    # Ensure mcp_dir is in sys.path so that server.py can import db, indexer, parser, graph
+    if mcp_dir not in sys.path:
+        sys.path.insert(0, mcp_dir)
+
+    # Unit testing compatibility check:
+    # If 'server' is in sys.modules (e.g. injected/mocked by unittest), and has the index_codebase_impl attribute, return it.
+    if "server" in sys.modules and hasattr(sys.modules["server"], "index_codebase_impl"):
+        return sys.modules["server"]
+
+    module_name = "buddhi_mcp_server"
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+
+    spec = importlib.util.spec_from_file_location(module_name, mcp_server_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load spec for Buddhi MCP server at {mcp_server_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def init_workspace(workspace_root=None):
     """Initializes the current workspace by writing AGENTS.md, .agent/mcp_config.json, and indexing the codebase."""
     if workspace_root:
@@ -161,12 +192,8 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
     # 3. Trigger initial AST Indexing
     print("Initializing AST codebase indexing & call graph compilation...")
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        mcp_dir = os.path.join(base_dir, "mcp")
-        if mcp_dir not in sys.path:
-            sys.path.insert(0, mcp_dir)
-        from server import index_codebase_impl
-        indexing_result = index_codebase_impl(workspace_root=cwd)
+        buddhi_mcp_server = load_buddhi_mcp_server()
+        indexing_result = buddhi_mcp_server.index_codebase_impl(workspace_root=cwd)
         print(f"Indexing Complete: {indexing_result}")
     except Exception as e:
         print(f"Error during codebase indexing: {e}")
@@ -352,24 +379,19 @@ def cli():
             no_browser=args.no_browser
         )
     elif args.command == "mcp":
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        mcp_dir = os.path.join(base_dir, "mcp")
-        if mcp_dir not in sys.path:
-            sys.path.insert(0, mcp_dir)
-        import server
-        server.run_server()
+        try:
+            buddhi_mcp_server = load_buddhi_mcp_server()
+            buddhi_mcp_server.run_server()
+        except Exception as e:
+            print(f"Error starting MCP server: {e}")
     elif args.command == "init":
         init_workspace(workspace_root=args.workspace_root)
     elif args.command == "update":
         print("Explicitly triggering AST indexing and call graph compilation...")
         try:
             cwd = os.getcwd()
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            mcp_dir = os.path.join(base_dir, "mcp")
-            if mcp_dir not in sys.path:
-                sys.path.insert(0, mcp_dir)
-            from server import index_codebase_impl
-            indexing_result = index_codebase_impl(workspace_root=cwd)
+            buddhi_mcp_server = load_buddhi_mcp_server()
+            indexing_result = buddhi_mcp_server.index_codebase_impl(workspace_root=cwd)
             print(f"Update Complete: {indexing_result}")
         except Exception as e:
             print(f"Error during codebase update: {e}")
