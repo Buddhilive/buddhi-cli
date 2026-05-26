@@ -1,25 +1,35 @@
 import os
 import sqlite3
 
-def get_db_path(cwd=None):
-    """Finds the root of the workspace containing pyproject.toml or .git,
-
-    and returns the database path in the .buddhi folder.
+def get_workspace_root(cwd=None):
+    """Helper to locate the actual workspace root containing pyproject.toml or .git.
+    Prioritizes BUDDHI_WORKSPACE_ROOT environment variable, falling back to walking up from CWD.
     """
+    env_root = os.environ.get("BUDDHI_WORKSPACE_ROOT")
+    if env_root:
+        abs_env_root = os.path.abspath(env_root)
+        if os.path.exists(abs_env_root):
+            return abs_env_root
+
     if not cwd:
         cwd = os.getcwd()
     curr = os.path.abspath(cwd)
     while True:
         if os.path.exists(os.path.join(curr, "pyproject.toml")) or os.path.exists(os.path.join(curr, ".git")):
-            db_dir = os.path.join(curr, ".buddhi")
-            os.makedirs(db_dir, exist_ok=True)
-            return os.path.join(db_dir, "graph.db")
+            return os.path.abspath(curr)
         parent = os.path.dirname(curr)
         if parent == curr:
             break
         curr = parent
     
-    db_dir = os.path.join(os.path.abspath(cwd), ".buddhi")
+    return os.path.abspath(cwd)
+
+
+def get_db_path(cwd=None):
+    """Finds the root of the workspace and returns the database path in the .buddhi folder.
+    """
+    root = get_workspace_root(cwd)
+    db_dir = os.path.join(root, ".buddhi")
     os.makedirs(db_dir, exist_ok=True)
     return os.path.join(db_dir, "graph.db")
 
@@ -218,6 +228,17 @@ class CodeGraphDB:
                 """, (wildcard, wildcard))
 
             nodes = [dict(row) for row in cursor.fetchall()]
+            
+            # Hybrid search fallback: If FTS5 is active but returns no matches,
+            # fall back to a robust substring LIKE search over names and docstrings.
+            if use_fts5 and not nodes:
+                wildcard = f"%{query}%"
+                cursor = conn.execute("""
+                    SELECT * FROM nodes
+                    WHERE name LIKE ? OR docstring LIKE ?
+                    LIMIT 20
+                """, (wildcard, wildcard))
+                nodes = [dict(row) for row in cursor.fetchall()]
             
             # Fetch 1-hop neighbors for each matched node
             results = []

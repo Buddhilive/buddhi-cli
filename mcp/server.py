@@ -4,7 +4,7 @@ import datetime
 import json
 import time
 from mcp.server.fastmcp import FastMCP
-from db import CodeGraphDB, get_db_path
+from db import CodeGraphDB, get_db_path, get_workspace_root
 from indexer import CodeIndexer
 
 # Initialize FastMCP Server
@@ -59,7 +59,7 @@ def log_tool_trigger(tool_name: str, status: str = "success", duration_ms: float
 def index_codebase_impl(workspace_root=None):
     """Indexes/re-indexes the codebase files and rebuilds the sqlite graph database."""
     if not workspace_root:
-        workspace_root = os.getcwd()
+        workspace_root = get_workspace_root()
     indexer = CodeIndexer(workspace_root)
     num_nodes, num_edges = indexer.index_codebase()
     return f"Successfully indexed codebase at '{workspace_root}'. Found {num_nodes} symbols and {num_edges} call edges."
@@ -212,7 +212,7 @@ def get_symbol_implementation_impl(symbol_id, max_lines=150, db_path=None, works
         return f"Symbol ID '{symbol_id}' not found in CodeGraph database."
 
     if not workspace_root:
-        workspace_root = os.getcwd()
+        workspace_root = get_workspace_root()
 
     file_path = os.path.join(workspace_root, symbol["file_path"])
     if not os.path.exists(file_path):

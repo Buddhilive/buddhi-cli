@@ -1,6 +1,6 @@
 import os
 import json
-from db import CodeGraphDB
+from db import CodeGraphDB, get_workspace_root
 from parser import ASTParser
 from graph import CodeGraphAnalyzer
 
@@ -13,7 +13,7 @@ SKIP_DIRS = {
 class CodeIndexer:
     def __init__(self, workspace_root=None, db_path=None):
         if not workspace_root:
-            workspace_root = os.getcwd()
+            workspace_root = get_workspace_root()
         self.workspace_root = os.path.abspath(workspace_root)
         self.db = CodeGraphDB(db_path)
         self.parser = ASTParser(self.workspace_root)

@@ -37,9 +37,12 @@ def setup_model():
         print(f"Note: XNNPack cache will be generated automatically on first inference. (Detail: {e})", flush=True)
 
 
-def init_workspace():
+def init_workspace(workspace_root=None):
     """Initializes the current workspace by writing AGENTS.md, .agent/mcp_config.json, and indexing the codebase."""
-    cwd = os.getcwd()
+    if workspace_root:
+        cwd = os.path.abspath(workspace_root)
+    else:
+        cwd = os.getcwd()
     
     # 1. Update/Create AGENTS.md
     agents_path = os.path.join(cwd, "AGENTS.md")
@@ -112,7 +115,10 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
         "mcpServers": {
             "buddhi-mcp": {
                 "command": "buddhi",
-                "args": ["mcp"]
+                "args": ["mcp"],
+                "env": {
+                    "BUDDHI_WORKSPACE_ROOT": cwd
+                }
             }
         }
     }
@@ -134,7 +140,10 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
         # Update/insert buddhi-mcp server config
         data["mcpServers"]["buddhi-mcp"] = {
             "command": "buddhi",
-            "args": ["mcp"]
+            "args": ["mcp"],
+            "env": {
+                "BUDDHI_WORKSPACE_ROOT": cwd
+            }
         }
         print("Updating existing .agent/mcp_config.json...")
     else:
@@ -295,9 +304,13 @@ def cli():
     )
 
     # init subcommand — Workspace configuration
-    subparsers.add_parser(
+    init_parser = subparsers.add_parser(
         "init",
         help="Initialize Buddhi MCP settings and instructions (AGENTS.md and .agent/mcp_config.json) in the current workspace.",
+    )
+    init_parser.add_argument(
+        "--workspace-root", type=str, default=None,
+        help="Absolute path of the workspace root. Defaults to the current working directory.",
     )
 
     # update subcommand — Explicitly update CodeGraph
@@ -346,7 +359,7 @@ def cli():
         import server
         server.run_server()
     elif args.command == "init":
-        init_workspace()
+        init_workspace(workspace_root=args.workspace_root)
     elif args.command == "update":
         print("Explicitly triggering AST indexing and call graph compilation...")
         try:

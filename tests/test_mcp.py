@@ -473,5 +473,67 @@ class TestMCPCommandInterceptor(unittest.TestCase):
         self.assertEqual(res_data["exit_code"], 0)
 
 
+class TestWorkspaceResolutionAndHybridSearch(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.db_path = os.path.join(self.temp_dir, "graph_resolution.db")
+        self.db = CodeGraphDB(self.db_path)
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir)
+
+    def test_get_workspace_root_env_override(self):
+        from db import get_workspace_root
+        import tempfile
+        import shutil
+        
+        tmp = tempfile.mkdtemp()
+        os.environ["BUDDHI_WORKSPACE_ROOT"] = tmp
+        try:
+            resolved = get_workspace_root()
+            self.assertEqual(resolved, os.path.abspath(tmp))
+        finally:
+            if "BUDDHI_WORKSPACE_ROOT" in os.environ:
+                del os.environ["BUDDHI_WORKSPACE_ROOT"]
+            shutil.rmtree(tmp)
+
+    def test_init_workspace_custom_root(self):
+        from cli.main import init_workspace
+        
+        # Run init with a custom root directory
+        init_workspace(workspace_root=self.temp_dir)
+        
+        mcp_path = os.path.join(self.temp_dir, ".agent", "mcp_config.json")
+        self.assertTrue(os.path.exists(mcp_path))
+        
+        with open(mcp_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            
+        mcp_server = data["mcpServers"]["buddhi-mcp"]
+        self.assertIn("env", mcp_server)
+        self.assertEqual(mcp_server["env"]["BUDDHI_WORKSPACE_ROOT"], os.path.abspath(self.temp_dir))
+
+    def test_hybrid_search_fallback(self):
+        # Insert a symbol with an underscore
+        nodes = [
+            {
+                "id": "file.py::execute_command_optimized",
+                "name": "execute_command_optimized",
+                "type": "function",
+                "file_path": "file.py",
+                "start_line": 1,
+                "end_line": 10,
+                "docstring": "Executes shell commands locally."
+            }
+        ]
+        self.db.insert_nodes(nodes)
+        
+        # A partial sub-word query that FTS5 fails to match (e.g. mand_optim)
+        # but standard LIKE fallback will match.
+        results = self.db.find_relevant_symbols("mand_optim")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["symbol"]["name"], "execute_command_optimized")
+
+
 if __name__ == "__main__":
     unittest.main()
