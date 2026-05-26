@@ -277,7 +277,7 @@ def get_symbol_implementation_impl(symbol_id, max_lines=150, db_path=None, works
     return "\n".join(output)
 
 
-def execute_command_optimized_impl(command: str) -> str:
+def execute_command_optimized_impl(command: str, timeout_seconds: int = 120) -> str:
     """Executes the given command locally, captures standard output and error,
     and structures the outcome using the local Gemma 4 model (or API / regex fallback)
     into a token-saving JSON response format.
@@ -288,19 +288,103 @@ def execute_command_optimized_impl(command: str) -> str:
     import urllib.error
     import json
     import re
+    import os
+    import tempfile
+    from db import get_workspace_root
+
+    workspace_root = get_workspace_root()
+    env = os.environ.copy()
+
+    # Prepend virtual environment binary path if it exists in the workspace
+    local_paths = []
+    
+    # 1. Python Virtual Environments
+    for venv_name in [".venv", "venv"]:
+        venv_path = os.path.join(workspace_root, venv_name)
+        if os.path.isdir(venv_path):
+            if sys.platform == "win32":
+                scripts_path = os.path.join(venv_path, "Scripts")
+            else:
+                scripts_path = os.path.join(venv_path, "bin")
+            if os.path.isdir(scripts_path):
+                local_paths.append(scripts_path)
+                # Set VIRTUAL_ENV environment variable
+                env["VIRTUAL_ENV"] = venv_path
+                env.pop("PYTHONHOME", None)
+                break  # Only use one venv
+
+    # 2. Node.js local bin
+    node_bin = os.path.join(workspace_root, "node_modules", ".bin")
+    if os.path.isdir(node_bin):
+        local_paths.append(node_bin)
+
+    # 3. Rust local build targets
+    for target_dir in [os.path.join("target", "debug"), os.path.join("target", "release")]:
+        rust_bin = os.path.join(workspace_root, target_dir)
+        if os.path.isdir(rust_bin):
+            local_paths.append(rust_bin)
+
+    # 4. General local bin
+    general_bin = os.path.join(workspace_root, "bin")
+    if os.path.isdir(general_bin):
+        local_paths.append(general_bin)
+
+    # Prepend all found paths to the PATH environment variable
+    if local_paths:
+        path_key = "PATH"
+        for k in list(env.keys()):
+            if k.upper() == "PATH":
+                path_key = k
+                break
+        
+        old_path = env.get(path_key, "")
+        new_path_prefix = os.pathsep.join(local_paths)
+        if old_path:
+            env[path_key] = new_path_prefix + os.pathsep + old_path
+        else:
+            env[path_key] = new_path_prefix
 
     # 1. OS-specific shell command runner
+    stdout, stderr, returncode = "", "", -1
     try:
         if sys.platform == "win32":
-            # Using powershell explicitly provides a more reliable environment on Windows than standard cmd
-            res = subprocess.run(
-                ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace"
+            # Create a temporary ps1 script file to run the command reliably
+            # Wrap with UTF-8 encoding support and error action preferences to prevent ANSI encoding garbling and propagate errors
+            ps_script = (
+                "$ErrorActionPreference = 'Stop';\n"
+                "$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8;\n"
+                "try {\n"
+                f"    {command}\n"
+                "    if ($LastExitCode -ne $null -and $LastExitCode -ne 0) { exit $LastExitCode }\n"
+                "} catch {\n"
+                "    [Console]::Error.WriteLine($_)\n"
+                "    exit 1\n"
+                "}"
             )
-            stdout, stderr, returncode = res.stdout, res.stderr, res.returncode
+            
+            # delete=False because Windows subprocess might not be able to read an open file
+            with tempfile.NamedTemporaryFile(suffix=".ps1", delete=False, mode="w", encoding="utf-8") as f:
+                f.write(ps_script)
+                tmp_path = f.name
+            
+            try:
+                res = subprocess.run(
+                    ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", tmp_path],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    env=env,
+                    cwd=workspace_root,
+                    timeout=timeout_seconds
+                )
+                stdout, stderr, returncode = res.stdout, res.stderr, res.returncode
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except Exception:
+                        pass
         else:
             res = subprocess.run(
                 command,
@@ -308,9 +392,28 @@ def execute_command_optimized_impl(command: str) -> str:
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
-                errors="replace"
+                errors="replace",
+                env=env,
+                cwd=workspace_root,
+                timeout=timeout_seconds
             )
             stdout, stderr, returncode = res.stdout, res.stderr, res.returncode
+    except subprocess.TimeoutExpired as e:
+        # Gracefully handle timeout (hang prevention)
+        captured_stdout = e.stdout.decode("utf-8", errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        captured_stderr = e.stderr.decode("utf-8", errors="replace") if isinstance(e.stderr, bytes) else (e.stderr or "")
+        
+        fallback_json = {
+            "status": "error",
+            "summary": f"Command timed out and was killed after {timeout_seconds} seconds.",
+            "critical_findings": [
+                f"Execution timed out. Command: '{command}'",
+                f"Captured STDOUT so far: {captured_stdout[:1000].strip()}",
+                f"Captured STDERR so far: {captured_stderr[:1000].strip()}"
+            ],
+            "exit_code": -1
+        }
+        return json.dumps(fallback_json, indent=2)
     except Exception as e:
         # If command launch fails completely
         return json.dumps({
@@ -440,7 +543,7 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
 # ==========================================
 
 @mcp.tool()
-def execute_command_optimized(command: str) -> str:
+def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
     """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
     using local Gemma 4 edge inference to identify key successes or failures,
     and returns a compact, token-saving structured JSON summary.
@@ -451,7 +554,7 @@ def execute_command_optimized(command: str) -> str:
     status = "success"
     res = ""
     try:
-        res = execute_command_optimized_impl(command)
+        res = execute_command_optimized_impl(command, timeout_seconds)
         if '"status": "error"' in res.lower():
             status = "error"
         return res
@@ -461,7 +564,7 @@ def execute_command_optimized(command: str) -> str:
         raise e
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
-        log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command})
+        log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
 
 
 @mcp.tool()

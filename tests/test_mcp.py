@@ -472,6 +472,70 @@ class TestMCPCommandInterceptor(unittest.TestCase):
         self.assertEqual(res_data["critical_findings"], ["All looks green from mock"])
         self.assertEqual(res_data["exit_code"], 0)
 
+    @unittest.mock.patch('subprocess.run')
+    def test_shell_execution_timeout(self, mock_run):
+        import subprocess
+        mock_run.side_effect = subprocess.TimeoutExpired(
+            cmd="mock_command",
+            timeout=1.0,
+            output=b"partial stdout data",
+            stderr=b"partial stderr data"
+        )
+        res_json_str = execute_command_optimized_impl("some_command", timeout_seconds=1)
+        import json
+        res_data = json.loads(res_json_str)
+        
+        self.assertEqual(res_data["status"], "error")
+        self.assertIn("timed out", res_data["summary"])
+        self.assertTrue(any("partial stdout data" in f for f in res_data["critical_findings"]))
+        self.assertTrue(any("partial stderr data" in f for f in res_data["critical_findings"]))
+        self.assertEqual(res_data["exit_code"], -1)
+
+    @unittest.mock.patch('subprocess.run')
+    @unittest.mock.patch('os.path.isdir')
+    def test_environment_paths_injection(self, mock_isdir, mock_run):
+        import sys
+        # Mock finding all paths (python venv, node bin, rust targets, bin)
+        mock_isdir.side_effect = lambda path: True
+        
+        # Setup mock_run to return successfully
+        mock_res = unittest.mock.MagicMock()
+        mock_res.stdout = "ok"
+        mock_res.stderr = ""
+        mock_res.returncode = 0
+        mock_run.return_value = mock_res
+        
+        # Run the tool
+        execute_command_optimized_impl("test_cmd")
+        
+        # Verify subprocess.run was called
+        mock_run.assert_called_once()
+        kwargs = mock_run.call_args[1]
+        
+        # Check env in kwargs
+        self.assertIn("env", kwargs)
+        env = kwargs["env"]
+        
+        path_key = "PATH"
+        for k in env.keys():
+            if k.upper() == "PATH":
+                path_key = k
+                break
+                
+        path_val = env[path_key]
+        
+        # Verify python Scripts/bin is prepended
+        if sys.platform == "win32":
+            self.assertIn("Scripts", path_val)
+        else:
+            self.assertIn("bin", path_val)
+            
+        # Verify node_modules/.bin is prepended
+        self.assertIn("node_modules", path_val)
+        
+        # Verify rust targets are prepended
+        self.assertIn("target", path_val)
+
 
 class TestWorkspaceResolutionAndHybridSearch(unittest.TestCase):
     def setUp(self):
