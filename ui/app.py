@@ -143,7 +143,7 @@ custom_css = """
     textarea[data-testid="stChatInputTextArea"] {
         border-radius: 2px !important;
         border: none !important;
-        background-color: #16110F !important;
+        background-color: transparent !important;
         color: #ececec !important;
     }
     textarea[data-testid="stChatInputTextArea"]:focus {

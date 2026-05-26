@@ -77,5 +77,27 @@ class TestGraphEvals(unittest.TestCase):
         
         self.assertIn("Massive Object Guardrail Triggered", res)
 
+    def test_ts_symbols_and_edges(self):
+        """Assert that TypeScript symbols and call edges are correctly indexed."""
+        # 'OrderService' is inside mock_ts/index.ts
+        results = self.db.find_relevant_symbols("OrderService")
+        self.assertTrue(len(results) > 0, "Should find OrderService")
+        
+        found_names = [res["symbol"]["name"] for res in results]
+        self.assertIn("OrderService", found_names)
+        
+        # Ensure 'calculateTotal' is found
+        results_calc = self.db.find_relevant_symbols("calculateTotal")
+        found_calc_names = [res["symbol"]["name"] for res in results_calc]
+        self.assertIn("calculateTotal", found_calc_names)
+        
+        # Verify the call edge from processOrder to calculateTotal is resolved
+        calc_node_id = results_calc[0]["symbol"]["id"]
+        
+        # Trace who calls calculateTotal (upstream calls)
+        impact = self.db.trace_impact_radius(calc_node_id, max_depth=2)
+        caller_names = [node["name"] for node in impact]
+        self.assertIn("processOrder", caller_names)
+
 if __name__ == "__main__":
     unittest.main()

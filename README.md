@@ -2,18 +2,20 @@
 
 <p align="center">
 <a href="https://pypi.org/project/buddhi-ai/">
-    <img src="https://img.shields.io/pypi/v/buddhi-ai?style=flat-square&logo=pypi" alt="PyPI Version">
+    <img src="https://img.shields.io/pypi/v/buddhi-ai?style=flat-square&logo=pypi" alt="PyPI Version" />
   </a>
   <a href="https://pypi.org/project/buddhi-ai/">
-    <img src="https://img.shields.io/pypi/dm/buddhi-ai?style=flat-square" alt="PyPI Downloads">
+    <img src="https://img.shields.io/pypi/dm/buddhi-ai?style=flat-square" alt="PyPI Downloads" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/Buddhilive/buddhi-ai?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/license/Buddhilive/buddhi-ai?style=flat-square" alt="License" />
   </a>
-  <img src="https://img.shields.io/badge/MCP-Compatible-green?style=flat-square" alt="MCP Compatible">
+  <img src="https://img.shields.io/badge/MCP-Compatible-green?style=flat-square" alt="MCP Compatible" />
 </p>
 
-![Buddhi AI](assets/logos/icon-144x144.png)
+<p align="center">
+   <img src="https://raw.githubusercontent.com/Buddhilive/buddhi-ai/refs/heads/main/public/icons/icon-128x128.png" alt="BuddhiAI Logo" />
+</p>
 
 Buddhi AI is a local AI inference server, interactive web interface, and Model Context Protocol (MCP) server designed to supercharge developer workspaces.
 

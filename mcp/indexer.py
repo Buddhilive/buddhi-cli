@@ -9,6 +9,13 @@ SKIP_DIRS = {
     ".buddhi", "node_modules", "__pycache__", "build", "dist", "buddhi_ai.egg-info"
 }
 
+SUPPORTED_EXTENSIONS = {
+    ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".java", ".rs",
+    ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx", ".hh",
+    ".rb", ".cs", ".kt", ".kts", ".swift", ".php", ".sh", ".bash",
+    ".dart", ".scala", ".sc", ".ex", ".exs", ".zig"
+}
+
 
 class CodeIndexer:
     def __init__(self, workspace_root=None, db_path=None):
@@ -19,30 +26,31 @@ class CodeIndexer:
         self.parser = ASTParser(self.workspace_root)
 
     def scan_files(self):
-        """Walks the workspace root and collects all relative file paths of python files."""
-        py_files = []
+        """Walks the workspace root and collects all relative file paths of supported language files."""
+        files_to_index = []
         for root, dirs, files in os.walk(self.workspace_root):
             # Prune skipped directories in-place
             dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
             
             for file in files:
-                if file.endswith(".py"):
+                ext = os.path.splitext(file)[1].lower()
+                if ext in SUPPORTED_EXTENSIONS:
                     full_path = os.path.join(root, file)
                     rel_path = os.path.relpath(full_path, self.workspace_root)
-                    py_files.append(rel_path)
-        return py_files
+                    files_to_index.append(rel_path)
+        return files_to_index
 
     def index_codebase(self):
         """Runs the complete two-pass indexing and clustering pipeline."""
         self.db.clear_database()
-        py_files = self.scan_files()
+        files_to_index = self.scan_files()
 
         # PASS 1: Parse AST structure and build nodes
         all_symbols = []
         file_imports = {}  # rel_path -> imports dict
         unresolved_calls = []  # List of (caller_id, callee_name, type, file)
 
-        for rel_path in py_files:
+        for rel_path in files_to_index:
             parse_result = self.parser.parse_file(rel_path)
             symbols = parse_result["symbols"]
             imports = parse_result["imports"]
