@@ -53,6 +53,10 @@ buddhi = "cli.main:cli"
 include = ["server*", "cli*", "ui*", "mcp*"]
 namespaces = true
 
+[tool.setuptools.package-data]
+"*" = ["*.png", "*.ico", "*.css", "*.js", "*.html"]
+"ui" = ["assets/*", "assets/**/*"]
+
 [tool.setuptools.exclude-package-data]
 "server.static.model" = ["*"]
 

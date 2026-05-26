@@ -15,10 +15,14 @@ BACKEND_HOST = os.getenv("BUDDHI_BACKEND_HOST", "127.0.0.1")
 BACKEND_PORT = os.getenv("BUDDHI_BACKEND_PORT", "58421")
 BACKEND_URL = f"http://{BACKEND_HOST}:{BACKEND_PORT}"
 
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+FAVICON_PATH = os.path.join(ASSETS_DIR, "favicon.ico")
+LOGO_PATH = os.path.join(ASSETS_DIR, "logos", "icon-128x128.png")
+
 # Streamlit Page Config
 st.set_page_config(
     page_title="Buddhi AI — Observability & Chat",
-    page_icon="🤖",
+    page_icon=FAVICON_PATH,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -380,8 +384,8 @@ if "current_page" not in st.session_state:
 # Sidebar - Settings & Navigation
 # ------------------------------------------------------------------------------
 with st.sidebar:
-    st.image("https://img.icons8.com/nolan/128/artificial-intelligence.png", width=64)
-    st.markdown("<div style='font-size: 1.6rem; font-weight: 800; color: #FFF; margin-bottom: 5px;'>Buddhi Live</div>", unsafe_allow_html=True)
+    st.image(LOGO_PATH, width=64)
+    st.markdown("<div style='font-size: 1.6rem; font-weight: 800; color: #FFF; margin-bottom: 5px;'>Buddhi AI</div>", unsafe_allow_html=True)
     
     # Connection status indicator
     if backend_ok:
@@ -391,20 +395,15 @@ with st.sidebar:
 
     st.markdown('<div class="sidebar-section-title">Navigation</div>', unsafe_allow_html=True)
     
-    # Dual-page navigation buttons
-    col_nav1, col_nav2 = st.columns(2)
-    with col_nav1:
-        if st.button("📊 Dashboard", use_container_width=True, type="primary" if st.session_state.current_page == "Dashboard" else "secondary"):
-            st.session_state.current_page = "Dashboard"
-            st.rerun()
-    with col_nav2:
-        if st.button("💬 Chat UI", use_container_width=True, type="primary" if st.session_state.current_page == "Chat UI" else "secondary"):
-            st.session_state.current_page = "Chat UI"
-            st.rerun()
+    # Vertical navigation buttons
+    if st.button("📊 Dashboard", use_container_width=True, type="primary" if st.session_state.current_page == "Dashboard" else "secondary"):
+        st.session_state.current_page = "Dashboard"
+        st.rerun()
+        
+    if st.button("💬 Chat UI", use_container_width=True, type="primary" if st.session_state.current_page == "Chat UI" else "secondary"):
+        st.session_state.current_page = "Chat UI"
+        st.rerun()
 
-    st.markdown('<div class="sidebar-section-title">System Settings</div>', unsafe_allow_html=True)
-    
-    # System Instruction/Prompt editor
     _workspace_path = os.getcwd().replace("\\", "/")
     _project_name = os.path.basename(_workspace_path)
     if not _project_name:
@@ -420,21 +419,17 @@ with st.sidebar:
         f"1. You have access to CodeGraph codebase tools (like `get_codebase_summary`, `find_relevant_symbols`, etc.). You MUST use these tools to inspect and understand the active codebase before answering questions about this project's code, structure, or files.\n"
         f"2. DO NOT make assumptions or hallucinate details about this project based on the assistant name 'Buddhi' or any other general knowledge. If the codebase tools are not loaded, or if they return an empty response indicating that the codebase has not been indexed, you MUST explicitly inform the user: 'I cannot find the CodeGraph for this project. Please ensure you have initialized the project by running `buddhi init` in your terminal to index the codebase first, then restart the session.' Do not guess or hallucinate."
     )
-    system_instruction = st.text_area(
-        "System Instruction (System Prompt)",
-        value=_default_system_prompt,
-        height=150,
-        help="System instructions guide the model's tone, style, and rules."
-    )
+    system_instruction = _default_system_prompt
 
-    st.markdown('<div class="sidebar-section-title">Controls</div>', unsafe_allow_html=True)
-    
-    # Clear conversation history (for Chat page)
-    if st.button("Clear Chat History", use_container_width=True):
-        st.session_state.messages = []
-        st.success("Chat history cleared!")
-        time.sleep(0.8)
-        st.rerun()
+    if st.session_state.current_page == "Chat UI":
+        st.markdown('<div class="sidebar-section-title">Controls</div>', unsafe_allow_html=True)
+        
+        # Clear conversation history (for Chat page)
+        if st.button("Clear Chat History", use_container_width=True):
+            st.session_state.messages = []
+            st.success("Chat history cleared!")
+            time.sleep(0.8)
+            st.rerun()
 
     st.markdown('<div class="sidebar-section-title">Backend Metadata</div>', unsafe_allow_html=True)
     st.markdown(f"**API Endpoint:** `{BACKEND_URL}`")
@@ -598,15 +593,6 @@ def stream_model_response(messages, system_instruction, thinking_placeholder=Non
 # Observability Dashboard Page Render
 # ------------------------------------------------------------------------------
 def render_dashboard_page():
-    st.markdown("""
-    <div class="buddhi-header">
-        <div class="buddhi-title">CodeGraph <span style="font-size: 1.2rem; font-weight: 300; opacity: 0.7;">observability dashboard</span></div>
-        <div>
-            <span class="buddhi-badge">v2.0.0</span>
-            <span class="buddhi-badge">Telemetry Active</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
     metrics = get_telemetry_metrics()
     
@@ -686,15 +672,6 @@ def render_dashboard_page():
 # Chat UI Page Render
 # ------------------------------------------------------------------------------
 def render_chat_page(system_instruction):
-    st.markdown("""
-    <div class="buddhi-header">
-        <div class="buddhi-title">Buddhi AI <span style="font-size: 1.2rem; font-weight: 300; opacity: 0.7;">live chat</span></div>
-        <div>
-            <span class="buddhi-badge">v2.0.0</span>
-            <span class="buddhi-badge">LiteRT-LM</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
     # Connection failure warning
     if not backend_ok:
@@ -712,7 +689,7 @@ def render_chat_page(system_instruction):
             st.markdown(msg["content"])
 
     # Chat Input & Streaming Execution
-    if user_input := st.chat_input("Message Buddhi AI..."):
+    if user_input := st.chat_input("Chat with your codebase..."):
         # Display and record user message
         with st.chat_message("user"):
             st.markdown(user_input)
@@ -722,6 +699,9 @@ def render_chat_page(system_instruction):
         with st.chat_message("assistant"):
             thinking_placeholder = st.empty()
             response_placeholder = st.empty()
+            
+            # Indicate model is initiating before the heavy execution loop starts
+            thinking_placeholder.status("⚙️ **Model Initiating...**", expanded=True)
             
             # We pass our list of messages and system instructions to the generator
             response_generator = stream_model_response(st.session_state.messages, system_instruction, thinking_placeholder=thinking_placeholder)
