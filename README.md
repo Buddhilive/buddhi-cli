@@ -150,16 +150,59 @@ The `buddhi mcp` server exposes highly optimized tools that save context tokens 
 
 ---
 
-## PyPI Publishing
+## PyPI Publishing Workflow
 
-To build and publish the `buddhi` CLI tool to PyPI:
+Buddhi utilizes a secure, modern, and verified PyPI publishing pipeline with support for both guided local releasing and automated GitHub Actions CI/CD releases.
 
-1. **Build the package:**
+### 1. Release Environment Setup
+
+Release and validation tools (`twine` and `build`) are defined under the `dev` dependency group in `pyproject.toml`. To synchronize your environment and install these tools:
+
+```bash
+uv sync
+```
+
+---
+
+### 2. Local Guided Releases
+
+We provide an interactive, colorized publishing script `scripts/publish.py` to securely package and upload the codebase. The script automatically handles directory cleaning, standard PEP-517 packaging using the `build` module, metadata validation via `twine check`, and guides you through uploading.
+
+To run a secure, verified **dry-run** build (highly recommended before releasing):
+```bash
+uv run python scripts/publish.py --dry-run
+```
+
+To upload the package to **TestPyPI** to staging/verification:
+```bash
+uv run python scripts/publish.py --test-pypi
+```
+
+To publish the package to **production PyPI**:
+```bash
+uv run python scripts/publish.py
+```
+
+#### Publisher Command Arguments:
+* `--dry-run`: Cleans, builds, and runs `twine check` validation but skips PyPI upload.
+* `--test-pypi`: Uploads package archives to TestPyPI (`https://test.pypi.org/`) instead of production.
+* `--skip-build`: Skips cleaning and building; directly uploads the existing archives in `dist/`.
+
+> [!TIP]
+> **Authentication Recommendation:** When uploading, use PyPI API Tokens for authentication. Set username to `__token__` and password to your token string (starting with `pypi-`).
+
+---
+
+### 3. Automated CI/CD Releases
+
+Automated publishing is handled securely via GitHub Actions using **OIDC Trusted Publishers** (zero-token authentication setup). 
+
+Whenever you are ready to publish a new release:
+1. Update the version field manually in `pyproject.toml` (e.g., `version = "1.0.0"`).
+2. Commit and tag the release in git:
    ```bash
-   uv build
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
+3. The GitHub Actions release workflow will automatically trigger, build the distributions, run metadata checks, and publish securely to PyPI under Trusted Publisher rules.
 
-2. **Publish to PyPI:**
-   ```bash
-   uv publish
-   ```

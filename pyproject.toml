@@ -61,6 +61,12 @@ dependencies = [
     "tiktoken>=0.6.0",
 ]
 
+[dependency-groups]
+dev = [
+    "twine>=5.0.0",
+    "build>=1.0.0",
+]
+
 [project.scripts]
 buddhi = "cli.main:cli"
 
