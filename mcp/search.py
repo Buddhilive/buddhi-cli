@@ -47,7 +47,7 @@ class SymbolMap:
     to brief, unique single-character Greek markers, appending a mapping block at the end.
     """
     def __init__(self):
-        self.forward = {}
+        self.forward: dict[str, str] = {}
         self.next_id = 1
 
     def register(self, identifier: str) -> str | None:
@@ -121,7 +121,7 @@ def extract_identifiers(content: str, ext: str, encoder) -> list[str]:
     # Filter keywords for common languages to avoid compressing standard control structures
     keywords = get_keywords_for_ext(ext)
 
-    seen = Counter()
+    seen: Counter[str] = Counter()
     for match in ident_re.finditer(content):
         word = match.group(0)
         if len(word) >= MIN_IDENT_LENGTH and word not in keywords:
@@ -160,7 +160,7 @@ def is_generated_file(filepath: str) -> bool:
     return any(name.endswith(suffix) for suffix in GENERATED_FILE_SUFFIXES)
 
 
-def is_secret_like(filepath: str, content: str = None) -> bool:
+def is_secret_like(filepath: str, content: str | None = None) -> bool:
     """Security check to skip credentials and certificate files."""
     name = os.path.basename(filepath)
     ext = os.path.splitext(name)[1].lstrip(".").lower()
@@ -194,7 +194,7 @@ class GitIgnoreFilter:
     """Manages recursive .gitignore matching."""
     def __init__(self, workspace_root: str):
         self.workspace_root = workspace_root
-        self.ignore_cache = {}  # dir_path -> list of patterns
+        self.ignore_cache: dict[str, list[str]] = {}  # dir_path -> list of patterns
 
     def get_gitignores_for_file(self, filepath: str) -> list[tuple[str, list[str]]]:
         """Finds all .gitignore files from the file's directory up to the workspace root."""
@@ -253,8 +253,8 @@ def get_token_count(text: str, encoder) -> int:
 
 def handle_search(
     pattern: str,
-    search_path: str = None,
-    ext_filter: str = None,
+    search_path: str | None = None,
+    ext_filter: str | None = None,
     max_results: int = 50,
     ignore_gitignore: bool = False
 ) -> str:
@@ -272,6 +272,86 @@ def handle_search(
 
     if not os.path.exists(root_dir):
         return f"ERROR: {root_dir} does not exist"
+
+    # Initialize encoder
+    try:
+        encoder = tiktoken.get_encoding("cl100k_base")
+    except Exception:
+        encoder = tiktoken.encoding_for_model("gpt-4")
+
+    # 1. AST Search (Symbol Matching)
+    db = None
+    symbol_matches_str = ""
+    symbol_count = 0
+    try:
+        from db import CodeGraphDB
+        db = CodeGraphDB()
+        
+        # Only search symbols if pattern is not overly generic
+        clean_query = re.sub(r"[^\w\.\-\s]", "", pattern).strip()
+        if clean_query and len(clean_query) >= 3:
+            sym_results = db.find_relevant_symbols(clean_query)
+            if sym_results:
+                symbol_lines = ["=== CODE GRAPH SYMBOL MATCHES ==="]
+                for idx, res in enumerate(sym_results[:3], 1):  # Top 3 symbols
+                    sym = res["symbol"]
+                    doc = sym["docstring"].strip() if sym["docstring"] else "No docstring available."
+                    doc_snippet = doc.split("\n")[0] if "\n" in doc else doc
+                    
+                    symbol_lines.append(f"\n### {idx}. {sym['type'].upper()} `{sym['name']}`")
+                    symbol_lines.append(f"* **ID:** `{sym['id']}`")
+                    symbol_lines.append(f"* **Location:** `{sym['file_path']}` (Lines {sym['start_line']}-{sym['end_line']})")
+                    symbol_lines.append(f"* **About:** *{doc_snippet}*")
+                    
+                    # Fetch code snippet with 150 lines guardrail
+                    file_path = os.path.join(workspace_root, sym["file_path"])
+                    if os.path.exists(file_path):
+                        try:
+                            with open(file_path, "r", encoding="utf-8", errors="replace") as sf:
+                                all_lines = sf.readlines()
+                            start_line = sym["start_line"]
+                            end_line = sym["end_line"]
+                            total_lines = end_line - start_line + 1
+                            
+                            slice_start = max(0, start_line - 1)
+                            slice_end = min(len(all_lines), end_line)
+                            code_lines = all_lines[slice_start:slice_end]
+                            
+                            if total_lines > 150:
+                                sig_lines = code_lines[:15]
+                                sig_code = "".join(sig_lines)
+                                symbol_lines.append("```python")
+                                symbol_lines.append(sig_code.rstrip())
+                                symbol_lines.append(f"# ... [implementation code omitted to save tokens ({total_lines - 15} lines)]")
+                                symbol_lines.append("```")
+                                
+                                if sym["type"] == "class":
+                                    with db.get_connection() as conn:
+                                        cursor = conn.execute("""
+                                            SELECT name, type, start_line, end_line, docstring
+                                            FROM nodes
+                                            WHERE id LIKE ? AND type = 'method'
+                                            ORDER BY start_line
+                                        """, (f"{sym['id']}.%",))
+                                        methods = cursor.fetchall()
+                                    if methods:
+                                        symbol_lines.append("* **Class Methods:**")
+                                        for m in methods[:5]:
+                                            m_doc = m["docstring"].strip().split("\n")[0] if m["docstring"] else "No docstring."
+                                            symbol_lines.append(f"  - `{m['name']}` (Lines {m['start_line']}-{m['end_line']}): *{m_doc}*")
+                            else:
+                                symbol_lines.append("```python")
+                                symbol_lines.append("".join(code_lines).rstrip())
+                                symbol_lines.append("```")
+                        except Exception as e:
+                            symbol_lines.append(f"*Could not load implementation: {e}*")
+                    else:
+                        symbol_lines.append("*Implementation file not found in local workspace.*")
+                
+                symbol_matches_str = "\n".join(symbol_lines)
+                symbol_count = len(sym_results)
+    except Exception:
+        pass
 
     # Initialize gitignore filter
     gi_filter = GitIgnoreFilter(workspace_root)
@@ -331,19 +411,13 @@ def handle_search(
     # Deterministic search: stable path ordering makes match truncations reproducible.
     files_to_search.sort()
 
-    matches = []
+    raw_matches: list[tuple[str, int, str]] = []
     files_searched = 0
     skipped_encoding = 0
     raw_tokens_accum = 0
-    
-    # Initialize encoder
-    try:
-        encoder = tiktoken.get_encoding("cl100k_base")
-    except Exception:
-        encoder = tiktoken.encoding_for_model("gpt-4")
 
     for filepath in files_to_search:
-        if len(matches) >= max_results:
+        if len(raw_matches) >= max_results:
             break
 
         try:
@@ -368,11 +442,11 @@ def handle_search(
                 trimmed_line = line.strip()
                 # Estimate standard token overhead for raw matching lines
                 raw_tokens_accum += len(encoder.encode(trimmed_line)) + 2
-                matches.append(f"{rel_path}:{i} {trimmed_line}")
-                if len(matches) >= max_results:
+                raw_matches.append((rel_path, i, trimmed_line))
+                if len(raw_matches) >= max_results:
                     break
 
-    if not matches:
+    if not raw_matches and not symbol_matches_str:
         msg = f"0 matches for '{pattern}' in {files_searched} files"
         if skipped_large > 0:
             msg += f" ({skipped_large} large files skipped)"
@@ -382,19 +456,67 @@ def handle_search(
             msg += f" ({skipped_boundary} secret-like files skipped by boundary policy)"
         return msg
 
-    # Identify matching directories for monorepo scope hints
-    matched_top_dirs = set()
-    for m in matches:
-        parts = m.split("/")
-        if len(parts) > 1:
-            matched_top_dirs.add(parts[0])
+    # Enrichment mapping: AST Context Tagging on matched lines
+    matches = []
+    if raw_matches:
+        nodes_by_file = {}
+        
+        # Pull symbol boundaries for all matched files in a single batch
+        if db is not None:
+            try:
+                matched_files_list = list(set(rm[0] for rm in raw_matches))
+                placeholders = ",".join("?" for _ in matched_files_list)
+                with db.get_connection() as conn:
+                    cursor = conn.execute(f"""
+                        SELECT name, type, start_line, end_line, file_path
+                        FROM nodes
+                        WHERE file_path IN ({placeholders})
+                    """, matched_files_list)
+                    db_nodes = [dict(r) for r in cursor.fetchall()]
+                
+                # Group nodes by file path
+                for node in db_nodes:
+                    fpath = node["file_path"]
+                    if fpath not in nodes_by_file:
+                        nodes_by_file[fpath] = []
+                    nodes_by_file[fpath].append(node)
+                
+                # Sort nodes inside each file by size (span size ascending)
+                for fpath in nodes_by_file:
+                    nodes_by_file[fpath].sort(key=lambda n: n["end_line"] - n["start_line"])
+            except Exception:
+                pass
 
-    # Structure basic matched header
-    matched_files_list = sorted(list(set(m.split(":")[0] for m in matches)))
-    result = f"{len(matches)} matches in {files_searched} files"
-    if len(matched_files_list) > 1:
-        result += f" [{', '.join(matched_files_list)}]"
-    result += ":\n" + "\n".join(matches)
+        for rel_path, line_no, trimmed_line in raw_matches:
+            tag = ""
+            if rel_path in nodes_by_file:
+                # Find the smallest matching symbol span
+                for node in nodes_by_file[rel_path]:
+                    if node["start_line"] <= line_no <= node["end_line"]:
+                        tag = f" [inside {node['type']} {node['name']}]"
+                        break
+            matches.append(f"{rel_path}:{line_no}{tag} {trimmed_line}")
+
+    # Assemble Output
+    result_parts = []
+    
+    # 1. AST Symbol Section
+    if symbol_matches_str:
+        result_parts.append(symbol_matches_str)
+        result_parts.append("")
+
+    # 2. Textual Occurrences Section
+    if matches:
+        matched_files_list = sorted(list(set(m.split(":")[0] for m in matches)))
+        text_section_header = f"=== TEXTUAL OCCURRENCES ({len(matches)} matches in {files_searched} files"
+        if len(matched_files_list) > 1:
+            text_section_header += f" [{', '.join(matched_files_list)}]"
+        text_section_header += ") ==="
+        
+        result_parts.append(text_section_header)
+        result_parts.append("\n".join(matches))
+
+    result = "\n".join(result_parts)
 
     # Append skips info if any
     skips_footer = []
@@ -405,7 +527,7 @@ def handle_search(
     if skipped_boundary > 0:
         skips_footer.append(f"({skipped_boundary} secret-like files skipped by boundary policy)")
     if skips_footer:
-        result += "\n" + "\n".join(skips_footer)
+        result += "\n\n" + "\n".join(skips_footer)
 
     # Apply SymbolMap token-compression
     ext = ext_filter if ext_filter else "py"
@@ -427,6 +549,12 @@ def handle_search(
             result = f"{compressed}{sym_table}"
 
     # Scope hint for monorepos
+    matched_top_dirs = set()
+    for rm in raw_matches:
+        parts = rm[0].split("/")
+        if len(parts) > 1:
+            matched_top_dirs.add(parts[0])
+
     if len(matched_top_dirs) > 3:
         dirs_sorted = sorted(list(matched_top_dirs))
         dir_list = ", ".join(f"'{d}'" for d in dirs_sorted[:6])
@@ -435,8 +563,6 @@ def handle_search(
 
     # Print token savings metrics
     sent_tokens = get_token_count(result, encoder)
-    # rg defaults to showing full paths + 2 context lines per match. We estimate
-    # the native cost as ~2.5x raw matches tokens (context + separators + headers)
     native_estimate = int(raw_tokens_accum * 2.5)
     original = max(native_estimate, raw_tokens_accum)
     

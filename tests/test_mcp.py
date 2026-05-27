@@ -23,6 +23,7 @@ from server import (
     get_symbol_implementation_impl,
     execute_command_optimized_impl
 )
+from search import handle_search
 
 class TestCodeGraphDB(unittest.TestCase):
     def setUp(self):
@@ -247,6 +248,31 @@ class TestMCPTools(unittest.TestCase):
         )
         self.assertIn("Massive Object Guardrail Triggered", heavy_res)
         self.assertNotIn("return 42", heavy_res)
+
+    def test_handle_search_combined_ast_and_text(self):
+        # We need to mock get_workspace_root and CodeGraphDB constructor to point to our temp_dir
+        import unittest.mock
+        with unittest.mock.patch("search.get_workspace_root", return_value=self.temp_dir), \
+             unittest.mock.patch("db.get_db_path", return_value=self.db_path):
+            
+            # Execute search_code/handle_search for a word that matches both symbol and text
+            res = handle_search(
+                pattern="short_func",
+                search_path=self.temp_dir,
+                ignore_gitignore=True
+            )
+            
+            # 1. AST Symbol Section verified
+            self.assertIn("=== CODE GRAPH SYMBOL MATCHES ===", res)
+            self.assertIn("short_func", res)
+            self.assertIn("Basic helper", res)
+            self.assertIn("return 42", res)
+            
+            # 2. Text occurrences section verified
+            self.assertIn("=== TEXTUAL OCCURRENCES", res)
+            self.assertIn("[inside function short_func]", res)
+            self.assertIn("def short_func():", res)
+            self.assertIn("return 42", res)
 
 
 class TestCodeIndexer(unittest.TestCase):

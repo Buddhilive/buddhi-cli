@@ -571,8 +571,8 @@ def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
 @mcp.tool()
 def search_code(
     pattern: str,
-    path: str = None,
-    ext: str = None,
+    path: str | None = None,
+    ext: str | None = None,
     max_results: int = 50,
     ignore_gitignore: bool = False
 ) -> str:
