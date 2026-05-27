@@ -87,7 +87,7 @@ wheels = [
 ]
 
 [[package]]
-name = "buddhi-ai-cli"
+name = "buddhi-ai"
 version = "1.0.0b1"
 source = { editable = "." }
 dependencies = [

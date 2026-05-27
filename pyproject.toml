@@ -3,7 +3,7 @@ requires = ["setuptools>=42", "wheel", "huggingface_hub"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "buddhi-ai-cli"
+name = "buddhi-ai"
 version = "1.0.0-beta.1"
 description = "Buddhi AI CLI - Intelligent Development Assistant"
 readme = "README.md"
@@ -62,10 +62,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "twine>=5.0.0",
-    "build>=1.0.0",
-]
+dev = ["twine>=5.0.0", "build>=1.0.0"]
 
 [project.scripts]
 buddhi = "cli.main:cli"
