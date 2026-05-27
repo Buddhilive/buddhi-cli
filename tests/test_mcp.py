@@ -368,6 +368,7 @@ class TestInitCommand(unittest.TestCase):
         with open(agents_path, "r", encoding="utf-8") as f:
             agents_content = f.read()
         self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
+        self.assertIn("Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools", agents_content)
         
         # Check .agent/mcp_config.json was created
         mcp_path = os.path.join(self.temp_dir, ".agent", "mcp_config.json")
@@ -378,6 +379,14 @@ class TestInitCommand(unittest.TestCase):
         self.assertIn("buddhi-mcp", mcp_data["mcpServers"])
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["args"], ["mcp"])
+        
+        # Check .agent/rules/GEMINI.md was created
+        gemini_path = os.path.join(self.temp_dir, ".agent", "rules", "GEMINI.md")
+        self.assertTrue(os.path.exists(gemini_path))
+        with open(gemini_path, "r", encoding="utf-8") as f:
+            gemini_content = f.read()
+        self.assertIn("Buddhi MCP Tool Enforcement (Antigravity & All Agents)", gemini_content)
+        self.assertIn("CRITICAL: You MUST use `buddhi-mcp` tools", gemini_content)
         
         # Check indexing was called
         mock_index.assert_called_once_with(workspace_root=self.temp_dir)
@@ -409,6 +418,13 @@ class TestInitCommand(unittest.TestCase):
         with open(mcp_path, "w", encoding="utf-8") as f:
             json.dump(existing_mcp, f)
             
+        # Create pre-existing .agent/rules/GEMINI.md
+        rules_dir = os.path.join(agent_dir, "rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        gemini_path = os.path.join(rules_dir, "GEMINI.md")
+        with open(gemini_path, "w", encoding="utf-8") as f:
+            f.write("# GEMINI.md - AG Kit\n\n## TIER 0: UNIVERSAL RULES (Always Active)\n\n### Older Rule\nOlder rule content.")
+            
         from cli.main import init_workspace
         init_workspace()
         
@@ -417,6 +433,7 @@ class TestInitCommand(unittest.TestCase):
             agents_content = f.read()
         self.assertIn("# Existing Title", agents_content)
         self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
+        self.assertIn("Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools", agents_content)
         
         # Verify mcp_config.json merged correctly
         with open(mcp_path, "r", encoding="utf-8") as f:
@@ -425,6 +442,13 @@ class TestInitCommand(unittest.TestCase):
         self.assertIn("buddhi-mcp", mcp_data["mcpServers"])
         self.assertEqual(mcp_data["mcpServers"]["custom-server"]["command"], "custom")
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
+        
+        # Verify GEMINI.md merged correctly
+        with open(gemini_path, "r", encoding="utf-8") as f:
+            gemini_content = f.read()
+        self.assertIn("Older Rule", gemini_content)
+        self.assertIn("Buddhi MCP Tool Enforcement (Antigravity & All Agents)", gemini_content)
+        self.assertIn("CRITICAL: You MUST use `buddhi-mcp` tools", gemini_content)
         
         # Run init again to test block replacement and idempotency
         init_workspace()

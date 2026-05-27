@@ -28,13 +28,20 @@ def setup_model():
     # Pre-generate XNNPack cache if possible
     try:
         import litert_lm
-        print("Pre-generating XNNPack compilation cache (this might take a few seconds)...", flush=True)
+
+        print(
+            "Pre-generating XNNPack compilation cache (this might take a few seconds)...",
+            flush=True,
+        )
         engine = litert_lm.Engine(model_path)
         with engine:
             pass
         print("XNNPack compilation cache pre-generated successfully!", flush=True)
     except Exception as e:
-        print(f"Note: XNNPack cache will be generated automatically on first inference. (Detail: {e})", flush=True)
+        print(
+            f"Note: XNNPack cache will be generated automatically on first inference. (Detail: {e})",
+            flush=True,
+        )
 
 
 def load_buddhi_mcp_server():
@@ -51,7 +58,9 @@ def load_buddhi_mcp_server():
 
     # Unit testing compatibility check:
     # If 'server' is in sys.modules (e.g. injected/mocked by unittest), and has the index_codebase_impl attribute, return it.
-    if "server" in sys.modules and hasattr(sys.modules["server"], "index_codebase_impl"):
+    if "server" in sys.modules and hasattr(
+        sys.modules["server"], "index_codebase_impl"
+    ):
         return sys.modules["server"]
 
     module_name = "buddhi_mcp_server"
@@ -60,7 +69,9 @@ def load_buddhi_mcp_server():
 
     spec = importlib.util.spec_from_file_location(module_name, mcp_server_path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load spec for Buddhi MCP server at {mcp_server_path}")
+        raise ImportError(
+            f"Could not load spec for Buddhi MCP server at {mcp_server_path}"
+        )
 
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
@@ -74,25 +85,25 @@ def init_workspace(workspace_root=None):
         cwd = os.path.abspath(workspace_root)
     else:
         cwd = os.getcwd()
-    
+
     # 1. Update/Create AGENTS.md
     agents_path = os.path.join(cwd, "AGENTS.md")
-    
+
     buddhi_mcp_instructions = """<!-- buddhi-mcp-owned: buddhi-ai v1 -->
 # buddhi — Intelligent Codebase Index & Graph Layer
 <!-- buddhi-mcp-rules-v1 -->
 
-PREFER buddhi MCP tools over native equivalents for faster, token-saving, and highly-contextual codebase exploration and command execution:
+CRITICAL: Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools instead of native equivalents. This is NOT optional.
 
 ## Tool preference:
 | PREFER | OVER | Why |
 |--------|------|-----|
-| `get_codebase_summary()` | `list_dir` / `find` / `ctx_tree` | Token-saving architectural map grouped by functional graph communities instead of huge raw file trees. |
+| `get_codebase_summary()` | `list_dir` / `find` | Token-saving architectural map grouped by functional graph communities instead of huge raw file trees. |
 | `search_code(pattern, path, ext)` | `grep_search` / `rg` / `grep` | Dual-track search performing token-efficient regex text search + semantic AST symbol lookup. Automatically tags match lines with containing class/method scopes and enforces a 150-line safeguard on definitions. |
 | `trace_impact_radius(symbol_id)` | *None (Manual search)* | Performs recursive upstream call graph tracing (up to 3 levels) to identify the blast radius BEFORE refactoring or editing code. No native equivalent exists! |
 | `update_codegraph()` | *None* | Rebuilds and updates the SQLite AST & Call Graph database. Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date. |
 | `index_codebase()` | *None* | Updates the SQLite AST & Call Graph database. Run this at the start of a session or after major edits to ensure symbol synchronization. |
-| `execute_command_optimized(command)` | `run_command` / `Shell` / `ctx_shell` | Executes shell commands locally and passes stdout/stderr to local Gemma 4 model (via centralized FastAPI server http://localhost:58421/v1/responses or fallback), producing a compact structured JSON pinpointing successes, errors, and warnings to save substantial tokens. |
+| `execute_command_optimized(command)` | `run_command` / `Shell` / `bash` | Executes shell commands producing a compact structured JSON pinpointing successes, errors, and warnings to save substantial tokens. |
 
 ## Recommended Workflow:
 1. **Startup (Orient)**: Run `get_codebase_summary()` to understand the functional modules, key classes, and files in the repository.
@@ -102,8 +113,9 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
 5. **Optimized Execution**: For running builds, tests, or diagnostics, prefer `execute_command_optimized(command: "...")` to drastically compress terminal output and avoid wasting assistant tokens.
 
 <!-- /buddhi-mcp -->"""
-    
+
     import re
+
     if os.path.exists(agents_path):
         try:
             with open(agents_path, "r", encoding="utf-8") as f:
@@ -111,12 +123,14 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
         except Exception as e:
             print(f"Error reading AGENTS.md: {e}")
             return
-        
+
         # Check if block already exists
         pattern = r"<!-- buddhi-mcp-owned:.*?<!-- /buddhi-mcp -->"
         if re.search(pattern, content, re.DOTALL):
             # Replace existing block
-            updated_content = re.sub(pattern, buddhi_mcp_instructions.strip(), content, flags=re.DOTALL)
+            updated_content = re.sub(
+                pattern, buddhi_mcp_instructions.strip(), content, flags=re.DOTALL
+            )
             print("Updating existing buddhi instructions in AGENTS.md...")
         else:
             # Append block
@@ -125,7 +139,7 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
     else:
         updated_content = buddhi_mcp_instructions
         print("Creating new AGENTS.md with buddhi instructions...")
-        
+
     try:
         with open(agents_path, "w", encoding="utf-8") as f:
             f.write(updated_content)
@@ -137,22 +151,21 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
     # 2. Update/Create .agent/mcp_config.json
     agent_dir = os.path.join(cwd, ".agent")
     mcp_path = os.path.join(agent_dir, "mcp_config.json")
-    
+
     os.makedirs(agent_dir, exist_ok=True)
-    
+
     mcp_config_data = {
         "mcpServers": {
             "buddhi-mcp": {
                 "command": "buddhi",
                 "args": ["mcp"],
-                "env": {
-                    "BUDDHI_WORKSPACE_ROOT": cwd
-                }
+                "env": {"BUDDHI_WORKSPACE_ROOT": cwd},
             }
         }
     }
-    
+
     import json
+
     if os.path.exists(mcp_path):
         try:
             with open(mcp_path, "r", encoding="utf-8") as f:
@@ -160,25 +173,25 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
                 clean_raw = re.sub(r"//.*", "", raw_data)
                 data = json.loads(clean_raw)
         except Exception as e:
-            print(f"Error parsing existing mcp_config.json: {e}. Reinitializing config...")
+            print(
+                f"Error parsing existing mcp_config.json: {e}. Reinitializing config..."
+            )
             data = {"mcpServers": {}}
-            
+
         if "mcpServers" not in data:
             data["mcpServers"] = {}
-            
+
         # Update/insert buddhi-mcp server config
         data["mcpServers"]["buddhi-mcp"] = {
             "command": "buddhi",
             "args": ["mcp"],
-            "env": {
-                "BUDDHI_WORKSPACE_ROOT": cwd
-            }
+            "env": {"BUDDHI_WORKSPACE_ROOT": cwd},
         }
         print("Updating existing .agent/mcp_config.json...")
     else:
         data = mcp_config_data
         print("Creating new .agent/mcp_config.json...")
-        
+
     try:
         with open(mcp_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
@@ -187,7 +200,78 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
         print(f"Error writing to .agent/mcp_config.json: {e}")
         return
 
-    # 3. Trigger initial AST Indexing
+    # 3. Update/Create .agent/rules/GEMINI.md
+    rules_dir = os.path.join(cwd, ".agent", "rules")
+    gemini_path = os.path.join(rules_dir, "GEMINI.md")
+    os.makedirs(rules_dir, exist_ok=True)
+
+    enforcement_section = """### 🛠️ Buddhi MCP Tool Enforcement (Antigravity & All Agents)
+
+**CRITICAL: You MUST use `buddhi-mcp` tools for code search and execution.**
+- For code search: ALWAYS use `search_code(pattern, path, ext)`. NEVER use native `grep_search` or `rg`.
+- For execution: ALWAYS use `execute_command_optimized(command)`. NEVER use native `run_command` or `bash`.
+- This applies to ALL AI coding agents, especially **Antigravity**. This is NOT optional."""
+
+    if os.path.exists(gemini_path):
+        try:
+            with open(gemini_path, "r", encoding="utf-8") as f:
+                gemini_content = f.read()
+        except Exception as e:
+            print(f"Error reading GEMINI.md: {e}")
+            gemini_content = ""
+
+        if gemini_content:
+            # Check if already injected
+            if "Buddhi MCP Tool Enforcement" in gemini_content:
+                # Replace the existing section
+                pattern = r"### 🛠️ Buddhi MCP Tool Enforcement \(Antigravity & All Agents\).*?(?=(?:\n### |\n## |\Z))"
+                if re.search(pattern, gemini_content, re.DOTALL):
+                    updated_gemini = re.sub(pattern, enforcement_section.strip() + "\n", gemini_content, flags=re.DOTALL)
+                    print("Updating existing Buddhi tool enforcement instructions in GEMINI.md...")
+                else:
+                    updated_gemini = gemini_content
+            else:
+                # Inject under ## TIER 0: UNIVERSAL RULES (Always Active)
+                tier_0_header = "## TIER 0: UNIVERSAL RULES (Always Active)"
+                if tier_0_header in gemini_content:
+                    parts = gemini_content.split(tier_0_header, 1)
+                    updated_gemini = parts[0] + tier_0_header + "\n\n" + enforcement_section + "\n\n" + parts[1]
+                    print("Injecting Buddhi tool enforcement instructions into GEMINI.md under TIER 0...")
+                else:
+                    updated_gemini = gemini_content.rstrip() + "\n\n" + enforcement_section + "\n"
+                    print("Appending Buddhi tool enforcement instructions to GEMINI.md...")
+        else:
+            updated_gemini = ""
+    else:
+        updated_gemini = ""
+
+    if not updated_gemini:
+        # Create new default GEMINI.md
+        updated_gemini = f"""---
+trigger: always_on
+---
+
+# GEMINI.md - AG Kit
+
+> This file defines how the AI behaves in this workspace.
+
+---
+
+## TIER 0: UNIVERSAL RULES (Always Active)
+
+{enforcement_section}
+"""
+        print("Creating new GEMINI.md with Buddhi tool enforcement instructions...")
+
+    try:
+        with open(gemini_path, "w", encoding="utf-8") as f:
+            f.write(updated_gemini)
+        print(f"Successfully wrote GEMINI.md at: {gemini_path}")
+    except Exception as e:
+        print(f"Error writing to GEMINI.md: {e}")
+        return
+
+    # 4. Trigger initial AST Indexing
     print("Initializing AST codebase indexing & call graph compilation...")
     try:
         buddhi_mcp_server = load_buddhi_mcp_server()
@@ -200,20 +284,29 @@ PREFER buddhi MCP tools over native equivalents for faster, token-saving, and hi
     print("\nBuddhi MCP successfully initialized for Antigravity!")
 
 
-def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_port=58422, no_browser=False):
+def start(
+    backend_host="127.0.0.1",
+    backend_port=58421,
+    ui_host="127.0.0.1",
+    ui_port=58422,
+    no_browser=False,
+):
     """Starts the Streamlit chat UI."""
     import subprocess
     import sys
     import time
     import threading
 
-    print(f"\nNote: The Streamlit chat UI requires the Buddhi backend server to be running.", flush=True)
+    print(
+        f"\nNote: The Streamlit chat UI requires the Buddhi backend server to be running.",
+        flush=True,
+    )
     print(f"      Make sure you run 'buddhi server' centrally.", flush=True)
 
     # Build command to run Streamlit in headless mode to bypass interactive prompts (like email registration)
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     ui_app_path = os.path.join(base_dir, "ui", "app.py")
-    
+
     # Auto-detect workspace virtualenv Python to load installed packages correctly
     python_exe = sys.executable
     cwd = os.getcwd()
@@ -221,7 +314,7 @@ def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_
         venv_candidate = os.path.join(cwd, ".venv", "Scripts", "python.exe")
     else:
         venv_candidate = os.path.join(cwd, ".venv", "bin", "python")
-        
+
     if os.path.exists(venv_candidate):
         python_exe = venv_candidate
         print(f"Using workspace virtualenv interpreter: {python_exe}", flush=True)
@@ -244,7 +337,7 @@ def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_
     env = os.environ.copy()
     env["BUDDHI_BACKEND_HOST"] = backend_host
     env["BUDDHI_BACKEND_PORT"] = str(backend_port)
-    
+
     # Ensure the root project directory is in PYTHONPATH so 'ui' module can be found
     if "PYTHONPATH" in env:
         env["PYTHONPATH"] = f"{base_dir}{os.pathsep}{env['PYTHONPATH']}"
@@ -255,14 +348,16 @@ def start(backend_host="127.0.0.1", backend_port=58421, ui_host="127.0.0.1", ui_
 
     try:
         process = subprocess.Popen(cmd, env=env)
-        
+
         # Open browser automatically if not explicitly disabled by the user
         if not no_browser:
             import webbrowser
+
             def open_browser():
                 time.sleep(2.0)
                 if process.poll() is None:
                     webbrowser.open(f"http://{ui_host}:{ui_port}")
+
             threading.Thread(target=open_browser, daemon=True).start()
 
         try:
@@ -302,23 +397,32 @@ def cli():
         help="Start the FastAPI backend and serve the Streamlit chat UI in a browser.",
     )
     live_parser.add_argument(
-        "--backend-port", type=int, default=58421,
+        "--backend-port",
+        type=int,
+        default=58421,
         help="Port of the backend FastAPI server to connect to (default: 58421)",
     )
     live_parser.add_argument(
-        "--backend-host", type=str, default="127.0.0.1",
+        "--backend-host",
+        type=str,
+        default="127.0.0.1",
         help="Host address of the backend server (default: 127.0.0.1)",
     )
     live_parser.add_argument(
-        "--ui-port", type=int, default=58422,
+        "--ui-port",
+        type=int,
+        default=58422,
         help="Port to run the Streamlit UI on (default: 58422)",
     )
     live_parser.add_argument(
-        "--ui-host", type=str, default="127.0.0.1",
+        "--ui-host",
+        type=str,
+        default="127.0.0.1",
         help="Host address to bind the Streamlit UI to (default: 127.0.0.1)",
     )
     live_parser.add_argument(
-        "--no-browser", action="store_true",
+        "--no-browser",
+        action="store_true",
         help="Bypass automatic opening of the system browser",
     )
 
@@ -334,7 +438,9 @@ def cli():
         help="Initialize Buddhi MCP settings and instructions (AGENTS.md and .agent/mcp_config.json) in the current workspace.",
     )
     init_parser.add_argument(
-        "--workspace-root", type=str, default=None,
+        "--workspace-root",
+        type=str,
+        default=None,
         help="Absolute path of the workspace root. Defaults to the current working directory.",
     )
 
@@ -356,11 +462,15 @@ def cli():
         help="Start the FastAPI backend server only.",
     )
     server_parser.add_argument(
-        "--port", type=int, default=58421,
+        "--port",
+        type=int,
+        default=58421,
         help="Port to run the backend FastAPI server on (default: 58421)",
     )
     server_parser.add_argument(
-        "--host", type=str, default="127.0.0.1",
+        "--host",
+        type=str,
+        default="127.0.0.1",
         help="Host address to bind to (default: 127.0.0.1)",
     )
 
@@ -374,7 +484,7 @@ def cli():
             backend_port=args.backend_port,
             ui_host=args.ui_host,
             ui_port=args.ui_port,
-            no_browser=args.no_browser
+            no_browser=args.no_browser,
         )
     elif args.command == "mcp":
         try:
@@ -395,17 +505,24 @@ def cli():
             print(f"Error during codebase update: {e}")
     elif args.command == "benchmark":
         from cli.metrics import run_benchmark
+
         run_benchmark()
     elif args.command == "server":
         target_dir = get_model_target_dir()
         model_path = os.path.join(target_dir, "gemma-4-E4B-it.litertlm")
         if not os.path.exists(model_path):
             print("Warning: Model not found. You may need to run 'buddhi setup' first.")
-            
+
         import uvicorn
-        print(f"\nStarting backend server at http://{args.host}:{args.port}...", flush=True)
+
+        print(
+            f"\nStarting backend server at http://{args.host}:{args.port}...",
+            flush=True,
+        )
         try:
-            uvicorn.run("server.main:app", host=args.host, port=args.port, log_level="info")
+            uvicorn.run(
+                "server.main:app", host=args.host, port=args.port, log_level="info"
+            )
         except Exception as e:
             print(f"Error starting backend server: {e}", flush=True)
     else:
@@ -415,4 +532,3 @@ def cli():
 
 if __name__ == "__main__":
     cli()
-
