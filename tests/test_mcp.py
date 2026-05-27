@@ -362,13 +362,9 @@ class TestInitCommand(unittest.TestCase):
         
         init_workspace()
         
-        # Check AGENTS.md was created
+        # Check AGENTS.md was NOT created
         agents_path = os.path.join(self.temp_dir, "AGENTS.md")
-        self.assertTrue(os.path.exists(agents_path))
-        with open(agents_path, "r", encoding="utf-8") as f:
-            agents_content = f.read()
-        self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
-        self.assertIn("Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools", agents_content)
+        self.assertFalse(os.path.exists(agents_path))
         
         # Check .agent/mcp_config.json was created
         mcp_path = os.path.join(self.temp_dir, ".agent", "mcp_config.json")
@@ -380,20 +376,34 @@ class TestInitCommand(unittest.TestCase):
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["args"], ["mcp"])
         
-        # Check .agent/rules/GEMINI.md was created
-        gemini_path = os.path.join(self.temp_dir, ".agent", "rules", "GEMINI.md")
-        self.assertTrue(os.path.exists(gemini_path))
-        with open(gemini_path, "r", encoding="utf-8") as f:
-            gemini_content = f.read()
-        self.assertIn("Buddhi MCP Tool Enforcement (Antigravity & All Agents)", gemini_content)
-        self.assertIn("CRITICAL: You MUST use `buddhi-mcp` tools", gemini_content)
+        # Check buddhi-grep-search.md was created
+        grep_search_path = os.path.join(self.temp_dir, ".agent", "rules", "buddhi-grep-search.md")
+        self.assertTrue(os.path.exists(grep_search_path))
+        with open(grep_search_path, "r", encoding="utf-8") as f:
+            grep_search_content = f.read()
+        self.assertIn("For all text-matching, regex searches, or code querying tasks, you MUST exclusively call the MCP tool `buddhi_grep_search`.", grep_search_content)
         
+        # Check buddhi-run-command.md was created
+        run_command_path = os.path.join(self.temp_dir, ".agent", "rules", "buddhi-run-command.md")
+        self.assertTrue(os.path.exists(run_command_path))
+        with open(run_command_path, "r", encoding="utf-8") as f:
+            run_command_content = f.read()
+        self.assertIn("For all shell command execution, terminal commands, compilation, building, running tests, or diagnostics, you MUST exclusively call the MCP tool `buddhi_run_command`.", run_command_content)
+        
+        # Check .buddhi/.gitignore was created
+        gitignore_path = os.path.join(self.temp_dir, ".buddhi", ".gitignore")
+        self.assertTrue(os.path.exists(gitignore_path))
+        with open(gitignore_path, "r", encoding="utf-8") as f:
+            gitignore_content = f.read()
+        self.assertIn("# Automatically created by buddhi.", gitignore_content)
+        self.assertIn("*", gitignore_content)
+
         # Check indexing was called
         mock_index.assert_called_once_with(workspace_root=self.temp_dir)
 
     @unittest.mock.patch('os.getcwd')
     @unittest.mock.patch('server.index_codebase_impl')
-    def test_init_merges_existing_files(self, mock_index, mock_getcwd):
+    def test_init_does_not_touch_legacy_files(self, mock_index, mock_getcwd):
         mock_getcwd.return_value = self.temp_dir
         mock_index.return_value = "Successfully indexed 0 symbols."
         
@@ -428,12 +438,10 @@ class TestInitCommand(unittest.TestCase):
         from cli.main import init_workspace
         init_workspace()
         
-        # Verify AGENTS.md merged correctly
+        # Verify AGENTS.md left completely untouched
         with open(agents_path, "r", encoding="utf-8") as f:
             agents_content = f.read()
-        self.assertIn("# Existing Title", agents_content)
-        self.assertIn("buddhi — Intelligent Codebase Index & Graph Layer", agents_content)
-        self.assertIn("Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools", agents_content)
+        self.assertEqual(agents_content, "# Existing Title\n\nSome old guidelines.")
         
         # Verify mcp_config.json merged correctly
         with open(mcp_path, "r", encoding="utf-8") as f:
@@ -443,20 +451,21 @@ class TestInitCommand(unittest.TestCase):
         self.assertEqual(mcp_data["mcpServers"]["custom-server"]["command"], "custom")
         self.assertEqual(mcp_data["mcpServers"]["buddhi-mcp"]["command"], "buddhi")
         
-        # Verify GEMINI.md merged correctly
+        # Verify GEMINI.md left completely untouched
         with open(gemini_path, "r", encoding="utf-8") as f:
             gemini_content = f.read()
-        self.assertIn("Older Rule", gemini_content)
-        self.assertIn("Buddhi MCP Tool Enforcement (Antigravity & All Agents)", gemini_content)
-        self.assertIn("CRITICAL: You MUST use `buddhi-mcp` tools", gemini_content)
+        self.assertEqual(gemini_content, "# GEMINI.md - AG Kit\n\n## TIER 0: UNIVERSAL RULES (Always Active)\n\n### Older Rule\nOlder rule content.")
         
-        # Run init again to test block replacement and idempotency
-        init_workspace()
+        # Verify new files created
+        grep_search_path = os.path.join(self.temp_dir, ".agent", "rules", "buddhi-grep-search.md")
+        self.assertTrue(os.path.exists(grep_search_path))
         
-        # Check that there is only one buddhi-mcp-owned block
-        with open(agents_path, "r", encoding="utf-8") as f:
-            new_agents_content = f.read()
-        self.assertEqual(new_agents_content.count("<!-- buddhi-mcp-owned"), 1)
+        run_command_path = os.path.join(self.temp_dir, ".agent", "rules", "buddhi-run-command.md")
+        self.assertTrue(os.path.exists(run_command_path))
+
+        # Check .buddhi/.gitignore was created
+        gitignore_path = os.path.join(self.temp_dir, ".buddhi", ".gitignore")
+        self.assertTrue(os.path.exists(gitignore_path))
 
 class TestMCPCommandInterceptor(unittest.TestCase):
     def test_shell_execution_success(self):
@@ -631,8 +640,8 @@ class TestWorkspaceResolutionAndHybridSearch(unittest.TestCase):
         # Insert a symbol with an underscore
         nodes = [
             {
-                "id": "file.py::execute_command_optimized",
-                "name": "execute_command_optimized",
+                "id": "file.py::buddhi_run_command",
+                "name": "buddhi_run_command",
                 "type": "function",
                 "file_path": "file.py",
                 "start_line": 1,
@@ -642,11 +651,11 @@ class TestWorkspaceResolutionAndHybridSearch(unittest.TestCase):
         ]
         self.db.insert_nodes(nodes)
         
-        # A partial sub-word query that FTS5 fails to match (e.g. mand_optim)
+        # A partial sub-word query that FTS5 fails to match (e.g. buddhi_run)
         # but standard LIKE fallback will match.
-        results = self.db.find_relevant_symbols("mand_optim")
+        results = self.db.find_relevant_symbols("buddhi_run")
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["symbol"]["name"], "execute_command_optimized")
+        self.assertEqual(results[0]["symbol"]["name"], "buddhi_run_command")
 
 
 if __name__ == "__main__":

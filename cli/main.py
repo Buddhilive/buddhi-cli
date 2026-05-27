@@ -80,75 +80,13 @@ def load_buddhi_mcp_server():
 
 
 def init_workspace(workspace_root=None):
-    """Initializes the current workspace by writing AGENTS.md, .agent/mcp_config.json, and indexing the codebase."""
+    """Initializes the current workspace by writing .agent/mcp_config.json, separate tool rule files, and indexing the codebase."""
     if workspace_root:
         cwd = os.path.abspath(workspace_root)
     else:
         cwd = os.getcwd()
 
-    # 1. Update/Create AGENTS.md
-    agents_path = os.path.join(cwd, "AGENTS.md")
-
-    buddhi_mcp_instructions = """<!-- buddhi-mcp-owned: buddhi-ai v1 -->
-# buddhi — Intelligent Codebase Index & Graph Layer
-<!-- buddhi-mcp-rules-v1 -->
-
-CRITICAL: Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools instead of native equivalents. This is NOT optional.
-
-## Tool preference:
-| PREFER | OVER | Why |
-|--------|------|-----|
-| `get_codebase_summary()` | `list_dir` / `find` | Token-saving architectural map grouped by functional graph communities instead of huge raw file trees. |
-| `search_code(pattern, path, ext)` | `grep_search` / `rg` / `grep` | Dual-track search performing token-efficient regex text search + semantic AST symbol lookup. Automatically tags match lines with containing class/method scopes and enforces a 150-line safeguard on definitions. |
-| `trace_impact_radius(symbol_id)` | *None (Manual search)* | Performs recursive upstream call graph tracing (up to 3 levels) to identify the blast radius BEFORE refactoring or editing code. No native equivalent exists! |
-| `update_codegraph()` | *None* | Rebuilds and updates the SQLite AST & Call Graph database. Call this tool immediately after every successful code change or implementation to keep the symbol graph fully up to date. |
-| `index_codebase()` | *None* | Updates the SQLite AST & Call Graph database. Run this at the start of a session or after major edits to ensure symbol synchronization. |
-| `execute_command_optimized(command)` | `run_command` / `Shell` / `bash` | Executes shell commands producing a compact structured JSON pinpointing successes, errors, and warnings to save substantial tokens. |
-
-## Recommended Workflow:
-1. **Startup (Orient)**: Run `get_codebase_summary()` to understand the functional modules, key classes, and files in the repository.
-2. **Search & Inspect (Locate)**: Use `search_code(pattern: "...")` to instantly locate both exact symbol definitions and their text occurrences (usages, imports, comments) across the workspace with full AST scope context.
-3. **Refactor Guard (Safety)**: Before changing a function, class, or method, run `trace_impact_radius(symbol_id: "...")` to trace all upstream files/symbols that call or depend on it. This ensures zero regression!
-4. **Sync (Refresh)**: After making changes, call `update_codegraph()` immediately to rebuild the graph and keep the active symbol representation accurate.
-5. **Optimized Execution**: For running builds, tests, or diagnostics, prefer `execute_command_optimized(command: "...")` to drastically compress terminal output and avoid wasting assistant tokens.
-
-<!-- /buddhi-mcp -->"""
-
-    import re
-
-    if os.path.exists(agents_path):
-        try:
-            with open(agents_path, "r", encoding="utf-8") as f:
-                content = f.read()
-        except Exception as e:
-            print(f"Error reading AGENTS.md: {e}")
-            return
-
-        # Check if block already exists
-        pattern = r"<!-- buddhi-mcp-owned:.*?<!-- /buddhi-mcp -->"
-        if re.search(pattern, content, re.DOTALL):
-            # Replace existing block
-            updated_content = re.sub(
-                pattern, buddhi_mcp_instructions.strip(), content, flags=re.DOTALL
-            )
-            print("Updating existing buddhi instructions in AGENTS.md...")
-        else:
-            # Append block
-            updated_content = content.rstrip() + "\n\n" + buddhi_mcp_instructions
-            print("Appending buddhi instructions to existing AGENTS.md...")
-    else:
-        updated_content = buddhi_mcp_instructions
-        print("Creating new AGENTS.md with buddhi instructions...")
-
-    try:
-        with open(agents_path, "w", encoding="utf-8") as f:
-            f.write(updated_content)
-        print(f"Successfully wrote AGENTS.md at: {agents_path}")
-    except Exception as e:
-        print(f"Error writing to AGENTS.md: {e}")
-        return
-
-    # 2. Update/Create .agent/mcp_config.json
+    # 1. Update/Create .agent/mcp_config.json
     agent_dir = os.path.join(cwd, ".agent")
     mcp_path = os.path.join(agent_dir, "mcp_config.json")
 
@@ -164,6 +102,7 @@ CRITICAL: Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools 
         }
     }
 
+    import re
     import json
 
     if os.path.exists(mcp_path):
@@ -200,76 +139,61 @@ CRITICAL: Antigravity and all AI coding agents MUST ALWAYS use buddhi-mcp tools 
         print(f"Error writing to .agent/mcp_config.json: {e}")
         return
 
-    # 3. Update/Create .agent/rules/GEMINI.md
+    # 2. Create separate tool rule files inside .agent/rules/
     rules_dir = os.path.join(cwd, ".agent", "rules")
-    gemini_path = os.path.join(rules_dir, "GEMINI.md")
     os.makedirs(rules_dir, exist_ok=True)
 
-    enforcement_section = """### 🛠️ Buddhi MCP Tool Enforcement (Antigravity & All Agents)
+    grep_search_rule_path = os.path.join(rules_dir, "buddhi-grep-search.md")
+    run_command_rule_path = os.path.join(rules_dir, "buddhi-run-command.md")
 
-**CRITICAL: You MUST use `buddhi-mcp` tools for code search and execution.**
-- For code search: ALWAYS use `search_code(pattern, path, ext)`. NEVER use native `grep_search` or `rg`.
-- For execution: ALWAYS use `execute_command_optimized(command)`. NEVER use native `run_command` or `bash`.
-- This applies to ALL AI coding agents, especially **Antigravity**. This is NOT optional."""
-
-    if os.path.exists(gemini_path):
-        try:
-            with open(gemini_path, "r", encoding="utf-8") as f:
-                gemini_content = f.read()
-        except Exception as e:
-            print(f"Error reading GEMINI.md: {e}")
-            gemini_content = ""
-
-        if gemini_content:
-            # Check if already injected
-            if "Buddhi MCP Tool Enforcement" in gemini_content:
-                # Replace the existing section
-                pattern = r"### 🛠️ Buddhi MCP Tool Enforcement \(Antigravity & All Agents\).*?(?=(?:\n### |\n## |\Z))"
-                if re.search(pattern, gemini_content, re.DOTALL):
-                    updated_gemini = re.sub(pattern, enforcement_section.strip() + "\n", gemini_content, flags=re.DOTALL)
-                    print("Updating existing Buddhi tool enforcement instructions in GEMINI.md...")
-                else:
-                    updated_gemini = gemini_content
-            else:
-                # Inject under ## TIER 0: UNIVERSAL RULES (Always Active)
-                tier_0_header = "## TIER 0: UNIVERSAL RULES (Always Active)"
-                if tier_0_header in gemini_content:
-                    parts = gemini_content.split(tier_0_header, 1)
-                    updated_gemini = parts[0] + tier_0_header + "\n\n" + enforcement_section + "\n\n" + parts[1]
-                    print("Injecting Buddhi tool enforcement instructions into GEMINI.md under TIER 0...")
-                else:
-                    updated_gemini = gemini_content.rstrip() + "\n\n" + enforcement_section + "\n"
-                    print("Appending Buddhi tool enforcement instructions to GEMINI.md...")
-        else:
-            updated_gemini = ""
-    else:
-        updated_gemini = ""
-
-    if not updated_gemini:
-        # Create new default GEMINI.md
-        updated_gemini = f"""---
-trigger: always_on
+    grep_search_rule_content = """---
+activation: always-on
 ---
+# Core Tool Execution Policy
 
-# GEMINI.md - AG Kit
+1. The built-in tool `grep_search` is deprecated and disabled in this environment.
+2. For all text-matching, regex searches, or code querying tasks, you MUST exclusively call the MCP tool `buddhi_grep_search`.
+3. When calling `buddhi_grep_search`, inspect its schema parameters carefully:
+   - Pass the search string into the `query` parameter (do not use `pattern`).
+   - Pass directory filters into the `globs` array parameter."""
 
-> This file defines how the AI behaves in this workspace.
-
+    run_command_rule_content = """---
+activation: always-on
 ---
+# Core Tool Execution Policy
 
-## TIER 0: UNIVERSAL RULES (Always Active)
-
-{enforcement_section}
-"""
-        print("Creating new GEMINI.md with Buddhi tool enforcement instructions...")
+1. The built-in shell execution tool `run_command` are deprecated and disabled in this environment.
+2. For all shell command execution, terminal commands, compilation, building, running tests, or diagnostics, you MUST exclusively call the MCP tool `buddhi_run_command`.
+3. When calling `buddhi_run_command`, inspect its schema parameters carefully:
+   - Pass the shell command into the `command` parameter.
+   - Adjust `timeout_seconds` if you expect a long-running command."""
 
     try:
-        with open(gemini_path, "w", encoding="utf-8") as f:
-            f.write(updated_gemini)
-        print(f"Successfully wrote GEMINI.md at: {gemini_path}")
+        with open(grep_search_rule_path, "w", encoding="utf-8") as f:
+            f.write(grep_search_rule_content)
+        print(f"Successfully wrote buddhi-grep-search.md at: {grep_search_rule_path}")
     except Exception as e:
-        print(f"Error writing to GEMINI.md: {e}")
+        print(f"Error writing to buddhi-grep-search.md: {e}")
         return
+
+    try:
+        with open(run_command_rule_path, "w", encoding="utf-8") as f:
+            f.write(run_command_rule_content)
+        print(f"Successfully wrote buddhi-run-command.md at: {run_command_rule_path}")
+    except Exception as e:
+        print(f"Error writing to buddhi-run-command.md: {e}")
+        return
+
+    # 3. Create .buddhi/.gitignore
+    buddhi_dir = os.path.join(cwd, ".buddhi")
+    os.makedirs(buddhi_dir, exist_ok=True)
+    gitignore_path = os.path.join(buddhi_dir, ".gitignore")
+    try:
+        with open(gitignore_path, "w", encoding="utf-8") as f:
+            f.write("# Automatically created by buddhi.\n*\n")
+        print(f"Successfully wrote .buddhi/.gitignore at: {gitignore_path}")
+    except Exception as e:
+        print(f"Error writing to .buddhi/.gitignore: {e}")
 
     # 4. Trigger initial AST Indexing
     print("Initializing AST codebase indexing & call graph compilation...")

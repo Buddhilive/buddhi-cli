@@ -1,4 +1,4 @@
-# Buddhi AI
+# Buddhi AI CLI
 
 <p align="center">
 <a href="https://pypi.org/project/buddhi-ai/">
@@ -8,13 +8,13 @@
     <img src="https://img.shields.io/pypi/dm/buddhi-ai?style=flat-square" alt="PyPI Downloads" />
   </a>
   <a href="LICENSE">
-    <img src="https://img.shields.io/github/license/Buddhilive/buddhi-ai?style=flat-square" alt="License" />
+    <img src="https://img.shields.io/github/license/Buddhilive/buddhi-cli?style=flat-square" alt="License" />
   </a>
   <img src="https://img.shields.io/badge/MCP-Compatible-green?style=flat-square" alt="MCP Compatible" />
 </p>
 
 <p align="center">
-   <img src="https://raw.githubusercontent.com/Buddhilive/buddhi-ai/refs/heads/main/public/icons/icon-128x128.png" alt="BuddhiAI Logo" />
+   <img src="https://raw.githubusercontent.com/Buddhilive/buddhi-cli/refs/heads/main/public/icons/icon-128x128.png" alt="BuddhiAI Logo" />
 </p>
 
 Buddhi AI is a local AI inference server, interactive web interface, and Model Context Protocol (MCP) server designed to supercharge developer workspaces.
@@ -64,7 +64,7 @@ buddhi init
 ```
 
 This command will:
-- Add dynamic agent workspace instruction block to `AGENTS.md`.
+- Add separate, dynamic agent workspace rule files inside `.agent/rules/`.
 - Create or update `.agent/mcp_config.json` registering `buddhi-mcp`.
 - Re-index your codebase AST structures and call graph automatically into SQLite.
 
@@ -89,7 +89,7 @@ Buddhi provides a CLI command suite:
 | Command | Description |
 |---------|-------------|
 | `buddhi setup` | Downloads the local edge inference model. |
-| `buddhi init` | Configures `AGENTS.md` and `.agent/mcp_config.json` and indexes the codebase. |
+| `buddhi init` | Configures `.agent/rules/` rule files, `.agent/mcp_config.json`, and indexes the codebase. |
 | `buddhi update` | Explicitly scans the workspace and updates the CodeGraph database. |
 | `buddhi live` | Launches the FastAPI server and Streamlit chat UI concurrently. |
 | `buddhi server` | Launches the FastAPI backend server only (no Streamlit UI). |
@@ -125,9 +125,13 @@ The `buddhi mcp` server exposes highly optimized tools that save context tokens 
    - Re-builds/syncs the SQLite symbol and call dependency database.
    - *Use case:* Run at startup or after major edits to ensure symbol synchronization.
 
-7. **`execute_command_optimized`**
+7. **`buddhi_run_command`**
    - Executes local terminal commands and utilizes local Gemma models to summarize and format stdout/stderr into token-saving JSON.
    - *Use case:* Compile, build, and test execution analysis.
+
+8. **`buddhi_grep_search`**
+   - Performs a token-efficient, regex-based text search over files in the workspace with AST tag enrichment.
+   - *Use case:* Search for arbitrary strings or constants with AST boundaries tagged.
 
 ---
 

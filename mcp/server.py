@@ -544,7 +544,7 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
 # ==========================================
 
 @mcp.tool()
-def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
+def buddhi_run_command(command: str, timeout_seconds: int = 120) -> str:
     """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
     using local Gemma 4 edge inference to identify key successes or failures,
     and returns a compact, token-saving structured JSON summary.
@@ -565,14 +565,13 @@ def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
         raise e
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
-        log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
+        log_tool_trigger("buddhi_run_command", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
 
 
 @mcp.tool()
-def search_code(
-    pattern: str,
-    path: str | None = None,
-    ext: str | None = None,
+def buddhi_grep_search(
+    query: str,
+    globs: list[str] | None = None,
     max_results: int = 50,
     ignore_gitignore: bool = False
 ) -> str:
@@ -584,8 +583,23 @@ def search_code(
     """
     start_time = time.time()
     status = "success"
+    path = None
+    ext = None
+    if globs:
+        for g in globs:
+            if g.startswith("*."):
+                ext = g[2:]
+            elif g.endswith("/") or "/" in g:
+                path = g
+            else:
+                if "." in g and not g.startswith("."):
+                    _, ext_candidate = os.path.splitext(g)
+                    if ext_candidate:
+                        ext = ext_candidate.lstrip(".")
+                else:
+                    path = g
     try:
-        res = handle_search(pattern, path, ext, max_results, ignore_gitignore)
+        res = handle_search(query, path, ext, max_results, ignore_gitignore)
         if res.startswith("ERROR:"):
             status = "error"
         return res
@@ -595,10 +609,9 @@ def search_code(
         raise e
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
-        log_tool_trigger("search_code", status, duration_ms, {
-            "pattern": pattern,
-            "path": path,
-            "ext": ext,
+        log_tool_trigger("buddhi_grep_search", status, duration_ms, {
+            "query": query,
+            "globs": globs,
             "max_results": max_results,
             "ignore_gitignore": ignore_gitignore
         })
