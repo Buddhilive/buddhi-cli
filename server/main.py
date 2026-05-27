@@ -1,0 +1,70 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+
+
+from server.api.routes import responses
+from server.core.exceptions import OpenAIAPIError, openai_error_handler, validation_error_handler, global_exception_handler
+from server.services.inference import inference_service
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for application startup and shutdown events.
+    """
+    # Startup
+    inference_service.initialize_engine()
+    yield
+    # Shutdown
+    # Additional cleanup if needed
+    pass
+
+app = FastAPI(
+    title="Buddhi AI Inference Server",
+    description="An OpenAI Responses API compatible endpoint powered by LiteRT-LM edge inference.",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+# CORS middleware for standard setups
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register Exception Handlers
+app.add_exception_handler(OpenAIAPIError, openai_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(Exception, global_exception_handler)
+
+# Include API Routers
+app.include_router(responses.router, prefix="/v1", tags=["Responses"])
+
+@app.get("/health", tags=["System"])
+def health_check():
+    """
+    Simple health check endpoint.
+    """
+    return {"status": "ok"}
+
+@app.get("/", tags=["System"])
+def serve_api_landing():
+    """
+    Descriptive landing response for the Buddhi AI Inference Server.
+    """
+    return {
+        "status": "online",
+        "service": "Buddhi AI Inference Server",
+        "description": "An OpenAI Responses API compatible endpoint powered by LiteRT-LM edge inference.",
+        "version": "2.0.0",
+        "endpoints": {
+            "health": "/health",
+            "responses": "/v1/responses"
+        },
+        "instructions": "The local browser interface runs on Streamlit. Access it via the 'buddhi live' command."
+    }
+
