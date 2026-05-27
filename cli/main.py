@@ -53,8 +53,9 @@ def load_buddhi_mcp_server():
     mcp_server_path = os.path.join(mcp_dir, "server.py")
 
     # Ensure mcp_dir is in sys.path so that server.py can import db, indexer, parser, graph
+    # Use append instead of insert(0, ...) to prevent shadowing standard library modules (like types)
     if mcp_dir not in sys.path:
-        sys.path.insert(0, mcp_dir)
+        sys.path.append(mcp_dir)
 
     # Unit testing compatibility check:
     # If 'server' is in sys.modules (e.g. injected/mocked by unittest), and has the index_codebase_impl attribute, return it.
