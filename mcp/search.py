@@ -459,7 +459,7 @@ def handle_search(
     # Enrichment mapping: AST Context Tagging on matched lines
     matches = []
     if raw_matches:
-        nodes_by_file = {}
+        nodes_by_file: dict = {}
         
         # Pull symbol boundaries for all matched files in a single batch
         if db is not None:

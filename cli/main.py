@@ -145,6 +145,7 @@ def init_workspace(workspace_root=None):
 
     grep_search_rule_path = os.path.join(rules_dir, "buddhi-grep-search.md")
     run_command_rule_path = os.path.join(rules_dir, "buddhi-run-command.md")
+    view_file_rule_path = os.path.join(rules_dir, "buddhi-view-file.md")
 
     grep_search_rule_content = """---
 activation: always-on
@@ -168,6 +169,18 @@ activation: always-on
    - Pass the shell command into the `command` parameter.
    - Adjust `timeout_seconds` if you expect a long-running command."""
 
+    view_file_rule_content = """---
+activation: always-on
+---
+# Core Tool Execution Policy
+
+1. The built-in tool `view_file` is deprecated and disabled in this environment.
+2. For all file reading, file viewing, and content inspection, you MUST exclusively call the MCP tool `buddhi_view_file`.
+3. When calling `buddhi_view_file`, inspect its schema parameters carefully:
+   - Pass the file path into the `path` parameter.
+   - Pass the query/intent details into the `task` parameter to dynamically optimize token usage.
+   - Specify `mode` (e.g. `auto`, `full`, `signatures`, `map`, `lines:1-100`) as appropriate to save context window tokens."""
+
     try:
         with open(grep_search_rule_path, "w", encoding="utf-8") as f:
             f.write(grep_search_rule_content)
@@ -182,6 +195,14 @@ activation: always-on
         print(f"Successfully wrote buddhi-run-command.md at: {run_command_rule_path}")
     except Exception as e:
         print(f"Error writing to buddhi-run-command.md: {e}")
+        return
+
+    try:
+        with open(view_file_rule_path, "w", encoding="utf-8") as f:
+            f.write(view_file_rule_content)
+        print(f"Successfully wrote buddhi-view-file.md at: {view_file_rule_path}")
+    except Exception as e:
+        print(f"Error writing to buddhi-view-file.md: {e}")
         return
 
     # 3. Create .buddhi/.gitignore
@@ -222,10 +243,10 @@ def start(
     import threading
 
     print(
-        f"\nNote: The Streamlit chat UI requires the Buddhi backend server to be running.",
+        "\nNote: The Streamlit chat UI requires the Buddhi backend server to be running.",
         flush=True,
     )
-    print(f"      Make sure you run 'buddhi server' centrally.", flush=True)
+    print("      Make sure you run 'buddhi server' centrally.", flush=True)
 
     # Build command to run Streamlit in headless mode to bypass interactive prompts (like email registration)
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

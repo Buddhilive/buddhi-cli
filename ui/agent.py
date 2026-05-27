@@ -34,6 +34,10 @@ def run_async_sync(coro):
         raise exception
     return result
 
+# Active User Query context propagated dynamically from the Streamlit session
+ACTIVE_USER_QUERY = ""
+
+
 class MCPDynamicTool(BaseTool):
     """
     Dynamically wraps any MCP tool to be used inside LangGraph / LangChain ReAct agent.
@@ -47,6 +51,11 @@ class MCPDynamicTool(BaseTool):
         Synchronous tool execution. Delegates to the async call_mcp_tool function via run_async_sync.
         """
         try:
+            # Dynamically propagate user query/context as task parameter for buddhi_view_file
+            if self.name == "buddhi_view_file":
+                if "task" not in kwargs or not kwargs["task"]:
+                    kwargs["task"] = ACTIVE_USER_QUERY
+
             result = run_async_sync(call_mcp_tool(self.mcp_config, self.name, kwargs))
             
             # Format and return tool results as clean text
@@ -67,6 +76,11 @@ class MCPDynamicTool(BaseTool):
         Asynchronous tool execution.
         """
         try:
+            # Dynamically propagate user query/context as task parameter for buddhi_view_file
+            if self.name == "buddhi_view_file":
+                if "task" not in kwargs or not kwargs["task"]:
+                    kwargs["task"] = ACTIVE_USER_QUERY
+
             result = await call_mcp_tool(self.mcp_config, self.name, kwargs)
             text_parts = []
             for item in result:

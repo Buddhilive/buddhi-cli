@@ -84,10 +84,10 @@ namespaces = true
 [tool.mypy]
 explicit_package_bases = true
 ignore_missing_imports = true
-exclude = ['^main\.py$', '^tests/', '^server/', '^ui/']
+exclude = ['^main\.py$', '^tests/', '^server/', '^ui/', '^_lean-ctx/']
 
 [tool.ruff]
-exclude = ["server", "ui"]
+exclude = ["server", "ui", "_lean-ctx", "tests"]
 
 [tool.ruff.lint]
-ignore = ["F401", "E741", "E402"]
+ignore = ["F401", "E741", "E402", "F841"]
