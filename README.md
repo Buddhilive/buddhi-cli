@@ -17,16 +17,29 @@
    <img src="https://raw.githubusercontent.com/Buddhilive/buddhi-cli/refs/heads/main/public/icons/icon-128x128.png" alt="BuddhiAI Logo" />
 </p>
 
-Buddhi AI is a local AI inference server, interactive web interface, and Model Context Protocol (MCP) server designed to supercharge developer workspaces.
+Buddhi AI is a state-of-the-art, local-first AI developer workspace tool designed to supercharge engineering productivity. It operates as a local AI inference server, an interactive Streamlit chat interface, and a highly-optimized Model Context Protocol (MCP) server that empowers LLM agents with deep codebase understanding.
 
-The backend is powered by FastAPI and LiteRT-LM, providing an ultra-fast, OpenAI-compatible local API endpoint. The frontend is built with Streamlit. Additionally, Buddhi integrates a highly-optimized MCP server (`CodeGraph`) that compiles your codebase into an AST & call-graph SQLite database for token-saving workspace exploration and command execution.
+By compiling a repository's abstract syntax trees (AST) and dynamic call dependencies into an optimized relational SQLite database (`CodeGraph`), Buddhi AI bridges the gap between local code environments and advanced AI assistants—slashing context token overhead by up to **6.8x–49x** while maintaining complete developmental context.
 
-## Tech Stack
+---
 
-- **Backend:** Python, FastAPI, LiteRT-LM, Uvicorn
-- **Frontend:** Streamlit
-- **Code Graph & MCP:** SQLite, FastMCP (StdIO transport)
-- **Package Management:** `uv` (Python)
+## 🌟 Key Features
+
+* **⚡ Ultra-Fast Local Edge Inference:** Powered by Google's `LiteRT-LM` and FastAPI, running optimized models like Gemma-4 locally. Includes pre-compilation support via `XNNPack` to achieve near-zero latency.
+* **📂 Relational CodeGraph Database:** Automatically parses classes, methods, functions, and modules, establishing a clean AST relationship database.
+* **🔍 Semantic & Token-Saving Search:** Performs hybrid regex and relational searches (`buddhi_grep_search`) using Greek symbol mapping to eliminate redundant identifier tokens in LLM context windows.
+* **🛡️ Smart Token Guardrails:** Automatically blocks massive files and implementations from blowing out your LLM context window, returning smart interfaces, docstrings, and sub-method signatures instead.
+* **🚀 OS-Specific Shell Command Execution:** Runs builds, tests, and linters (`buddhi_run_command`), dynamically injecting local env variables/PATH boundaries (`.venv`, `node_modules/.bin`, Rust bins) and returning distilled JSON summaries using edge LLM reasoning.
+* **📊 Quantitative Benchmarking:** Built-in `buddhi benchmark` suite calculates exact workspace token counts and verifies simulation savings directly in the CLI.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Backend & Inference API:** Python 3.10+, FastAPI, LiteRT-LM, Uvicorn (OpenAI-compatible endpoints)
+* **Frontend Web App:** Streamlit (vibrant, micro-animated developer dashboard)
+* **Code Graph & MCP Infrastructure:** SQLite (FTS5 search enabled), FastMCP (StdIO transport)
+* **Package & Env Management:** `uv` (for lightning-fast Python dependency syncing)
 
 ## Prerequisites
 
@@ -94,6 +107,7 @@ Buddhi provides a CLI command suite:
 | `buddhi live` | Launches the FastAPI server and Streamlit chat UI concurrently. |
 | `buddhi server` | Launches the FastAPI backend server only (no Streamlit UI). |
 | `buddhi mcp` | Starts the FastMCP server over StdIO transport. |
+| `buddhi benchmark` | Runs the quantitative token savings benchmark suite on the current codebase. |
 
 ---
 
@@ -132,6 +146,10 @@ The `buddhi mcp` server exposes highly optimized tools that save context tokens 
 8. **`buddhi_grep_search`**
    - Performs a token-efficient, regex-based text search over files in the workspace with AST tag enrichment.
    - *Use case:* Search for arbitrary strings or constants with AST boundaries tagged.
+
+9. **`buddhi_view_file`**
+   - Reads and views workspace file contents with adaptive, token-saving compression modes (e.g. `'full'`, `'signatures'`, `'map'`, `'lines:N-M'`, `'aggressive'`, `'entropy'`, `'task'`, `'reference'`, `'auto'`).
+   - *Use case:* View code/config files with extreme token savings by automatically generating compressed, context-rich summaries.
 
 ---
 
