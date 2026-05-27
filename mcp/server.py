@@ -545,11 +545,28 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
 
 @mcp.tool()
 def buddhi_run_command(command: str, timeout_seconds: int = 120) -> str:
-    """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
-    using local Gemma 4 edge inference to identify key successes or failures,
-    and returns a compact, token-saving structured JSON summary.
+    """Executes a shell command (bash on Unix or powershell on Windows) locally in the workspace.
     
-    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'run_command' or terminal execution tools. This is NOT optional.
+    This is a token-efficient, secure shell runner that automatically prepends local SDK/bin paths 
+    (such as python venv, node_modules/.bin, rust debug/release bins, and workspace bin directories) 
+    to the execution environment PATH.
+    
+    Automated Compression & Edge Summarization:
+    - Large command outputs (>64k characters) are softly compressed to avoid LLM context bloat, 
+      retaining the start, end, and up to 20 critical error/warning lines from the middle.
+    - Captures stdout/stderr and utilizes central edge inference models to automatically distill 
+      results into a structured JSON payload with keys: `status`, `summary`, `critical_findings`, and `exit_code`.
+    - Features a default 120-second timeout guardrail to prevent hanging processes.
+    
+    CRITICAL USAGE RULES:
+    1. ALWAYS use this tool INSTEAD OF native `run_command` or arbitrary terminal execution. This is NOT optional.
+    2. Do NOT use shell write redirections (e.g. `>` or `>>` or `| tee`) to write or modify file contents; 
+       always use dedicated file write/edit tools. This prevents protocol corruption and data loss.
+    3. Designed specifically for passive readout commands such as:
+       - Running project test suites (e.g., `pytest`, `npm test`, `cargo test`).
+       - Running project linters, typecheckers, and compilers (e.g., `ruff`, `tsc`, `cargo build`).
+       - Inspecting git state and history (e.g., `git status`, `git diff`).
+       - Installing or upgrading dependencies (e.g., `pip install`, `npm install`, `uv sync`).
     """
     start_time = time.time()
     status = "success"
@@ -575,11 +592,35 @@ def buddhi_grep_search(
     max_results: int = 50,
     ignore_gitignore: bool = False
 ) -> str:
-    """Performs a token-efficient, regex-based text search over files in the workspace.
+    """Performs a highly optimized, hybrid textual and semantic symbol search over the workspace files.
     
-    Returns compact, compressed matches to save LLM context tokens.
-    Use this to search for arbitrary text strings, literal constants, or pattern matches inside files
-    when symbol-based queries via 'find_relevant_symbols' are too narrow.
+    This tool combines regex-based file scanning with AST CodeGraph symbol analysis to return extremely 
+    compressed, context-enriched results, reducing context token overhead by 6.8x-49x compared to standard grep.
+    
+    Advanced Search Engineering:
+    - Hybrid Context Enrichment: Automatically queries the CodeGraph database for definitions matching 
+      the search term, injecting class method signatures, docstrings, and structures alongside raw textual matches.
+    - AST Line Tagging: Matches are enriched with AST scope tags (e.g., `[inside function my_func]`) 
+      indicating which symbol context the matching line belongs to.
+    - Security and Exclusion Policies: Automatically respects workspace `.gitignore` rules (unless `ignore_gitignore=True`) 
+      and skips binary, minified/generated files, and secret-like files (e.g., `.env`, keys, certificates, credentials) 
+      to protect the context from noise and prevent credential exposure.
+    - Greek Symbol Mapping: Replaces recurring long identifiers (e.g., `validateUserToken`) with short 
+      Greek character markers (e.g., `α1`) and appends a mapping legend at the end, saving massive LLM tokens.
+    - Monorepo Scope Hints: Provides smart suggestions when results span multiple sub-directories, advising how 
+      to narrow search scopes.
+    
+    Parameters:
+    - query: A regex pattern to search for in files and code symbols.
+    - globs: A list of filters to scope the search. Each term is intelligently mapped:
+      - If it starts with `*.`, it is treated as a file extension filter (e.g., `*.py` to only search Python files).
+      - If it ends with `/` or contains `/`, it scopes the search to that sub-directory (e.g., `mcp/` or `cli/`).
+      - If it contains a dot, it extracts the file extension candidate (e.g., `main.rs` -> extension filter `rs`).
+      - Otherwise, it is treated as a search directory scope.
+    - max_results: Maximum number of search occurrences to return (default: 50).
+    - ignore_gitignore: Set to True to bypass `.gitignore` filters (requires administrative policy).
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF native `grep_search` or `rg` for textual workspace searches.
     """
     start_time = time.time()
     status = "success"
