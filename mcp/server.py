@@ -6,6 +6,7 @@ import time
 from mcp.server.fastmcp import FastMCP
 from db import CodeGraphDB, get_db_path, get_workspace_root
 from indexer import CodeIndexer
+from search import handle_search
 
 # Initialize FastMCP Server
 mcp = FastMCP("CodeGraph")
@@ -565,6 +566,42 @@ def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
         log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
+
+
+@mcp.tool()
+def search_code(
+    pattern: str,
+    path: str = None,
+    ext: str = None,
+    max_results: int = 50,
+    ignore_gitignore: bool = False
+) -> str:
+    """Performs a token-efficient, regex-based text search over files in the workspace.
+    
+    Returns compact, compressed matches to save LLM context tokens.
+    Use this to search for arbitrary text strings, literal constants, or pattern matches inside files
+    when symbol-based queries via 'find_relevant_symbols' are too narrow.
+    """
+    start_time = time.time()
+    status = "success"
+    try:
+        res = handle_search(pattern, path, ext, max_results, ignore_gitignore)
+        if res.startswith("ERROR:"):
+            status = "error"
+        return res
+    except Exception as e:
+        status = "error"
+        res = f"Exception occurred: {e}"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("search_code", status, duration_ms, {
+            "pattern": pattern,
+            "path": path,
+            "ext": ext,
+            "max_results": max_results,
+            "ignore_gitignore": ignore_gitignore
+        })
 
 
 @mcp.tool()
