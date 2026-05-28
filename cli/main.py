@@ -44,6 +44,55 @@ def setup_model():
         )
 
 
+def setup_global_mcp():
+    """Configures the Buddhi MCP server globally for IDEs like Antigravity."""
+    import os
+    import json
+    import re
+
+    buddhi_config = {
+        "command": "buddhi",
+        "args": ["mcp"]
+    }
+
+    def update_config_file(config_path):
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    raw_data = f.read()
+                    clean_raw = re.sub(r"//.*", "", raw_data)
+                    data = json.loads(clean_raw)
+            except Exception as e:
+                print(f"Error parsing existing config {config_path}: {e}. Reinitializing config...")
+                data = {"mcpServers": {}}
+
+            if "mcpServers" not in data:
+                data["mcpServers"] = {}
+
+            data["mcpServers"]["buddhi-mcp"] = buddhi_config
+            print(f"Updating existing {config_path}...")
+        else:
+            data = {"mcpServers": {"buddhi-mcp": buddhi_config}}
+            print(f"Creating new {config_path}...")
+
+        try:
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            print(f"Successfully configured global MCP at: {config_path}")
+        except Exception as e:
+            print(f"Error writing to {config_path}: {e}")
+
+    # Global Configs
+    home_dir = os.path.expanduser("~")
+    for ide in ["antigravity", "antigravity-cli"]:
+        global_mcp_path = os.path.join(home_dir, ".gemini", ide, "mcp_config.json")
+        # Ensure the base IDE directory exists before trying to configure it
+        ide_dir = os.path.join(home_dir, ".gemini", ide)
+        if os.path.exists(ide_dir) or ide == "antigravity":
+            update_config_file(global_mcp_path)
+
+
 def load_buddhi_mcp_server():
     """Loads the local buddhi-ai mcp/server.py module using importlib to prevent naming collisions with the official mcp library."""
     import importlib.util
@@ -81,65 +130,13 @@ def load_buddhi_mcp_server():
 
 
 def init_workspace(workspace_root=None):
-    """Initializes the current workspace by writing .agent/mcp_config.json, separate tool rule files, and indexing the codebase."""
+    """Initializes the current workspace by writing separate tool rule files and indexing the codebase."""
     if workspace_root:
         cwd = os.path.abspath(workspace_root)
     else:
         cwd = os.getcwd()
 
-    import re
-    import json
-    import shutil
-
-    # 1. Update/Create mcp_config.json (Local and Global)
-    buddhi_cmd = shutil.which("buddhi") or "buddhi"
-    buddhi_config = {
-        "command": buddhi_cmd,
-        "args": ["mcp"]
-    }
-
-    def update_config_file(config_path):
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, "r", encoding="utf-8") as f:
-                    raw_data = f.read()
-                    clean_raw = re.sub(r"//.*", "", raw_data)
-                    data = json.loads(clean_raw)
-            except Exception as e:
-                print(f"Error parsing existing config {config_path}: {e}. Reinitializing config...")
-                data = {"mcpServers": {}}
-
-            if "mcpServers" not in data:
-                data["mcpServers"] = {}
-
-            data["mcpServers"]["buddhi-mcp"] = buddhi_config
-            print(f"Updating existing {config_path}...")
-        else:
-            data = {"mcpServers": {"buddhi-mcp": buddhi_config}}
-            print(f"Creating new {config_path}...")
-
-        try:
-            os.makedirs(os.path.dirname(config_path), exist_ok=True)
-            with open(config_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4)
-            print(f"Successfully wrote MCP config at: {config_path}")
-        except Exception as e:
-            print(f"Error writing to {config_path}: {e}")
-
-    # Local Config
-    local_mcp_path = os.path.join(cwd, ".agent", "mcp_config.json")
-    update_config_file(local_mcp_path)
-
-    # Global Configs
-    home_dir = os.path.expanduser("~")
-    for ide in ["antigravity", "antigravity-cli"]:
-        global_mcp_path = os.path.join(home_dir, ".gemini", ide, "mcp_config.json")
-        # Ensure the base IDE directory exists before trying to configure it
-        ide_dir = os.path.join(home_dir, ".gemini", ide)
-        if os.path.exists(ide_dir) or ide == "antigravity":
-            update_config_file(global_mcp_path)
-
-    # 2. Create separate tool rule files inside .agent/rules/
+    # 1. Create separate tool rule files inside .agent/rules/
     rules_dir = os.path.join(cwd, ".agent", "rules")
     os.makedirs(rules_dir, exist_ok=True)
 
@@ -205,7 +202,7 @@ activation: always-on
         print(f"Error writing to buddhi-view-file.md: {e}")
         return
 
-    # 3. Create .buddhi/.gitignore
+    # 2. Create .buddhi/.gitignore
     buddhi_dir = os.path.join(cwd, ".buddhi")
     os.makedirs(buddhi_dir, exist_ok=True)
     gitignore_path = os.path.join(buddhi_dir, ".gitignore")
@@ -216,7 +213,7 @@ activation: always-on
     except Exception as e:
         print(f"Error writing to .buddhi/.gitignore: {e}")
 
-    # 4. Trigger initial AST Indexing
+    # 3. Trigger initial AST Indexing
     print("Initializing AST codebase indexing & call graph compilation...")
     try:
         buddhi_mcp_server = load_buddhi_mcp_server()
@@ -333,7 +330,7 @@ def cli():
     # setup subcommand
     subparsers.add_parser(
         "setup",
-        help="Download the required local edge inference model.",
+        help="Download the required local edge inference model and configure global MCP settings.",
     )
 
     # live subcommand — browser-based Streamlit UI
@@ -380,7 +377,7 @@ def cli():
     # init subcommand — Workspace configuration
     init_parser = subparsers.add_parser(
         "init",
-        help="Initialize Buddhi MCP settings and instructions (AGENTS.md and .agent/mcp_config.json) in the current workspace.",
+        help="Initialize Buddhi instructions (AGENTS.md and .agent/rules/) and index the current workspace.",
     )
     init_parser.add_argument(
         "--workspace-root",
@@ -423,6 +420,7 @@ def cli():
 
     if args.command == "setup":
         setup_model()
+        setup_global_mcp()
     elif args.command == "live":
         start(
             backend_host=args.backend_host,
