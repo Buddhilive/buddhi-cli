@@ -93,6 +93,31 @@ def setup_global_mcp():
             update_config_file(global_mcp_path)
 
 
+def setup_antigravity_hooks() -> None:
+    """Installs the Buddhi BeforeTool hook enforcer for Antigravity.
+
+    Writes the enforcer script to ~/.buddhi/hooks/enforcer.py and merges
+    the BeforeTool hook entries into ~/.gemini/settings.json so that
+    native tools (run_command, grep_search, view_file) are intercepted
+    and the LLM is redirected to use their buddhi_* MCP equivalents.
+    """
+    from pathlib import Path
+    from cli.hooks.setup import write_enforcer_script, install_antigravity_hooks
+
+    hooks_dir = Path.home() / ".buddhi" / "hooks"
+    try:
+        enforcer_path = write_enforcer_script(hooks_dir)
+        print(f"Buddhi hook enforcer written to: {enforcer_path}")
+    except Exception as exc:
+        print(f"Error writing hook enforcer script: {exc}")
+        return
+
+    try:
+        install_antigravity_hooks(enforcer_path)
+    except Exception as exc:
+        print(f"Error installing Antigravity hooks: {exc}")
+
+
 def load_buddhi_mcp_server():
     """Loads the local buddhi-ai mcp/server.py module using importlib to prevent naming collisions with the official mcp library."""
     import importlib.util
@@ -421,6 +446,7 @@ def cli():
     if args.command == "setup":
         setup_model()
         setup_global_mcp()
+        setup_antigravity_hooks()
     elif args.command == "live":
         start(
             backend_host=args.backend_host,
