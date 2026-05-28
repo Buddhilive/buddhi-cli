@@ -1150,21 +1150,7 @@ def monitor_parent_and_stdin():
     # Store original parent process name to watch for PID recycling
     original_parent_name = get_process_name(parent_pid)
 
-    # 1. Watch Stdin in a separate daemon thread
-    def watch_stdin():
-        try:
-            # sys.stdin.read(1) blocks until there is input or EOF
-            char = sys.stdin.read(1)
-            if char == "":
-                # EOF reached: Stdin closed. Exit.
-                sys.exit(0)
-        except Exception:
-            sys.exit(0)
-
-    stdin_thread = threading.Thread(target=watch_stdin, daemon=True)
-    stdin_thread.start()
-
-    # 2. Watch Parent Process in main loop
+    # Watch Parent Process in main loop
     while True:
         time.sleep(5)
         try:

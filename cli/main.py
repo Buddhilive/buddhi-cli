@@ -87,58 +87,57 @@ def init_workspace(workspace_root=None):
     else:
         cwd = os.getcwd()
 
-    # 1. Update/Create .agent/mcp_config.json
-    agent_dir = os.path.join(cwd, ".agent")
-    mcp_path = os.path.join(agent_dir, "mcp_config.json")
-
-    os.makedirs(agent_dir, exist_ok=True)
-
-    mcp_config_data = {
-        "mcpServers": {
-            "buddhi-mcp": {
-                "command": "buddhi",
-                "args": ["mcp"],
-                "env": {"BUDDHI_WORKSPACE_ROOT": cwd},
-            }
-        }
-    }
-
     import re
     import json
+    import shutil
 
-    if os.path.exists(mcp_path):
+    # 1. Update/Create mcp_config.json (Local and Global)
+    buddhi_cmd = shutil.which("buddhi") or "buddhi"
+    buddhi_config = {
+        "command": buddhi_cmd,
+        "args": ["mcp"]
+    }
+
+    def update_config_file(config_path):
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    raw_data = f.read()
+                    clean_raw = re.sub(r"//.*", "", raw_data)
+                    data = json.loads(clean_raw)
+            except Exception as e:
+                print(f"Error parsing existing config {config_path}: {e}. Reinitializing config...")
+                data = {"mcpServers": {}}
+
+            if "mcpServers" not in data:
+                data["mcpServers"] = {}
+
+            data["mcpServers"]["buddhi-mcp"] = buddhi_config
+            print(f"Updating existing {config_path}...")
+        else:
+            data = {"mcpServers": {"buddhi-mcp": buddhi_config}}
+            print(f"Creating new {config_path}...")
+
         try:
-            with open(mcp_path, "r", encoding="utf-8") as f:
-                raw_data = f.read()
-                clean_raw = re.sub(r"//.*", "", raw_data)
-                data = json.loads(clean_raw)
+            os.makedirs(os.path.dirname(config_path), exist_ok=True)
+            with open(config_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4)
+            print(f"Successfully wrote MCP config at: {config_path}")
         except Exception as e:
-            print(
-                f"Error parsing existing mcp_config.json: {e}. Reinitializing config..."
-            )
-            data = {"mcpServers": {}}
+            print(f"Error writing to {config_path}: {e}")
 
-        if "mcpServers" not in data:
-            data["mcpServers"] = {}
+    # Local Config
+    local_mcp_path = os.path.join(cwd, ".agent", "mcp_config.json")
+    update_config_file(local_mcp_path)
 
-        # Update/insert buddhi-mcp server config
-        data["mcpServers"]["buddhi-mcp"] = {
-            "command": "buddhi",
-            "args": ["mcp"],
-            "env": {"BUDDHI_WORKSPACE_ROOT": cwd},
-        }
-        print("Updating existing .agent/mcp_config.json...")
-    else:
-        data = mcp_config_data
-        print("Creating new .agent/mcp_config.json...")
-
-    try:
-        with open(mcp_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=4)
-        print(f"Successfully wrote .agent/mcp_config.json at: {mcp_path}")
-    except Exception as e:
-        print(f"Error writing to .agent/mcp_config.json: {e}")
-        return
+    # Global Configs
+    home_dir = os.path.expanduser("~")
+    for ide in ["antigravity", "antigravity-cli"]:
+        global_mcp_path = os.path.join(home_dir, ".gemini", ide, "mcp_config.json")
+        # Ensure the base IDE directory exists before trying to configure it
+        ide_dir = os.path.join(home_dir, ".gemini", ide)
+        if os.path.exists(ide_dir) or ide == "antigravity":
+            update_config_file(global_mcp_path)
 
     # 2. Create separate tool rule files inside .agent/rules/
     rules_dir = os.path.join(cwd, ".agent", "rules")
