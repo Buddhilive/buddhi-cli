@@ -77,7 +77,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 shadow: true
             },
             edges: {
-                width: 1,
+                scaling: {
+                    min: 1,
+                    max: 5
+                },
                 color: { color: 'rgba(255,255,255,0.2)', highlight: 'rgba(255,255,255,0.8)' },
                 smooth: { type: 'continuous' }
             },
@@ -181,7 +184,7 @@ def generate_graph_html(db_path: str, output_path: str):
     cur.execute("SELECT id, name, node_type, community_id FROM nodes")
     db_nodes = cur.fetchall()
 
-    cur.execute("SELECT source_id, target_id, relationship_type FROM edges")
+    cur.execute("SELECT source_id, target_id, relationship_type, weight FROM edges")
     db_edges = cur.fetchall()
 
     conn.close()
@@ -217,11 +220,12 @@ def generate_graph_html(db_path: str, output_path: str):
         })
 
     vis_edges = []
-    for source_id, target_id, rel_type in db_edges:
+    for source_id, target_id, rel_type, weight in db_edges:
         vis_edges.append({
             "from": source_id,
             "to": target_id,
-            "title": rel_type
+            "title": rel_type,
+            "value": weight
         })
 
     # Serialize to JSON

@@ -165,3 +165,53 @@ def parse_file(filepath: Path) -> List[Dict]:
     walk_tree(tree.root_node, source_bytes, nodes_list)
 
     return nodes_list
+
+def extract_file_references(filepath: Path) -> Dict[str, List[str]]:
+    """
+    Pass 2: Extract identifiers (function calls, variable usage) and imports
+    from the given file using tree-sitter. Returns a dict with 'identifiers' and 'imports'.
+    """
+    load_languages()
+    ext = filepath.suffix.lower()
+    if ext not in LANGUAGE_MAP:
+        return {"identifiers": [], "imports": []}
+
+    language = LANGUAGE_MAP[ext]
+    parser = Parser(language)
+    
+    with open(filepath, "rb") as f:
+        source_bytes = f.read()
+        
+    tree = parser.parse(source_bytes)
+    
+    identifiers = set()
+    imports = set()
+    
+    def walk_refs(node: Node):
+        nt = node.type.lower()
+        
+        # Very broad heuristic for polyglot identifiers
+        if "identifier" in nt or nt == "name":
+            name = source_bytes[node.start_byte:node.end_byte].decode("utf-8", errors="ignore")
+            # Filter out trivially short or common non-semantic keywords
+            if len(name) > 2 and name not in {"self", "this", "True", "False", "None"}:
+                identifiers.add(name)
+                
+        # Broad heuristic for polyglot imports (import_statement, import_from_statement, etc.)
+        if "import" in nt:
+            # For simplicity, extract all identifiers inside the import statement
+            for child in node.children:
+                if "identifier" in child.type.lower() or child.type == "dotted_name":
+                    imp = source_bytes[child.start_byte:child.end_byte].decode("utf-8", errors="ignore")
+                    if imp and imp != "import" and imp != "from":
+                        imports.add(imp)
+                        
+        for child in node.children:
+            walk_refs(child)
+
+    walk_refs(tree.root_node)
+    
+    return {
+        "identifiers": list(identifiers),
+        "imports": list(imports)
+    }

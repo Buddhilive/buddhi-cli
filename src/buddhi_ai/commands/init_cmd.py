@@ -118,13 +118,100 @@ def handle_init(args: argparse.Namespace) -> None:
 
             conn.commit()
 
-    conn.close()
-
-    print("\nScan Summary (Phase 1):")
+    print("\nScan Summary (Phase 1: Definitions):")
     print(f"  Files scanned: {scanned_count}")
     print(f"  Files skipped (unchanged): {skipped_count}")
     print(f"  Nodes inserted: {inserted_nodes_count}")
     print(f"  Boilerplate nodes filtered: {filtered_nodes_count}")
+    
+    print("\n--- Phase 1: Reference Mapping (Pass 2) ---")
+    from buddhi_ai.parser.tree_sitter import extract_file_references
+    edges_inserted = 0
+    
+    # 1. Clear old edges completely for simplicity (or let cascade handle it, but better safe)
+    cur = conn.cursor()
+    cur.execute("DELETE FROM edges")
+    
+    # 2. Build global symbol registry
+    cur.execute("SELECT id, name, file_id FROM nodes")
+    global_symbols: dict[str, list[tuple[int, int]]] = {}
+    for node_id, name, file_id in cur.fetchall():
+        if not name or name == "anonymous":
+            continue
+        if name not in global_symbols:
+            global_symbols[name] = []
+        global_symbols[name].append((node_id, file_id))
+
+    # 3. Re-iterate files for references
+    cur.execute("SELECT id, path FROM files")
+    files_list = cur.fetchall()
+
+    for file_id, rel_path in files_list:
+        filepath = Path(workspace_root) / rel_path
+        if not filepath.exists():
+            continue
+        
+        refs = extract_file_references(filepath)
+        identifiers = refs["identifiers"]
+        imports = refs["imports"]
+        
+        # Get local nodes to act as edge sources
+        cur.execute("SELECT id FROM nodes WHERE file_id = ?", (file_id,))
+        local_nodes = [r[0] for r in cur.fetchall()]
+        if not local_nodes:
+            continue
+            
+        for ident in identifiers:
+            if ident not in global_symbols:
+                continue
+            
+            targets = global_symbols[ident]
+            
+            # 1. Local-First Matching
+            local_targets = [t for t in targets if t[1] == file_id]
+            if local_targets:
+                for target_id, _ in local_targets:
+                    for source_id in local_nodes:
+                        if source_id != target_id:
+                            cur.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (?, ?, ?, ?)",
+                                      (source_id, target_id, "colocated", 1.0))
+                            edges_inserted += 1
+                continue
+                
+            # 2. File-Import Intersection
+            import_targets = []
+            for target_id, t_file_id in targets:
+                cur.execute("SELECT path FROM files WHERE id = ?", (t_file_id,))
+                t_path = cur.fetchone()[0].replace("\\", "/").replace(".py", "").replace(".ts", "").replace(".js", "")
+                t_path_parts = set(t_path.split("/"))
+                
+                # check intersection
+                if any(imp in t_path_parts or imp in t_path.replace("/", ".") for imp in imports):
+                    import_targets.append(target_id)
+            
+            if import_targets:
+                weight = 1.0 / len(import_targets)
+                for target_id in import_targets:
+                    for source_id in local_nodes:
+                        cur.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (?, ?, ?, ?)",
+                                  (source_id, target_id, "imported", weight))
+                        edges_inserted += 1
+                continue
+                
+            # 3. Multi-Target Penalty
+            weight = 3.0 / len(targets)
+            if weight < 0.1: # Skip generic ubiquitous names
+                continue
+                
+            for target_id, _ in targets:
+                for source_id in local_nodes:
+                    cur.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (?, ?, ?, ?)",
+                              (source_id, target_id, "reference", weight))
+                    edges_inserted += 1
+
+    conn.commit()
+    conn.close()
+    print(f"  Edges inserted: {edges_inserted}")
     
     print("\n--- Phase 2: Topological Graph Clustering ---")
     db_path = os.path.join(workspace_root, ".buddhi", "graph.db")

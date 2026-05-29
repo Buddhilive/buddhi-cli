@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS edges (
     source_id INTEGER NOT NULL,
     target_id INTEGER NOT NULL,
     relationship_type TEXT NOT NULL,
+    weight REAL DEFAULT 1.0,
     FOREIGN KEY(source_id) REFERENCES nodes(id) ON DELETE CASCADE,
     FOREIGN KEY(target_id) REFERENCES nodes(id) ON DELETE CASCADE
 );
