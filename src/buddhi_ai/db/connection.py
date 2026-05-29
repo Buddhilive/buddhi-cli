@@ -28,6 +28,13 @@ def init_db(workspace_root: str) -> sqlite3.Connection:
         schema_sql = f.read()
 
     conn.executescript(schema_sql)
+    
+    # Ensure community_id exists (for backwards compatibility with older db)
+    try:
+        conn.execute("ALTER TABLE nodes ADD COLUMN community_id INTEGER;")
+    except sqlite3.OperationalError:
+        pass
+        
     conn.commit()
 
     return conn

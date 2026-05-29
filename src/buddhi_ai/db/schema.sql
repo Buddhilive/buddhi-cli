@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     start_line INTEGER,
     end_line INTEGER,
     entropy_score REAL,
+    community_id INTEGER,
     FOREIGN KEY(file_id) REFERENCES files(id) ON DELETE CASCADE
 );
 

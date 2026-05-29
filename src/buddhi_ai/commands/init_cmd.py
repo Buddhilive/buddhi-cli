@@ -6,6 +6,9 @@ from pathlib import Path
 from buddhi_ai.db.connection import init_db
 from buddhi_ai.parser.tree_sitter import parse_file, LANGUAGE_MAP, load_languages
 from buddhi_ai.parser.entropy import filter_boilerplate
+from buddhi_ai.graph.builder import load_graph
+from buddhi_ai.graph.clustering import run_leiden
+from buddhi_ai.graph.sync import update_communities
 
 
 def handle_init(args: argparse.Namespace) -> None:
@@ -117,9 +120,27 @@ def handle_init(args: argparse.Namespace) -> None:
 
     conn.close()
 
-    print("\nScan Summary:")
+    print("\nScan Summary (Phase 1):")
     print(f"  Files scanned: {scanned_count}")
     print(f"  Files skipped (unchanged): {skipped_count}")
     print(f"  Nodes inserted: {inserted_nodes_count}")
     print(f"  Boilerplate nodes filtered: {filtered_nodes_count}")
-    print("Done.")
+    
+    print("\n--- Phase 2: Topological Graph Clustering ---")
+    db_path = os.path.join(workspace_root, ".buddhi", "graph.db")
+    print("Loading graph into memory...")
+    g, ig_id_to_db_id = load_graph(db_path)
+    print(f"Graph loaded with {g.vcount()} nodes and {g.ecount()} edges.")
+    
+    if g.vcount() > 0:
+        print("Running Leiden clustering algorithm...")
+        community_mapping = run_leiden(g, ig_id_to_db_id)
+        print(f"Identified {len(set(community_mapping.values()))} communities.")
+        
+        print("Synchronizing communities to database...")
+        update_communities(db_path, community_mapping)
+        print("Database synchronization complete.")
+    else:
+        print("Graph is empty. Skipping clustering.")
+        
+    print("\nDone.")
