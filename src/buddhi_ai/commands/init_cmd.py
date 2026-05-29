@@ -140,7 +140,13 @@ def handle_init(args: argparse.Namespace) -> None:
         print("Synchronizing communities to database...")
         update_communities(db_path, community_mapping)
         print("Database synchronization complete.")
+        
+        print("\n--- Phase 3: Client Visualization ---")
+        from buddhi_ai.graph.visualizer import generate_graph_html
+        html_path = os.path.join(workspace_root, ".buddhi", "graph.html")
+        print("Generating interactive graph visualization...")
+        generate_graph_html(db_path, html_path)
     else:
-        print("Graph is empty. Skipping clustering.")
+        print("Graph is empty. Skipping clustering and visualization.")
         
     print("\nDone.")
