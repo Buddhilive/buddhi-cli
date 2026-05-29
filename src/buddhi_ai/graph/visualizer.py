@@ -604,7 +604,6 @@ def generate_graph_html(db_path: str, output_path: str):
         # Fallback color for unclustered nodes
         color = community_colors.get(community_id, "#888888")
         label = name if name else str(node_type)
-        title = f"Name: {label}<br>Type: {node_type}<br>Community: {community_id}"
         
         # Normalize node_type for UI styling (e.g. class_definition -> class)
         normalized_type = node_type

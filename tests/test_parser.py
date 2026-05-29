@@ -1,5 +1,3 @@
-import pytest
-from pathlib import Path
 from buddhi_ai.parser.tree_sitter import parse_file
 
 def test_parse_file_python(tmp_path):

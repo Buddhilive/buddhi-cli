@@ -49,3 +49,10 @@ CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
   INSERT INTO nodes_fts(nodes_fts, rowid, name, content) VALUES('delete', old.id, old.name, old.content);
   INSERT INTO nodes_fts(rowid, name, content) VALUES (new.id, new.name, new.content);
 END;
+
+CREATE TABLE IF NOT EXISTS file_read_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    filepath TEXT NOT NULL,
+    mode TEXT NOT NULL,
+    timestamp_micro INTEGER NOT NULL
+);

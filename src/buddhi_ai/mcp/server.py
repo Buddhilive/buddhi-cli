@@ -1,8 +1,7 @@
 import argparse
-import os
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -63,6 +62,32 @@ def buddhi_search(
         )
     except Exception as e:
         return f"Error executing search: {str(e)}"
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def buddhi_read(
+    filepath: Annotated[str, "The workspace path to the file to read"],
+    mode: Annotated[str, "Compression profile: 'auto', 'full', 'signatures', 'map', or 'entropy'"] = "auto",
+    task_intent: Annotated[Optional[str], "Natural language goals (e.g. 'Fix the bug') to auto-resolve mode"] = None,
+    budget: Annotated[int, "Max token count budget. Fallbacks to map if exceeded"] = 4000,
+) -> str:
+    """Read a file using dynamic compression, AST pruning, and bounce prevention logic to prevent prompt thrashing."""
+    from buddhi_ai.mcp.tools.read import execute_buddhi_read
+    
+    db_path = _get_db_path()
+    if not db_path.exists():
+        return f"Error: Buddhi database not found at '{db_path}'. Please run `buddhi init` in this directory first."
+        
+    try:
+        return execute_buddhi_read(
+            filepath=filepath,
+            db_path=str(db_path),
+            mode=mode,
+            task_intent=task_intent,
+            budget=budget,
+        )
+    except Exception as e:
+        return f"Error executing read: {str(e)}"
+
 
 def main() -> None:
     """CLI entrypoint for running the MCP server."""
