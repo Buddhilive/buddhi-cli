@@ -89,6 +89,40 @@ def buddhi_read(
         return f"Error executing read: {str(e)}"
 
 
+@mcp.tool()
+def buddhi_shell(
+    command: Annotated[str, "The shell command to execute. Must be non-interactive."],
+    timeout: Annotated[int, "Max seconds to wait before killing the process"] = 60,
+    budget: Annotated[int, "Max token count for the compressed output. 0 = unbounded"] = 8000,
+    raw: Annotated[bool, "Skip compression pipeline and return raw output (up to budget)"] = False,
+    cwd: Annotated[Optional[str], "Working directory override. Defaults to CWD of the MCP server process."] = None,
+) -> str:
+    """Execute a shell command and return compressed, token-efficient output.
+
+    The output passes through a 4-phase pipeline:
+      1. Noise eradication (ANSI, progress bars, garbled UTF-8)
+      2. Domain-specific abstraction (Git, Linter/Compiler, Stack Traces)
+      3. Structural deduplication (Rabin-Karp rolling hash)
+      4. Compact Response Protocol (delta symbols, path aliases, token budget)
+
+    Set ``raw=True`` to bypass compression and receive unmodified output
+    (still hard-capped at *budget* tokens).
+    """
+    from buddhi_ai.mcp.tools.shell import run_command
+    from buddhi_ai.mcp.compression.pipeline import process
+
+    try:
+        raw_output, exit_code = run_command(command, timeout=timeout, cwd=cwd)
+    except RuntimeError as exc:
+        # Interactive command was blocked
+        return str(exc)
+
+    # Prepend exit-code header so the LLM always knows the result
+    header = f"[exit:{exit_code}] $ {command}\n"
+    compressed = process(raw_output, budget=budget, raw_mode=raw)
+    return header + compressed
+
+
 def main() -> None:
     """CLI entrypoint for running the MCP server."""
     parser = argparse.ArgumentParser(description="Buddhi MCP Server (StdIO)")
