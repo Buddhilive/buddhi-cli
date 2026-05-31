@@ -122,52 +122,56 @@ def _compress(raw_output: str, budget: int = 8000) -> str:
 
 def main() -> None:
     """Entrypoint for the shell_proxy hook script."""
-    raw = sys.stdin.read()
-    if not raw.strip():
-        json.dump({"decision": "allow"}, sys.stdout)
-        return
-
     try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        json.dump({"decision": "allow"}, sys.stdout)
-        return
+        raw = sys.stdin.read()
+        if not raw.strip():
+            json.dump({"decision": "allow"}, sys.stdout)
+            return
 
-    tool_call = payload.get("toolCall", {})
-    tool_name = tool_call.get("name", "")
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            json.dump({"decision": "allow"}, sys.stdout)
+            return
 
-    if tool_name != "run_command":
-        json.dump({"decision": "allow"}, sys.stdout)
-        return
+        tool_call = payload.get("toolCall", {})
+        tool_name = tool_call.get("name", "")
 
-    args = tool_call.get("args", {})
-    command_line = args.get("CommandLine", "")
-    cwd = args.get("Cwd")
-    timeout = args.get("WaitMsBeforeAsync", 120000) // 1000  # Convert ms → s
-    timeout = min(max(timeout, 5), 300)  # Clamp to 5-300s
+        if tool_name != "run_command":
+            json.dump({"decision": "allow"}, sys.stdout)
+            return
 
-    if not command_line:
+        args = tool_call.get("args", {})
+        command_line = args.get("CommandLine", "")
+        cwd = args.get("Cwd")
+        timeout = args.get("WaitMsBeforeAsync", 120000) // 1000  # Convert ms → s
+        timeout = min(max(timeout, 5), 300)  # Clamp to 5-300s
+
+        if not command_line:
+            json.dump(
+                {"decision": "deny", "reason": "[buddhi_shell: Empty command line]"},
+                sys.stdout,
+            )
+            return
+
+        # Execute and compress
+        raw_output, exit_code = _run_sandboxed(command_line, cwd=cwd, timeout=timeout)
+        header = f"[exit:{exit_code}] $ {command_line}"
+        compressed = _compress(raw_output)
+
         json.dump(
-            {"decision": "deny", "reason": "[buddhi_shell: Empty command line]"},
+            {
+                "decision": "deny",
+                "reason": (
+                    f"Command executed via buddhi_shell pipeline.\n\n"
+                    f"{header}\n{compressed}"
+                ),
+            },
             sys.stdout,
         )
-        return
-
-    # Execute and compress
-    raw_output, exit_code = _run_sandboxed(command_line, cwd=cwd, timeout=timeout)
-    header = f"[exit:{exit_code}] $ {command_line}"
-    compressed = _compress(raw_output)
-
-    json.dump(
-        {
-            "decision": "deny",
-            "reason": (
-                f"Command executed via buddhi_shell pipeline.\n\n"
-                f"{header}\n{compressed}"
-            ),
-        },
-        sys.stdout,
-    )
+    except Exception:
+        # Fallback gracefully
+        json.dump({"decision": "allow"}, sys.stdout)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 import argparse
 import json
 import os
+import shutil
+import sys
 import time
 from pathlib import Path
 
@@ -34,45 +36,60 @@ _MCP_CONFIG_JSON: dict = {
     }
 }
 
-_HOOKS_JSON: dict = {
-    "io-gating-rules": {
-        "enabled": True,
-        "PreToolUse": [
-            {
-                "matcher": "view_file|grep_search|find_by_name|read_file",
-                "hooks": [
-                    {
-                        "command": "python -m buddhi_ai.hooks.gate_io",
-                        "timeout": 5,
-                    }
-                ],
-            }
-        ],
-    },
-    "shell-proxy-rules": {
-        "enabled": True,
-        "PreToolUse": [
-            {
-                "matcher": "run_command",
-                "hooks": [
-                    {
-                        "command": "python -m buddhi_ai.hooks.shell_proxy",
-                        "timeout": 120,
-                    }
-                ],
-            }
-        ],
-    },
-    "trajectory-injection-rules": {
-        "enabled": True,
-        "PreInvocation": [
-            {
-                "command": "python -m buddhi_ai.hooks.pre_invoke",
-                "timeout": 5,
-            }
-        ],
-    },
-}
+def _assert_buddhi_on_path() -> None:
+    """Verify the buddhi CLI binary is on PATH before writing hooks.json."""
+    if shutil.which("buddhi") is None:
+        raise RuntimeError(
+            "[buddhi] ERROR: 'buddhi' command not found on PATH.\n"
+            "Hooks were NOT written.\n"
+            "Fix: activate your virtual environment or run `pip install -e .` "
+            "then re-run `buddhi init`."
+        )
+
+def _get_hooks_json() -> dict:
+    """Generate dynamic hooks.json configuration routing commands through the
+    buddhi CLI.
+    """
+    _assert_buddhi_on_path()
+    return {
+        "io-gating-rules": {
+            "enabled": True,
+            "PreToolUse": [
+                {
+                    "matcher": "view_file|grep_search|find_by_name|read_file",
+                    "hooks": [
+                        {
+                            "command": "buddhi hook gate-io",
+                            "timeout": 5,
+                        }
+                    ],
+                }
+            ],
+        },
+        "shell-proxy-rules": {
+            "enabled": True,
+            "PreToolUse": [
+                {
+                    "matcher": "run_command",
+                    "hooks": [
+                        {
+                            "command": "buddhi hook shell-proxy",
+                            "timeout": 120,
+                        }
+                    ],
+                }
+            ],
+        },
+        "trajectory-injection-rules": {
+            "enabled": True,
+            "PreInvocation": [
+                {
+                    "command": "buddhi hook pre-invoke",
+                    "timeout": 5,
+                }
+            ],
+        },
+    }
 
 
 def _scaffold_workspace_plugin(workspace_root: str) -> None:
@@ -97,7 +114,7 @@ def _scaffold_workspace_plugin(workspace_root: str) -> None:
     files: dict[str, dict] = {
         "plugin.json": _PLUGIN_JSON,
         "mcp_config.json": _MCP_CONFIG_JSON,
-        "hooks.json": _HOOKS_JSON,
+        "hooks.json": _get_hooks_json(),
     }
 
     for filename, content in files.items():

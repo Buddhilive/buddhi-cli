@@ -23,10 +23,25 @@ def main() -> None:
         help="Shannon entropy threshold for filtering boilerplate lines (default: 3.0)",
     )
 
+    hook_parser = subparsers.add_parser("hook", help="Run a named hook handler (used by hooks.json)")
+    hook_parser.add_argument(
+        "name",
+        choices=["gate-io", "shell-proxy", "pre-invoke"],
+        help="Which hook to run",
+    )
+
     args = parser.parse_args()
 
     if args.command == "init":
         handle_init(args)
+    elif args.command == "hook":
+        if args.name == "gate-io":
+            from buddhi_ai.hooks.gate_io import main as hook_main
+        elif args.name == "shell-proxy":
+            from buddhi_ai.hooks.shell_proxy import main as hook_main
+        elif args.name == "pre-invoke":
+            from buddhi_ai.hooks.pre_invoke import main as hook_main
+        hook_main()
 
 
 if __name__ == "__main__":

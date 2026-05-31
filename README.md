@@ -115,3 +115,28 @@ To run tests:
 ```bash
 pytest tests/
 ```
+
+### Testing the CLI Locally
+
+To test the CLI tool locally as if it were in production without publishing to PyPI:
+
+**Option 1: Global Installation (Recommended)**
+Install the built `.whl` file globally using `uv tool install`:
+```bash
+uv build
+uv tool install dist/buddhi_ai-<version>-py3-none-any.whl --force
+```
+To uninstall later:
+```bash
+uv tool uninstall buddhi-ai
+```
+
+**Option 2: Editable Mode**
+For active development, install the tool in editable mode so changes to the source code are reflected immediately:
+```bash
+uv tool install -e .
+```
+To uninstall:
+```bash
+uv tool uninstall buddhi-ai
+```

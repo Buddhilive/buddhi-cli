@@ -80,30 +80,34 @@ def _build_deny_payload(tool_name: str, args: dict) -> dict:
 
 def main() -> None:
     """Entrypoint for the hook script."""
-    raw = sys.stdin.read()
-    if not raw.strip():
-        # Empty payload — allow by default (shouldn't happen)
-        json.dump({"decision": "allow"}, sys.stdout)
-        return
-
     try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        # Malformed input — allow to avoid breaking the agent
+        raw = sys.stdin.read()
+        if not raw.strip():
+            # Empty payload — allow by default (shouldn't happen)
+            json.dump({"decision": "allow"}, sys.stdout)
+            return
+
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            # Malformed input — allow to avoid breaking the agent
+            json.dump({"decision": "allow"}, sys.stdout)
+            return
+
+        tool_call = payload.get("toolCall", {})
+        tool_name = tool_call.get("name", "")
+        tool_args = tool_call.get("args", {})
+
+        if tool_name in _GATED_TOOLS:
+            response = _build_deny_payload(tool_name, tool_args)
+        else:
+            # Not a gated tool — passthrough
+            response = {"decision": "allow"}
+
+        json.dump(response, sys.stdout)
+    except Exception:
+        # Fallback gracefully
         json.dump({"decision": "allow"}, sys.stdout)
-        return
-
-    tool_call = payload.get("toolCall", {})
-    tool_name = tool_call.get("name", "")
-    tool_args = tool_call.get("args", {})
-
-    if tool_name in _GATED_TOOLS:
-        response = _build_deny_payload(tool_name, tool_args)
-    else:
-        # Not a gated tool — passthrough
-        response = {"decision": "allow"}
-
-    json.dump(response, sys.stdout)
 
 
 if __name__ == "__main__":

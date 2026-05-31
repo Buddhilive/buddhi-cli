@@ -123,55 +123,59 @@ def _resolve_relative_paths(
 
 def main() -> None:
     """Entrypoint for the pre_invoke hook script."""
-    raw = sys.stdin.read()
-    if not raw.strip():
-        # No context — emit empty inject
-        json.dump({"injectSteps": []}, sys.stdout)
-        return
-
     try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
+        raw = sys.stdin.read()
+        if not raw.strip():
+            # No context — emit empty inject
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError:
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        workspace_paths = payload.get("workspacePaths", [])
+        active_files = payload.get("activeFiles", [])
+
+        if not workspace_paths or not active_files:
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        # Locate the graph database
+        db_path = _find_db(workspace_paths)
+        if db_path is None:
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        # Resolve relative paths and query communities
+        rel_paths = _resolve_relative_paths(workspace_paths, active_files)
+        if not rel_paths:
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        communities = _query_communities(db_path, rel_paths)
+        message = _synthesize_message(communities)
+
+        if not message:
+            json.dump({"injectSteps": []}, sys.stdout)
+            return
+
+        json.dump(
+            {
+                "injectSteps": [
+                    {
+                        "type": "ephemeralMessage",
+                        "content": message,
+                    }
+                ]
+            },
+            sys.stdout,
+        )
+    except Exception:
+        # Graceful fallback in case of any unhandled errors
         json.dump({"injectSteps": []}, sys.stdout)
-        return
-
-    workspace_paths = payload.get("workspacePaths", [])
-    active_files = payload.get("activeFiles", [])
-
-    if not workspace_paths or not active_files:
-        json.dump({"injectSteps": []}, sys.stdout)
-        return
-
-    # Locate the graph database
-    db_path = _find_db(workspace_paths)
-    if db_path is None:
-        json.dump({"injectSteps": []}, sys.stdout)
-        return
-
-    # Resolve relative paths and query communities
-    rel_paths = _resolve_relative_paths(workspace_paths, active_files)
-    if not rel_paths:
-        json.dump({"injectSteps": []}, sys.stdout)
-        return
-
-    communities = _query_communities(db_path, rel_paths)
-    message = _synthesize_message(communities)
-
-    if not message:
-        json.dump({"injectSteps": []}, sys.stdout)
-        return
-
-    json.dump(
-        {
-            "injectSteps": [
-                {
-                    "type": "ephemeralMessage",
-                    "content": message,
-                }
-            ]
-        },
-        sys.stdout,
-    )
 
 
 if __name__ == "__main__":
