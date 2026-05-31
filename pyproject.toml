@@ -1,6 +1,6 @@
 [project]
 name = "buddhi-ai"
-version = "1.0.0-beta.6"
+version = "1.0.0-beta.10"
 description = "Buddhi AI CLI"
 readme = "README.md"
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]

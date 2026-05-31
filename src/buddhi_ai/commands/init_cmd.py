@@ -24,17 +24,19 @@ _PLUGIN_JSON: dict = {
     "description": "Graph-based token optimization and context management layer",
 }
 
-_MCP_CONFIG_JSON: dict = {
-    "mcpServers": {
-        "buddhi-ai-core": {
-            "command": "buddhi-mcp",
-            "args": [],
-            "env": {
-                "BUDDHI_DB_PATH": ".buddhi/graph.db",
-            },
+def _get_mcp_config_json(workspace_root: Path) -> dict:
+    db_path = str((workspace_root / ".buddhi" / "graph.db").resolve())
+    return {
+        "mcpServers": {
+            "buddhi-ai-core": {
+                "command": "buddhi-mcp",
+                "args": [],
+                "env": {
+                    "BUDDHI_DB_PATH": db_path,
+                },
+            }
         }
     }
-}
 
 def _assert_buddhi_on_path() -> None:
     """Verify the buddhi CLI binary is on PATH before writing hooks.json."""
@@ -113,7 +115,7 @@ def _scaffold_workspace_plugin(workspace_root: str) -> None:
 
     files: dict[str, dict] = {
         "plugin.json": _PLUGIN_JSON,
-        "mcp_config.json": _MCP_CONFIG_JSON,
+        "mcp_config.json": _get_mcp_config_json(Path(workspace_root)),
         "hooks.json": _get_hooks_json(),
     }
 

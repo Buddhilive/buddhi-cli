@@ -11,7 +11,7 @@ from buddhi_ai.mcp.compression.ast_pruner import prune_signatures, extract_map
 
 def execute_buddhi_read(
     filepath: str,
-    db_path: str,
+    db_path: Optional[str] = None,
     mode: str = "auto",
     task_intent: Optional[str] = None,
     budget: int = 4000
@@ -26,15 +26,29 @@ def execute_buddhi_read(
     except Exception as e:
         return f"Error reading file '{filepath}': {e}"
         
-    try:
-        conn = sqlite3.connect(db_path)
-    except sqlite3.Error as e:
-        return f"Error connecting to telemetry DB: {e}"
-        
+    conn = None
+    if db_path:
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS file_read_history (
+                    filepath       TEXT NOT NULL,
+                    mode           TEXT NOT NULL,
+                    timestamp_micro INTEGER NOT NULL
+                )
+                """
+            )
+            conn.commit()
+        except sqlite3.Error as e:
+            logging.warning(f"Error connecting to telemetry DB: {e}")
+
     try:
         # Phase 1: Bounce & State Verification
-        tripped = should_trip_circuit_breaker(conn, filepath, threshold=0.30)
-        
+        tripped = False
+        if conn:
+            tripped = should_trip_circuit_breaker(conn, filepath, threshold=0.30)
+
         # Phase 2: Task-Aware Mode Resolution
         if tripped:
             logging.info(f"Circuit breaker tripped for {filepath}. Forcing full mode.")
@@ -43,11 +57,13 @@ def execute_buddhi_read(
             resolved_mode = resolve_mode(filepath, task_intent)
         else:
             resolved_mode = mode.lower()
-            
+
         # Log the event
-        log_read_event(conn, filepath, resolved_mode)
+        if conn:
+            log_read_event(conn, filepath, resolved_mode)
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
     # Phase 3: AST Pruning & Entropy Filter
     processed_text = ""

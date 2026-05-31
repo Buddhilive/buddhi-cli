@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -16,7 +17,7 @@ mcp = FastMCP("buddhi-cli")
 # Store the global DB path override if provided via CLI
 OVERRIDE_DB_PATH: Path | None = None
 
-def _get_db_path() -> Path:
+def _get_db_path(cwd: Optional[str] = None) -> Path:
     """Resolve the sqlite DB path.
     
     1. Use the command-line override if set.
@@ -25,16 +26,20 @@ def _get_db_path() -> Path:
     """
     if OVERRIDE_DB_PATH is not None:
         return OVERRIDE_DB_PATH
+
+    env_path = os.environ.get("BUDDHI_DB_PATH")
+    if env_path:
+        return Path(env_path).resolve()
     
     # Auto-detect from CWD and walk up directories
-    current = Path.cwd().resolve()
+    current = Path(cwd).resolve() if cwd else Path.cwd().resolve()
     for parent in [current] + list(current.parents):
         candidate = parent / ".buddhi" / "graph.db"
         if candidate.exists():
             return candidate
             
     # Standard CWD fallback if not found anywhere in parent tree
-    return Path.cwd().resolve() / ".buddhi" / "graph.db"
+    return current / ".buddhi" / "graph.db"
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def buddhi_search(
@@ -43,6 +48,7 @@ def buddhi_search(
     mode: Annotated[str, "Output mode: 'full' (complete source), 'signatures' (declarations only), or 'map' (one-liner index)"] = "full",
     include_bridges: Annotated[bool, "Include 1-hop bridge nodes from neighboring communities"] = True,
     budget: Annotated[int, "Max character count for output. 0 = unbounded"] = 8000,
+    cwd: Annotated[Optional[str], "Working directory override. Defaults to CWD of the MCP server process."] = None,
 ) -> str:
     """Search the codebase using Buddhi's topology-driven retrieval pipeline.
     
@@ -52,7 +58,7 @@ def buddhi_search(
     """
     from buddhi_ai.search.search import buddhi_search as _search
 
-    db_path = _get_db_path()
+    db_path = _get_db_path(cwd)
     if not db_path.exists():
         return f"Error: Buddhi database not found at '{db_path}'. Please run `buddhi init` in this directory first."
 
@@ -101,13 +107,12 @@ def buddhi_read(
     mode: Annotated[str, "Compression profile: 'auto', 'full', 'signatures', 'map', or 'entropy'"] = "auto",
     task_intent: Annotated[Optional[str], "Natural language goals (e.g. 'Fix the bug') to auto-resolve mode"] = None,
     budget: Annotated[int, "Max token count budget. Fallbacks to map if exceeded"] = 4000,
+    cwd: Annotated[Optional[str], "Working directory override. Defaults to CWD of the MCP server process."] = None,
 ) -> str:
     """Read a file using dynamic compression, AST pruning, and bounce prevention logic to prevent prompt thrashing."""
     from buddhi_ai.mcp.tools.read import execute_buddhi_read
 
-    db_path = _get_db_path()
-    if not db_path.exists():
-        return f"Error: Buddhi database not found at '{db_path}'. Please run `buddhi init` in this directory first."
+    db_path = _get_db_path(cwd)
 
     start_time = time.perf_counter()
     status = "success"
@@ -125,7 +130,7 @@ def buddhi_read(
 
         result = execute_buddhi_read(
             filepath=filepath,
-            db_path=str(db_path),
+            db_path=str(db_path) if db_path.exists() else None,
             mode=mode,
             task_intent=task_intent,
             budget=budget,

@@ -97,9 +97,10 @@ def run_command(
             "[buddhi_shell: Blocked interactive command. Run non-interactively.]"
         )
 
-    # On Windows we need shell=True to resolve PATH entries; on POSIX we use it
-    # as well so that shell built-ins (cd, export, etc.) work correctly.
-    use_shell = sys.platform == "win32"
+    # On Windows, CREATE_NO_WINDOW prevents child processes spawned by cmd.exe
+    # from inheriting the stdout PIPE handle, which can cause deadlocks when
+    # the child keeps the handle open after the parent exits.
+    creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     try:
         result = subprocess.run(
@@ -112,6 +113,7 @@ def run_command(
             text=True,
             encoding="utf-8",
             errors="replace",
+            creationflags=creation_flags,
         )
         return result.stdout or "", result.returncode
 
@@ -124,7 +126,7 @@ def run_command(
                 partial = exc.stdout
         return (
             partial + f"\n[buddhi_shell: Command timed out after {timeout}s]",
-            -1,
+            -124,
         )
     except Exception as exc:  # noqa: BLE001
         return f"[buddhi_shell: Execution error — {exc}]", -1
