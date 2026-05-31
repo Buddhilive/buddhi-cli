@@ -1,9 +1,14 @@
 import argparse
+import json
 import sys
+import time
 from pathlib import Path
 from typing import Annotated, Optional
+
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+
+from buddhi_ai.metrics.logger import MetricsLogger
 
 # We initialize FastMCP with the approved server name
 mcp = FastMCP("buddhi-cli")
@@ -46,13 +51,18 @@ def buddhi_search(
     neighborhoods, filters out boilerplate, and sorts using a U-curve positional layout.
     """
     from buddhi_ai.search.search import buddhi_search as _search
-    
+
     db_path = _get_db_path()
     if not db_path.exists():
         return f"Error: Buddhi database not found at '{db_path}'. Please run `buddhi init` in this directory first."
-        
+
+    start_time = time.perf_counter()
+    status = "success"
+    error_message = None
+    result = ""
+
     try:
-        return _search(
+        result = _search(
             query=query,
             db_path=str(db_path),
             top_n=top_n,
@@ -60,8 +70,30 @@ def buddhi_search(
             include_bridges=include_bridges,
             budget=budget,
         )
+        return result
     except Exception as e:
-        return f"Error executing search: {str(e)}"
+        status = "error"
+        error_message = str(e)
+        result = f"Error executing search: {str(e)}"
+        return result
+    finally:
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        input_tokens = MetricsLogger.count_tokens(json.dumps({
+            "query": query, "top_n": top_n, "mode": mode,
+            "include_bridges": include_bridges, "budget": budget
+        }))
+        output_tokens = MetricsLogger.count_tokens(result) if status == "success" else 0
+        
+        MetricsLogger.log(
+            tool_name="buddhi_search",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            raw_input_tokens=0,
+            tokens_saved=0,
+            status=status,
+            error_message=error_message,
+            duration_ms=duration_ms
+        )
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def buddhi_read(
@@ -72,21 +104,60 @@ def buddhi_read(
 ) -> str:
     """Read a file using dynamic compression, AST pruning, and bounce prevention logic to prevent prompt thrashing."""
     from buddhi_ai.mcp.tools.read import execute_buddhi_read
-    
+
     db_path = _get_db_path()
     if not db_path.exists():
         return f"Error: Buddhi database not found at '{db_path}'. Please run `buddhi init` in this directory first."
-        
+
+    start_time = time.perf_counter()
+    status = "success"
+    error_message = None
+    result = ""
+    raw_input_tokens = 0
+
     try:
-        return execute_buddhi_read(
+        # Calculate raw file tokens for savings
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw_input_tokens = MetricsLogger.count_tokens(f.read())
+        except Exception:
+            pass # ignore read errors here, execute_buddhi_read will handle it
+
+        result = execute_buddhi_read(
             filepath=filepath,
             db_path=str(db_path),
             mode=mode,
             task_intent=task_intent,
             budget=budget,
         )
+        if result.startswith("Error:"):
+            status = "error"
+            error_message = result
+        return result
     except Exception as e:
-        return f"Error executing read: {str(e)}"
+        status = "error"
+        error_message = str(e)
+        result = f"Error executing read: {str(e)}"
+        return result
+    finally:
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        input_tokens = MetricsLogger.count_tokens(json.dumps({
+            "filepath": filepath, "mode": mode,
+            "task_intent": task_intent, "budget": budget
+        }))
+        output_tokens = MetricsLogger.count_tokens(result) if status == "success" else 0
+        tokens_saved = max(0, raw_input_tokens - output_tokens) if status == "success" else 0
+        
+        MetricsLogger.log(
+            tool_name="buddhi_read",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            raw_input_tokens=raw_input_tokens,
+            tokens_saved=tokens_saved,
+            status=status,
+            error_message=error_message,
+            duration_ms=duration_ms
+        )
 
 
 @mcp.tool()
@@ -111,16 +182,52 @@ def buddhi_shell(
     from buddhi_ai.mcp.tools.shell import run_command
     from buddhi_ai.mcp.compression.pipeline import process
 
-    try:
-        raw_output, exit_code = run_command(command, timeout=timeout, cwd=cwd)
-    except RuntimeError as exc:
-        # Interactive command was blocked
-        return str(exc)
+    start_time = time.perf_counter()
+    status = "success"
+    error_message = None
+    result = ""
+    raw_input_tokens = 0
 
-    # Prepend exit-code header so the LLM always knows the result
-    header = f"[exit:{exit_code}] $ {command}\n"
-    compressed = process(raw_output, budget=budget, raw_mode=raw)
-    return header + compressed
+    try:
+        try:
+            raw_output, exit_code = run_command(command, timeout=timeout, cwd=cwd)
+            raw_input_tokens = MetricsLogger.count_tokens(raw_output)
+        except RuntimeError as exc:
+            # Interactive command was blocked
+            status = "error"
+            error_message = str(exc)
+            result = str(exc)
+            return result
+
+        # Prepend exit-code header so the LLM always knows the result
+        header = f"[exit:{exit_code}] $ {command}\n"
+        compressed = process(raw_output, budget=budget, raw_mode=raw)
+        result = header + compressed
+        return result
+    except Exception as e:
+        status = "error"
+        error_message = str(e)
+        result = str(e)
+        return result
+    finally:
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        input_tokens = MetricsLogger.count_tokens(json.dumps({
+            "command": command, "timeout": timeout,
+            "budget": budget, "raw": raw, "cwd": cwd
+        }))
+        output_tokens = MetricsLogger.count_tokens(result) if status == "success" else 0
+        tokens_saved = max(0, raw_input_tokens - output_tokens) if status == "success" else 0
+        
+        MetricsLogger.log(
+            tool_name="buddhi_shell",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            raw_input_tokens=raw_input_tokens,
+            tokens_saved=tokens_saved,
+            status=status,
+            error_message=error_message,
+            duration_ms=duration_ms
+        )
 
 
 def main() -> None:

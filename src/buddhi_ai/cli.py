@@ -1,5 +1,6 @@
 import argparse
 from buddhi_ai.commands.init_cmd import handle_init
+from buddhi_ai.commands.metrics_cmd import handle_metrics
 
 
 def main() -> None:
@@ -30,6 +31,11 @@ def main() -> None:
         help="Which hook to run",
     )
 
+    metrics_parser = subparsers.add_parser("metrics", help="Show tool usage metrics and token savings")
+    metrics_parser.add_argument("--days", type=int, default=30, help="Look back N days (default: 30)")
+    metrics_parser.add_argument("--json", action="store_true", help="Output raw JSON")
+    metrics_parser.add_argument("--reset", action="store_true", help="Clear all metrics data")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -42,6 +48,8 @@ def main() -> None:
         elif args.name == "pre-invoke":
             from buddhi_ai.hooks.pre_invoke import main as hook_main
         hook_main()
+    elif args.command == "metrics":
+        handle_metrics(args)
 
 
 if __name__ == "__main__":
