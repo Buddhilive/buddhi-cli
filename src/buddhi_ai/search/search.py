@@ -30,7 +30,8 @@ def buddhi_search(
     mode: str = "full",
     include_bridges: bool = True,
     budget: int = 0,
-) -> str:
+    return_stats: bool = False,
+) -> str | Tuple[str, int]:
     """Search the code graph and return context-optimized results.
 
     Args:
@@ -41,11 +42,14 @@ def buddhi_search(
         include_bridges: Whether to include 1-hop bridge nodes from
                          external communities.
         budget: Maximum character count for output. 0 = unbounded.
+        return_stats: If True, return (output_string, raw_token_count).
 
     Returns:
         Serialized context string with delimiter boundaries, optimized
         for LLM attention via U-Curve positional layout.
     """
+    from buddhi_ai.metrics.logger import MetricsLogger
+
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
 
@@ -59,7 +63,8 @@ def buddhi_search(
 
         # If still nothing: return shallow file map
         if not anchor_ids:
-            return _generate_file_map(conn)
+            output = _generate_file_map(conn)
+            return (output, MetricsLogger.count_tokens(output)) if return_stats else output
 
         # Phase 2: Boundary-Node Cluster Expansion
         results = _phase2_cluster_expansion(
@@ -69,6 +74,14 @@ def buddhi_search(
         # Phase 3: Apply content mode to all results
         for result in results:
             result.mode = mode
+
+        # Calculate raw token count before any budgeting/compression
+        raw_token_count = 0
+        if return_stats:
+            # We use full mode to calculate the maximum potential token cost 
+            # if buddhi wasn't being used
+            raw_output = serialize_context(results)
+            raw_token_count = MetricsLogger.count_tokens(raw_output)
 
         # Phase 4: Attention Layout (U-Curve)
         results = u_curve_sort(results)
@@ -83,7 +96,7 @@ def buddhi_search(
             results = u_curve_sort(results)
             output = serialize_context(results)
 
-        return output
+        return (output, raw_token_count) if return_stats else output
 
     finally:
         conn.close()

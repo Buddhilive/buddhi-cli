@@ -66,21 +66,24 @@ def buddhi_search(
     status = "success"
     error_message = None
     result = ""
+    raw_input_tokens = 0
 
     try:
-        result = _search(
+        result, raw_input_tokens = _search(
             query=query,
             db_path=str(db_path),
             top_n=top_n,
             mode=mode,
             include_bridges=include_bridges,
             budget=budget,
+            return_stats=True,
         )
         return result
     except Exception as e:
         status = "error"
         error_message = str(e)
         result = f"Error executing search: {str(e)}"
+        raw_input_tokens = 0
         return result
     finally:
         duration_ms = (time.perf_counter() - start_time) * 1000
@@ -89,13 +92,14 @@ def buddhi_search(
             "include_bridges": include_bridges, "budget": budget
         }))
         output_tokens = MetricsLogger.count_tokens(result) if status == "success" else 0
+        tokens_saved = max(0, raw_input_tokens - output_tokens) if status == "success" else 0
         
         MetricsLogger.log(
             tool_name="buddhi_search",
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            raw_input_tokens=0,
-            tokens_saved=0,
+            raw_input_tokens=raw_input_tokens,
+            tokens_saved=tokens_saved,
             status=status,
             error_message=error_message,
             duration_ms=duration_ms

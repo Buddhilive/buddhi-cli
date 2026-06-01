@@ -68,6 +68,12 @@ def _is_interactive(command: str) -> bool:
         if flag in _SAFE_OVERRIDE_FLAGS:
             return False
 
+    # Allow if passing a script or command string directly for interpreters
+    if binary in ("python", "python3", "node", "ruby", "ipython", "irb"):
+        for arg in parts[1:]:
+            if not arg.startswith("-"):
+                return False
+
     return True
 
 
@@ -103,30 +109,36 @@ def run_command(
     creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             command,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=timeout,
             cwd=cwd,
             text=True,
             encoding="utf-8",
             errors="replace",
             creationflags=creation_flags,
         )
-        return result.stdout or "", result.returncode
-
-    except subprocess.TimeoutExpired as exc:
-        partial: str = ""
-        if exc.stdout:
-            if isinstance(exc.stdout, bytes):
-                partial = exc.stdout.decode("utf-8", errors="replace")
+        try:
+            stdout, _ = process.communicate(timeout=timeout)
+            return stdout or "", process.returncode
+        except subprocess.TimeoutExpired:
+            # Kill process tree on Windows to ensure grandchild processes die and release pipes
+            if sys.platform == "win32":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(process.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
             else:
-                partial = exc.stdout
-        return (
-            partial + f"\n[buddhi_shell: Command timed out after {timeout}s]",
-            -124,
-        )
+                process.kill()
+            
+            # Now we can safely communicate to get whatever partial output was written
+            stdout, _ = process.communicate()
+            return (
+                (stdout or "") + f"\n[buddhi_shell: Command timed out after {timeout}s]",
+                -124,
+            )
     except Exception as exc:  # noqa: BLE001
         return f"[buddhi_shell: Execution error — {exc}]", -1
