@@ -1,6 +1,6 @@
 [project]
 name = "buddhi-ai"
-version = "1.0.0-beta.10"
+version = "1.0.0-beta.5"
 description = "Buddhi AI CLI"
 readme = "README.md"
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
@@ -14,7 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Build Tools",
-    "Topic :: Software Development :: Quality Assurance"
+    "Topic :: Software Development :: Quality Assurance",
 ]
 requires-python = ">=3.10"
 dependencies = [

@@ -101,6 +101,17 @@ def handle_metrics(args: argparse.Namespace) -> None:
     total_success_rate = (total_successes / total_calls * 100) if total_calls > 0 else 0
     money_saved = (total_saved / 1_000_000) * INPUT_PRICE_PER_MTOK
 
+    # Fetch fallback usage stats
+    cursor.execute(
+        """
+        SELECT COUNT(*) 
+        FROM tool_events 
+        WHERE extra_json LIKE '%"fallback_used": "native"%' AND timestamp_unix >= ?
+        """,
+        (cutoff_time,)
+    )
+    fallback_count = cursor.fetchone()[0]
+
     # Fetch daily activity for sparkline
     cursor.execute(
         """
@@ -140,6 +151,7 @@ def handle_metrics(args: argparse.Namespace) -> None:
             "success_rate_pct": total_success_rate,
             "tokens_saved": total_saved,
             "estimated_savings_usd": money_saved,
+            "native_fallbacks": fallback_count,
             "tools": [
                 {
                     "name": row[0],
@@ -170,7 +182,8 @@ def handle_metrics(args: argparse.Namespace) -> None:
     print(f"  {BOLD}Total Calls:{RESET} {total_calls}   |   ", end="")
     print(f"{BOLD}Success Rate:{RESET} {GREEN if total_success_rate > 90 else YELLOW}{total_success_rate:.1f}%{RESET}   |   ", end="")
     print(f"{BOLD}Tokens Saved:{RESET} ~{_format_number(total_saved)}   |   ", end="")
-    print(f"{BOLD}Est. Saved:{RESET} {GREEN}${money_saved:.2f}{RESET}\n")
+    print(f"{BOLD}Est. Saved:{RESET} {GREEN}${money_saved:.2f}{RESET}   |   ", end="")
+    print(f"{BOLD}Fallbacks:{RESET} {YELLOW if fallback_count > 0 else GREEN}{fallback_count}{RESET}\n")
 
     # Table Header
     print(f"{DIM}┌─────────────────┬───────┬──────────┬──────────────┬──────────────┬───────────────┐{RESET}")

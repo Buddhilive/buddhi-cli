@@ -102,18 +102,20 @@ def buddhi_search(
             tokens_saved=tokens_saved,
             status=status,
             error_message=error_message,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
+            extra={"fallback_used": "native" if "Native Grep Fallback Matches" in result else None}
         )
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def buddhi_read(
-    filepath: Annotated[str, "The workspace path to the file to read"],
+    filepath: Annotated[Optional[str], "The workspace path to the file to read"] = None,
+    query: Annotated[Optional[str], "Glob pattern or identifier to find files/symbols in the workspace"] = None,
     mode: Annotated[str, "Compression profile: 'auto', 'full', 'signatures', 'map', or 'entropy'"] = "auto",
     task_intent: Annotated[Optional[str], "Natural language goals (e.g. 'Fix the bug') to auto-resolve mode"] = None,
     budget: Annotated[int, "Max token count budget. Fallbacks to map if exceeded"] = 4000,
     cwd: Annotated[Optional[str], "Working directory override. Defaults to CWD of the MCP server process."] = None,
 ) -> str:
-    """Read a file using dynamic compression, AST pruning, and bounce prevention logic to prevent prompt thrashing."""
+    """Read a file using dynamic compression, AST pruning, and bounce prevention logic, or search for files/symbols in the workspace."""
     from buddhi_ai.mcp.tools.read import execute_buddhi_read
 
     db_path = _get_db_path(cwd)
@@ -125,12 +127,13 @@ def buddhi_read(
     raw_input_tokens = 0
 
     try:
-        # Calculate raw file tokens for savings
-        try:
-            with open(filepath, "r", encoding="utf-8") as f:
-                raw_input_tokens = MetricsLogger.count_tokens(f.read())
-        except Exception:
-            pass # ignore read errors here, execute_buddhi_read will handle it
+        # Calculate raw file tokens for savings if reading a specific file
+        if filepath:
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    raw_input_tokens = MetricsLogger.count_tokens(f.read())
+            except Exception:
+                pass # ignore read errors here, execute_buddhi_read will handle it
 
         result = execute_buddhi_read(
             filepath=filepath,
@@ -138,6 +141,7 @@ def buddhi_read(
             mode=mode,
             task_intent=task_intent,
             budget=budget,
+            query=query,
         )
         if result.startswith("Error:"):
             status = "error"
@@ -151,7 +155,7 @@ def buddhi_read(
     finally:
         duration_ms = (time.perf_counter() - start_time) * 1000
         input_tokens = MetricsLogger.count_tokens(json.dumps({
-            "filepath": filepath, "mode": mode,
+            "filepath": filepath, "query": query, "mode": mode,
             "task_intent": task_intent, "budget": budget
         }))
         output_tokens = MetricsLogger.count_tokens(result) if status == "success" else 0
@@ -165,7 +169,8 @@ def buddhi_read(
             tokens_saved=tokens_saved,
             status=status,
             error_message=error_message,
-            duration_ms=duration_ms
+            duration_ms=duration_ms,
+            extra={"fallback_used": "native" if "native fallback" in result else None}
         )
 
 

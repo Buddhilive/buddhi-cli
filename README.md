@@ -21,8 +21,8 @@ Buddhi AI CLI (`buddhi-ai`) is a powerful command-line tool designed to map stru
 - **Boilerplate Filtering**: Employs Shannon entropy thresholds to filter out boilerplate lines and highlight critical code paths.
 - **Topology-Driven Search**: Community-aware search that traverses neighborhoods and includes bridge nodes instead of standard keyword-only retrieval.
 - **Dynamic File Reading**: Reads files using dynamic compression, AST pruning, and bounce prevention logic to prevent prompt thrashing.
-- **Compressed Shell Execution**: Executes shell commands and returns compressed, token-efficient output (with noise eradication and structural deduplication).
-- **MCP Integration**: Fully exposes search, read, and shell tools via the FastMCP server.
+- **Native Fallback & Telemetry**: Gracefully degrades to native search when necessary, while comprehensively tracking token savings and tool execution metrics.
+- **MCP Integration**: Fully exposes search and read tools via the FastMCP server.
 
 ## Architecture & Tech Stack
 
@@ -82,6 +82,10 @@ buddhi init [OPTIONS]
 
 This will parse your workspace and create the Buddhi graph database at `.buddhi/graph.db`.
 
+**Additional Commands:**
+- `buddhi metrics [--days N] [--json] [--reset]`: Show tool usage metrics and token savings.
+- `buddhi hook <name>`: Run a named hook handler (e.g. `gate-io`, `pre-invoke`).
+
 ### 2. The MCP Server (`buddhi-mcp`)
 
 Start the FastMCP server over standard input/output (StdIO):
@@ -97,14 +101,11 @@ buddhi-mcp [OPTIONS]
 
 Once the server is running, the following tools are exposed via the Model Context Protocol:
 
-- **`buddhi_search(query, top_n=3, mode="full", include_bridges=True, budget=8000)`**
-  Search the codebase using Buddhi's topology-driven retrieval. Replace keyword-only searches with community-aware context-optimized results.
+- **`buddhi_search(query, top_n=3, mode="full", include_bridges=True, budget=8000, cwd=None)`**
+  Search the codebase using Buddhi's topology-driven retrieval. Replace keyword-only searches with community-aware context-optimized results. Features an automatic native fallback mechanism when graph database results are sparse.
 
-- **`buddhi_read(filepath, mode="auto", task_intent=None, budget=4000)`**
-  Read a file with dynamic compression, AST pruning, and bounce prevention. Mode options include `'auto'`, `'full'`, `'signatures'`, `'map'`, or `'entropy'`.
-
-- **`buddhi_shell(command, timeout=60, budget=8000, raw=False, cwd=None)`**
-  Execute a shell command and return compressed, token-efficient output through a 4-phase pipeline (noise eradication, domain abstraction, deduplication, and Compact Response Protocol).
+- **`buddhi_read(filepath=None, query=None, mode="auto", task_intent=None, budget=4000, cwd=None)`**
+  Read a file with dynamic compression, AST pruning, and bounce prevention logic, or search for files/symbols in the workspace. Mode options include `'auto'`, `'full'`, `'signatures'`, `'map'`, or `'entropy'`.
 
 ## Development & Contributing
 

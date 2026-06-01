@@ -9,6 +9,10 @@ Executes the 4-phase topology-driven retrieval pipeline:
     Phase 5: Budget Overflow Compression (optional)
 """
 import sqlite3
+import re
+import json
+import logging
+from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from buddhi_ai.search.compressor import compress_to_budget
@@ -21,6 +25,55 @@ from buddhi_ai.search.query_expansion import build_fts_query, expand_query
 
 # Edge weight threshold for bridge expansion
 BRIDGE_WEIGHT_THRESHOLD = 3.0
+
+
+def _write_fallback_allowed(tool_name: str) -> None:
+    """Flag that a fallback to native tools is allowed in gate_io."""
+    try:
+        fallback_path = Path(".buddhi/fallback_allowed.json")
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        allowed = {}
+        if fallback_path.exists():
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                allowed = json.load(f)
+        allowed[tool_name] = True
+        with open(fallback_path, "w", encoding="utf-8") as f:
+            json.dump(allowed, f)
+    except Exception as e:
+        logging.warning(f"Failed to write fallback state: {e}")
+
+
+def _native_grep_search(query: str) -> str:
+    """Fuzzy/regex search files recursively in the workspace as a fallback."""
+    matches = []
+    p = Path(".")
+    try:
+        pattern = re.compile(query, re.IGNORECASE)
+    except Exception:
+        pattern = re.compile(re.escape(query), re.IGNORECASE)
+
+    try:
+        for path in p.rglob("*"):
+            if path.is_file():
+                parts = path.parts
+                if not any(ignored in parts for ignored in (".git", "node_modules", ".buddhi", ".venv", ".agents", "__pycache__")):
+                    try:
+                        with open(path, "r", encoding="utf-8", errors="replace") as f:
+                            for idx, line in enumerate(f, 1):
+                                if pattern.search(line):
+                                    matches.append(f"{path.as_posix()}:{idx}: {line.strip()}")
+                                    if len(matches) >= 50:
+                                        break
+                    except Exception:
+                        pass
+            if len(matches) >= 50:
+                break
+    except Exception:
+        pass
+
+    if matches:
+        return "### Native Grep Fallback Matches:\n" + "\n".join(matches)
+    return ""
 
 
 def buddhi_search(
@@ -61,10 +114,16 @@ def buddhi_search(
         if not anchor_ids:
             anchor_ids, community_ids = _phase1b_fallback(conn, query, top_n)
 
-        # If still nothing: return shallow file map
+        # If still nothing: try native fallback
         if not anchor_ids:
-            output = _generate_file_map(conn)
-            return (output, MetricsLogger.count_tokens(output)) if return_stats else output
+            output = _native_grep_search(query)
+            if output:
+                return (output, MetricsLogger.count_tokens(output)) if return_stats else output
+            
+            # If native also has nothing, allow native grep_search and return error
+            _write_fallback_allowed("grep_search")
+            err_msg = f"Error: No results found for query '{query}' in graph or workspace. (Native grep_search is now unlocked as fallback)"
+            return (err_msg, MetricsLogger.count_tokens(err_msg)) if return_stats else err_msg
 
         # Phase 2: Boundary-Node Cluster Expansion
         results = _phase2_cluster_expansion(

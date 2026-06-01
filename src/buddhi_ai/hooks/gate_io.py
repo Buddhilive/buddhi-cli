@@ -15,23 +15,20 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 # Tools that this hook intercepts
 _GATED_TOOLS: frozenset[str] = frozenset(
     [
-        "view_file",
         "grep_search",
         "find_by_name",
-        "read_file",
     ]
 )
 
 # Mapping from gated tool → recommended buddhi alternative
 _REDIRECT_MAP: dict[str, str] = {
-    "view_file": "buddhi_read",
-    "read_file": "buddhi_read",
     "grep_search": "buddhi_search",
-    "find_by_name": "buddhi_search",
+    "find_by_name": "buddhi_read",
 }
 
 
@@ -41,15 +38,7 @@ def _build_deny_payload(tool_name: str, args: dict) -> dict:
 
     # Build a context-aware hint based on the intercepted arguments
     hint_parts: list[str] = []
-    if tool_name in ("view_file", "read_file"):
-        filepath = args.get("AbsolutePath") or args.get("path") or ""
-        if filepath:
-            hint_parts.append(
-                f"To read '{filepath}', call `{redirect}(filepath=\"{filepath}\")` instead."
-            )
-        else:
-            hint_parts.append(f"Use `{redirect}(filepath=<target>)` instead.")
-    elif tool_name == "grep_search":
+    if tool_name == "grep_search":
         query = args.get("Query") or args.get("pattern") or ""
         if query:
             hint_parts.append(
@@ -78,6 +67,25 @@ def _build_deny_payload(tool_name: str, args: dict) -> dict:
     }
 
 
+def _check_and_consume_fallback(tool_name: str) -> bool:
+    """Checks if a fallback is allowed for the tool, and consumes it if True."""
+    fallback_path = Path(".buddhi/fallback_allowed.json")
+    if not fallback_path.exists():
+        return False
+    try:
+        with open(fallback_path, "r", encoding="utf-8") as f:
+            allowed = json.load(f)
+        if allowed.get(tool_name):
+            # Consume the fallback permission so it only works for the immediate next execution
+            allowed[tool_name] = False
+            with open(fallback_path, "w", encoding="utf-8") as f:
+                json.dump(allowed, f)
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def main() -> None:
     """Entrypoint for the hook script."""
     try:
@@ -99,7 +107,10 @@ def main() -> None:
         tool_args = tool_call.get("args", {})
 
         if tool_name in _GATED_TOOLS:
-            response = _build_deny_payload(tool_name, tool_args)
+            if _check_and_consume_fallback(tool_name):
+                response = {"decision": "allow"}
+            else:
+                response = _build_deny_payload(tool_name, tool_args)
         else:
             # Not a gated tool — passthrough
             response = {"decision": "allow"}

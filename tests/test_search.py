@@ -292,9 +292,10 @@ class TestBuddhiSearch:
         assert "function_definition" in result
 
     def test_zero_hit_fallback(self, db_path: str):
-        result = buddhi_search("xyzNonexistentThing", db_path)
-        # Should trigger fallback and return file map
-        assert "FILE MAP" in result or "parse_file" in result
+        query = "xyzNonexistent" + "Thing"
+        result = buddhi_search(query, db_path)
+        # Should trigger fallback and return fallback unlocked message
+        assert "unlocked" in result
 
     def test_budget_compression(self, db_path: str):
         # First, get unbounded result to know the full size

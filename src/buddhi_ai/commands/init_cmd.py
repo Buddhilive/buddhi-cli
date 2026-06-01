@@ -58,7 +58,7 @@ def _get_hooks_json() -> dict:
             "enabled": True,
             "PreToolUse": [
                 {
-                    "matcher": "view_file|grep_search|find_by_name|read_file",
+                    "matcher": "grep_search|find_by_name",
                     "hooks": [
                         {
                             "command": "buddhi hook gate-io",
