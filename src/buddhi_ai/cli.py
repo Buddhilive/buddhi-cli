@@ -36,6 +36,9 @@ def main() -> None:
     metrics_parser.add_argument("--json", action="store_true", help="Output raw JSON")
     metrics_parser.add_argument("--reset", action="store_true", help="Clear all metrics data")
 
+    # AI command
+    subparsers.add_parser("ai", help="Launch the interactive TUI Chat Interface")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -48,6 +51,9 @@ def main() -> None:
         hook_main()
     elif args.command == "metrics":
         handle_metrics(args)
+    elif args.command == "ai":
+        from buddhi_ai.commands.ai_cmd import handle_ai
+        handle_ai(args)
 
 
 if __name__ == "__main__":

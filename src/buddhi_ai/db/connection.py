@@ -19,6 +19,16 @@ def init_db(workspace_root: str) -> sqlite3.Connection:
     db_path = get_db_path(workspace_root)
     conn = sqlite3.connect(db_path)
 
+    # Check for legacy schema and wipe the db if necessary
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(nodes)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if columns and "file_id" not in columns:
+        # Legacy schema detected, clear the database file completely
+        conn.close()
+        db_path.unlink()
+        conn = sqlite3.connect(db_path)
+
     # Enforce foreign keys
     conn.execute("PRAGMA foreign_keys = ON;")
 
