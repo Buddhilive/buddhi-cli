@@ -27,7 +27,7 @@ def main() -> None:
     hook_parser = subparsers.add_parser("hook", help="Run a named hook handler (used by hooks.json)")
     hook_parser.add_argument(
         "name",
-        choices=["gate-io", "shell-proxy", "pre-invoke"],
+        choices=["gate-io", "pre-invoke"],
         help="Which hook to run",
     )
 
@@ -43,8 +43,6 @@ def main() -> None:
     elif args.command == "hook":
         if args.name == "gate-io":
             from buddhi_ai.hooks.gate_io import main as hook_main
-        elif args.name == "shell-proxy":
-            from buddhi_ai.hooks.shell_proxy import main as hook_main
         elif args.name == "pre-invoke":
             from buddhi_ai.hooks.pre_invoke import main as hook_main
         hook_main()
