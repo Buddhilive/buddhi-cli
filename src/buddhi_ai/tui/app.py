@@ -1,4 +1,8 @@
 import asyncio
+import os
+import json
+import httpx
+import tiktoken
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll, Horizontal, Container
 from textual.widgets import Header, Footer, TextArea, Button, Static, Markdown
@@ -106,52 +110,52 @@ class BuddhiChatApp(App):
     }
     """
 
-    MOCK_RESPONSES = {
-        "intro": (
-            "Hello! I am **Buddhi AI**, your intelligent codebase explorer.\n\n"
-            "I can help you navigate, audit, and refactor your workspace:\n"
-            "1. 🔍 **Map structural entities** (functions, classes, imports) using advanced Tree-sitter parsers.\n"
-            "2. ⚡ **Boilerplate filtering** utilizing Shannon entropy to isolate unique logic.\n"
-            "3. 📊 **Metrics tracking** to gauge token savings and productivity boosts.\n\n"
-            "How can I assist you with your codebase today?"
-        ),
-        "code": (
-            "Here is how you can use a custom Python script to interact with your codebase's AST using tree-sitter:\n\n"
-            "```python\n"
-            "from tree_sitter import Language, Parser\n\n"
-            "# Initialize parser\n"
-            "parser = Parser()\n"
-            "parser.set_language(Language('build/my-languages.so', 'python'))\n\n"
-            "tree = parser.parse(b\"\"\"\n"
-            "def hello_world():\n"
-            "    print('Hello, Buddhi!')\n"
-            "\"\"\")\n"
-            "print(tree.root_node.sexp())\n"
-            "```\n\n"
-            "Let me know if you would like me to write a parser hook for your specific language!"
-        ),
-        "repo": (
-            "### 📁 Repository Intelligence Summary\n\n"
-            "I analyzed your workspace structure:\n"
-            "- **Active Languages:** Python (core CLI), TOML (project config), Markdown (documentation).\n"
-            "- **Dependencies:** `tree-sitter` (P25+), `mcp`, `tiktoken`, and now `textual`!\n"
-            "- **Target Entrypoint:** `src/buddhi_ai/cli.py` which delegates to hooks and CLI controllers.\n\n"
-            "Let me know if you want me to analyze a specific file's structure or clean up boilerplate!"
+    def __init__(self, host: str = "127.0.0.1", port: int = 54321, **kwargs):
+        super().__init__(**kwargs)
+        self.host = host
+        self.port = port
+        self.conversation_history = []
+        self.system_prompt = (
+            "You are Buddhi AI, an intelligent codebase explorer and expert software engineer. "
+            "You help developers navigate, audit, and refactor workspaces, map structural entities "
+            "(functions, classes, imports), and filter boilerplate code using Shannon entropy and "
+            "Tree-sitter parsers. Be concise, helpful, and provide high-quality markdown formatted responses."
         )
-    }
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="chat-container"):
             with VerticalScroll(id="chat-thread"):
-                # Initial system introduction
-                yield AssistantMessage(self.MOCK_RESPONSES["intro"])
+                # Placeholder for initial message, injected in on_mount
+                pass
             with Horizontal(id="input-container"):
                 yield TextArea(placeholder="Type your message here... (Ctrl+S to Send, Ctrl+X to Clear)", id="chat-input")
                 yield Button("Send", variant="primary", id="send-button")
         yield Footer()
 
     def on_mount(self) -> None:
+        # Check custom config for system prompt
+        config_path = os.path.expanduser("~/.buddhi/config.json")
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+                    if "system_prompt" in config:
+                        self.system_prompt = config["system_prompt"]
+            except Exception:
+                pass
+
+        self.conversation_history = []
+        
+        intro_text = (
+            "Hello! I am **Buddhi AI**, your intelligent codebase explorer.\n\n"
+            "I'm fully connected to the local LiteRT-LM API. How can I assist you with your codebase today?"
+        )
+        
+        thread = self.query_one("#chat-thread", VerticalScroll)
+        intro_msg = AssistantMessage(intro_text)
+        thread.mount(intro_msg)
+
         self.query_one("#chat-input").focus()
         
     def action_send(self) -> None:
@@ -161,26 +165,17 @@ class BuddhiChatApp(App):
         if not prompt:
             return
             
-        # Mount User Message
         thread = self.query_one("#chat-thread", VerticalScroll)
         user_msg = UserMessage(prompt)
         thread.mount(user_msg)
         
-        # Clear Input
         textarea.text = ""
         
-        # Select response based on keywords
-        response_text = self._get_mock_response(prompt)
-        
-        # Create Empty Assistant Message
         assistant_msg = AssistantMessage("")
         thread.mount(assistant_msg)
-        
-        # Scroll to bottom
         thread.scroll_end(animate=False)
         
-        # Stream response
-        self.stream_response(assistant_msg, response_text)
+        self.stream_response(assistant_msg, prompt)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "send-button":
@@ -189,52 +184,122 @@ class BuddhiChatApp(App):
     def action_clear_thread(self) -> None:
         """Clear all chat messages and remount initial message."""
         thread = self.query_one("#chat-thread", VerticalScroll)
-        # Remove all children
         for child in list(thread.children):
             child.remove()
         
-        # Mount intro
-        intro_msg = AssistantMessage(self.MOCK_RESPONSES["intro"])
+        self.conversation_history = []
+        intro_text = "Chat history cleared. How can I assist you next?"
+        intro_msg = AssistantMessage(intro_text)
         thread.mount(intro_msg)
         thread.scroll_end(animate=False)
 
     @work(exclusive=True)
-    async def stream_response(self, assistant_msg: AssistantMessage, response_text: str):
-        """Simulate a streaming response from an LLM by appending word by word."""
-        current_text = ""
-        words = response_text.split(" ")
+    async def stream_response(self, assistant_msg: AssistantMessage, prompt: str):
+        """Connect to the local LiteRT-LM API and stream the actual LLM response."""
+        textarea = self.query_one("#chat-input", TextArea)
+        send_btn = self.query_one("#send-button", Button)
         thread = self.query_one("#chat-thread", VerticalScroll)
         
-        for word in words:
-            current_text += (word + " ")
-            assistant_msg.update_message(current_text)
-            thread.scroll_end(animate=False)
-            await asyncio.sleep(0.04) # Simulate premium typing speed
+        textarea.disabled = True
+        send_btn.disabled = True
+        
+        self.conversation_history.append({"role": "user", "content": prompt})
+        
+        # Buffer and Summarize Logic (120k token limit)
+        try:
+            enc = tiktoken.get_encoding("cl100k_base")
+            total_tokens = sum(len(enc.encode(msg["content"])) for msg in self.conversation_history)
+            if self.system_prompt:
+                total_tokens += len(enc.encode(self.system_prompt))
+                
+            if total_tokens > 120000 and len(self.conversation_history) > 6:
+                middle_msgs = self.conversation_history[2:-4]
+                if middle_msgs:
+                    summary_prompt = "Summarize the following chat history concisely while preserving key details and entity mappings:\n\n"
+                    for m in middle_msgs:
+                        summary_prompt += f"{m['role'].upper()}: {m['content']}\n"
+                        
+                    try:
+                        async with httpx.AsyncClient() as client:
+                            summary_resp = await client.post(
+                                f"http://{self.host}:{self.port}/v1/chat/completions",
+                                json={
+                                    "model": "gemma-4-E4B-it.litertlm",
+                                    "messages": [{"role": "user", "content": summary_prompt}],
+                                    "stream": False,
+                                },
+                                timeout=30.0
+                            )
+                            if summary_resp.status_code == 200:
+                                summary_data = summary_resp.json()
+                                summary_content = summary_data["choices"][0]["message"]["content"]
+                                new_history = self.conversation_history[:2]
+                                new_history.append({"role": "system", "content": f"[System Note: Summary of previous discussion: {summary_content}]"})
+                                new_history.extend(self.conversation_history[-4:])
+                                self.conversation_history = new_history
+                    except Exception:
+                        pass # Proceed without summarization if it fails
+        except Exception:
+            pass # Fallback if tiktoken encoding fails
             
-        # Ensure scroll catches up fully at the end
-        thread.scroll_end(animate=False)
-
-    def _get_mock_response(self, prompt: str) -> str:
-        prompt_lower = prompt.lower()
-        if any(w in prompt_lower for w in ["help", "buddhi", "intro", "hello", "hi"]):
-            return self.MOCK_RESPONSES["intro"]
-        elif any(w in prompt_lower for w in ["code", "script", "example", "python", "tree-sitter"]):
-            return self.MOCK_RESPONSES["code"]
-        elif any(w in prompt_lower for w in ["repo", "structure", "folder", "project", "file"]):
-            return self.MOCK_RESPONSES["repo"]
-        else:
-            return (
-                f"I received your message: *\"{prompt}\"*\n\n"
-                "As I am currently running in TUI UI mock mode, I don't have a live connection to an LLM. "
-                "However, I successfully captured your prompt! Here is some markdown telemetry of your query:\n\n"
-                "| Property | Value |\n"
-                "| --- | --- |\n"
-                "| **Prompt Length** | " + str(len(prompt)) + " chars |\n"
-                "| **Word Count** | " + str(len(prompt.split())) + " words |\n"
-                "| **UI Framework** | Textual 0.86+ |\n"
-                "| **Mock Stream Status** | ✅ Streaming Active |\n\n"
-                "Try asking me about **'code'** or **'repo'** to see predefined premium mock responses!"
-            )
+        messages = []
+        if self.system_prompt:
+            messages.append({"role": "system", "content": self.system_prompt})
+            
+        messages.extend(self.conversation_history)
+        
+        current_text = ""
+        try:
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    f"http://{self.host}:{self.port}/v1/chat/completions",
+                    json={
+                        "model": "gemma-4-E4B-it.litertlm",
+                        "messages": messages,
+                        "stream": True,
+                        "temperature": 0.7,
+                        "max_tokens": 1024,
+                    },
+                    timeout=60.0
+                ) as response:
+                    if response.status_code != 200:
+                        error_detail = await response.aread()
+                        assistant_msg.update_message(f"⚠️ **Error from API server ({response.status_code}):** {error_detail.decode('utf-8')}")
+                        return
+                        
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                data = json.loads(data_str)
+                                if "error" in data:
+                                    assistant_msg.update_message(f"⚠️ **Streaming Error:** {data['error']}")
+                                    return
+                                    
+                                content = data["choices"][0]["delta"].get("content", "")
+                                if content:
+                                    current_text += content
+                                    assistant_msg.update_message(current_text)
+                                    thread.scroll_end(animate=False)
+                            except Exception:
+                                pass
+                                
+            if current_text:
+                self.conversation_history.append({"role": "assistant", "content": current_text})
+                
+        except Exception as e:
+            assistant_msg.update_message(f"⚠️ **Failed to communicate with inferencing server:** {str(e)}")
+        finally:
+            textarea.disabled = False
+            send_btn.disabled = False
+            textarea.focus()
+            thread.scroll_end(animate=False)
 
 if __name__ == "__main__":
     BuddhiChatApp().run()

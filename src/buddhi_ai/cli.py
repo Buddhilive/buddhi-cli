@@ -37,7 +37,9 @@ def main() -> None:
     metrics_parser.add_argument("--reset", action="store_true", help="Clear all metrics data")
 
     # AI command
-    subparsers.add_parser("ai", help="Launch the interactive TUI Chat Interface")
+    ai_parser = subparsers.add_parser("ai", help="Launch the interactive TUI Chat Interface")
+    ai_parser.add_argument("--host", type=str, default="127.0.0.1", help="API server host (default: 127.0.0.1)")
+    ai_parser.add_argument("--port", type=int, default=54321, help="API server port (default: 54321)")
 
     # Server command
     server_parser = subparsers.add_parser("server", help="Start the Buddhi API server (Gemma 4 E4B)")
