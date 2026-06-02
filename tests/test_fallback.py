@@ -1,6 +1,4 @@
 import json
-import os
-import shutil
 from pathlib import Path
 import pytest
 from buddhi_ai.mcp.tools.read import execute_buddhi_read

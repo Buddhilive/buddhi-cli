@@ -4,9 +4,9 @@ import json
 import uuid
 import logging
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from contextlib import asynccontextmanager
 from buddhi_ai.server.engine import LiteRTEngine

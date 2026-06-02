@@ -1,8 +1,6 @@
 import argparse
 import json
 from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from typing import Any
 
 from buddhi_ai.metrics.constants import INPUT_PRICE_PER_MTOK, PRICING_LABEL, TOKEN_ENCODING
 from buddhi_ai.metrics.db import init_metrics_db, get_metrics_db_path

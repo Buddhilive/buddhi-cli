@@ -147,7 +147,6 @@ def enforce_budget(text: str, budget: int) -> str:
     tail = list(reversed(_fit_lines(list(reversed(lines)), tail_budget)))
 
     # Avoid overlap
-    head_set = set(range(len(head)))
     tail_start_idx = len(lines) - len(tail)
     if tail_start_idx <= len(head):
         tail = []

@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from dataclasses import dataclass, field
-from pathlib import PurePosixPath, PureWindowsPath
-from typing import Optional
+from dataclasses import dataclass
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Domain detection heuristics
@@ -307,7 +305,7 @@ def abstract_traceback(text: str) -> str:
     lines = text.splitlines()
 
     # Python traceback
-    if any("Traceback (most recent call last)" in l for l in lines):
+    if any("Traceback (most recent call last)" in line for line in lines):
         return _abstract_python_traceback(lines)
 
     # Node.js traceback — collapse external (node_modules) frames

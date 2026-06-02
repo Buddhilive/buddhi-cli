@@ -46,6 +46,9 @@ def main() -> None:
     # Shutdown command
     subparsers.add_parser("shutdown", help="Stop the background Buddhi API server")
 
+    # Setup command
+    subparsers.add_parser("setup", help="Download and prepare the Gemma 4 E4B model")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -67,7 +70,9 @@ def main() -> None:
     elif args.command == "shutdown":
         from buddhi_ai.commands.shutdown_cmd import handle_shutdown
         handle_shutdown(args)
-
+    elif args.command == "setup":
+        from buddhi_ai.commands.setup_cmd import handle_setup
+        handle_setup(args)
 
 if __name__ == "__main__":
     main()
