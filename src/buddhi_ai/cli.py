@@ -39,6 +39,13 @@ def main() -> None:
     # AI command
     subparsers.add_parser("ai", help="Launch the interactive TUI Chat Interface")
 
+    # Server command
+    server_parser = subparsers.add_parser("server", help="Start the Buddhi API server (Gemma 4 E4B)")
+    server_parser.add_argument("--verbose", action="store_true", help="Run the server in the foreground and show logs")
+
+    # Shutdown command
+    subparsers.add_parser("shutdown", help="Stop the background Buddhi API server")
+
     args = parser.parse_args()
 
     if args.command == "init":
@@ -54,6 +61,12 @@ def main() -> None:
     elif args.command == "ai":
         from buddhi_ai.commands.ai_cmd import handle_ai
         handle_ai(args)
+    elif args.command == "server":
+        from buddhi_ai.commands.server_cmd import handle_server
+        handle_server(args)
+    elif args.command == "shutdown":
+        from buddhi_ai.commands.shutdown_cmd import handle_shutdown
+        handle_shutdown(args)
 
 
 if __name__ == "__main__":

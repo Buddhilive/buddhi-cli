@@ -33,6 +33,10 @@ dependencies = [
     "tree-sitter-typescript>=0.23.2",
     "tiktoken>=0.9.0",
     "textual>=0.86.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "litert-lm-api>=0.1.0",
+    "psutil>=5.9.0",
 ]
 
 [project.urls]
