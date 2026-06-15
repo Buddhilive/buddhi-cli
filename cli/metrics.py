@@ -43,11 +43,14 @@ def run_benchmark():
     print("\n--- Phase 1: Codebase Indexing Metrics ---")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     mcp_dir = os.path.join(base_dir, "mcp")
+    # Use append instead of insert(0, ...) to prevent shadowing standard library modules (like types)
     if mcp_dir not in sys.path:
-        sys.path.insert(0, mcp_dir)
+        sys.path.append(mcp_dir)
         
     try:
-        from server import get_codebase_summary_impl
+        from cli.main import load_buddhi_mcp_server
+        buddhi_mcp_server = load_buddhi_mcp_server()
+        get_codebase_summary_impl = buddhi_mcp_server.get_codebase_summary_impl
         from indexer import CodeIndexer
         
         # We need a db_path inside .buddhi

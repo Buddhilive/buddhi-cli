@@ -482,6 +482,14 @@ def stream_model_response(messages, system_instruction, thinking_placeholder=Non
         st.session_state["_buddhi_react_agent"] = get_react_agent()
     agent = st.session_state["_buddhi_react_agent"]
 
+    # Propagate active user query to UI Agent for buddhi_view_file task filtering context
+    import ui.agent
+    if messages:
+        for msg in reversed(messages):
+            if msg["role"] == "user":
+                ui.agent.ACTIVE_USER_QUERY = msg["content"]
+                break
+
     # Build the message list synchronously before handing off to the thread
     langchain_messages = []
     if system_instruction:

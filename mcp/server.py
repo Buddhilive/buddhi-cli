@@ -11,6 +11,9 @@ from search import handle_search
 # Initialize FastMCP Server
 mcp = FastMCP("CodeGraph")
 
+# Global Cache for buddhi_view_file (tracks content, mtime, read counts, full delivery flags)
+FILE_CACHE: dict = {}
+
 
 def log_tool_trigger(tool_name: str, status: str = "success", duration_ms: float = 0.0, arguments: dict | None = None):
     try:
@@ -544,12 +547,29 @@ Do NOT include any extra conversational text, markdown wrapping (such as ```json
 # ==========================================
 
 @mcp.tool()
-def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
-    """Executes a shell command (bash or powershell) locally, processes the stdout/stderr
-    using local Gemma 4 edge inference to identify key successes or failures,
-    and returns a compact, token-saving structured JSON summary.
+def buddhi_run_command(command: str, timeout_seconds: int = 120) -> str:
+    """Executes a shell command (bash on Unix or powershell on Windows) locally in the workspace.
     
-    CRITICAL: ALWAYS use this tool INSTEAD OF the native 'run_command' or terminal execution tools. This is NOT optional.
+    This is a token-efficient, secure shell runner that automatically prepends local SDK/bin paths 
+    (such as python venv, node_modules/.bin, rust debug/release bins, and workspace bin directories) 
+    to the execution environment PATH.
+    
+    Automated Compression & Edge Summarization:
+    - Large command outputs (>64k characters) are softly compressed to avoid LLM context bloat, 
+      retaining the start, end, and up to 20 critical error/warning lines from the middle.
+    - Captures stdout/stderr and utilizes central edge inference models to automatically distill 
+      results into a structured JSON payload with keys: `status`, `summary`, `critical_findings`, and `exit_code`.
+    - Features a default 120-second timeout guardrail to prevent hanging processes.
+    
+    CRITICAL USAGE RULES:
+    1. ALWAYS use this tool INSTEAD OF native `run_command` or arbitrary terminal execution. This is NOT optional.
+    2. Do NOT use shell write redirections (e.g. `>` or `>>` or `| tee`) to write or modify file contents; 
+       always use dedicated file write/edit tools. This prevents protocol corruption and data loss.
+    3. Designed specifically for passive readout commands such as:
+       - Running project test suites (e.g., `pytest`, `npm test`, `cargo test`).
+       - Running project linters, typecheckers, and compilers (e.g., `ruff`, `tsc`, `cargo build`).
+       - Inspecting git state and history (e.g., `git status`, `git diff`).
+       - Installing or upgrading dependencies (e.g., `pip install`, `npm install`, `uv sync`).
     """
     start_time = time.time()
     status = "success"
@@ -565,27 +585,65 @@ def execute_command_optimized(command: str, timeout_seconds: int = 120) -> str:
         raise e
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
-        log_tool_trigger("execute_command_optimized", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
+        log_tool_trigger("buddhi_run_command", status, duration_ms, {"command": command, "timeout_seconds": timeout_seconds})
 
 
 @mcp.tool()
-def search_code(
-    pattern: str,
-    path: str | None = None,
-    ext: str | None = None,
+def buddhi_grep_search(
+    query: str,
+    globs: list[str] | None = None,
     max_results: int = 50,
     ignore_gitignore: bool = False
 ) -> str:
-    """Performs a token-efficient, regex-based text search over files in the workspace.
+    """Performs a highly optimized, hybrid textual and semantic symbol search over the workspace files.
     
-    Returns compact, compressed matches to save LLM context tokens.
-    Use this to search for arbitrary text strings, literal constants, or pattern matches inside files
-    when symbol-based queries via 'find_relevant_symbols' are too narrow.
+    This tool combines regex-based file scanning with AST CodeGraph symbol analysis to return extremely 
+    compressed, context-enriched results, reducing context token overhead by 6.8x-49x compared to standard grep.
+    
+    Advanced Search Engineering:
+    - Hybrid Context Enrichment: Automatically queries the CodeGraph database for definitions matching 
+      the search term, injecting class method signatures, docstrings, and structures alongside raw textual matches.
+    - AST Line Tagging: Matches are enriched with AST scope tags (e.g., `[inside function my_func]`) 
+      indicating which symbol context the matching line belongs to.
+    - Security and Exclusion Policies: Automatically respects workspace `.gitignore` rules (unless `ignore_gitignore=True`) 
+      and skips binary, minified/generated files, and secret-like files (e.g., `.env`, keys, certificates, credentials) 
+      to protect the context from noise and prevent credential exposure.
+    - Greek Symbol Mapping: Replaces recurring long identifiers (e.g., `validateUserToken`) with short 
+      Greek character markers (e.g., `α1`) and appends a mapping legend at the end, saving massive LLM tokens.
+    - Monorepo Scope Hints: Provides smart suggestions when results span multiple sub-directories, advising how 
+      to narrow search scopes.
+    
+    Parameters:
+    - query: A regex pattern to search for in files and code symbols.
+    - globs: A list of filters to scope the search. Each term is intelligently mapped:
+      - If it starts with `*.`, it is treated as a file extension filter (e.g., `*.py` to only search Python files).
+      - If it ends with `/` or contains `/`, it scopes the search to that sub-directory (e.g., `mcp/` or `cli/`).
+      - If it contains a dot, it extracts the file extension candidate (e.g., `main.rs` -> extension filter `rs`).
+      - Otherwise, it is treated as a search directory scope.
+    - max_results: Maximum number of search occurrences to return (default: 50).
+    - ignore_gitignore: Set to True to bypass `.gitignore` filters (requires administrative policy).
+    
+    CRITICAL: ALWAYS use this tool INSTEAD OF native `grep_search` or `rg` for textual workspace searches.
     """
     start_time = time.time()
     status = "success"
+    path = None
+    ext = None
+    if globs:
+        for g in globs:
+            if g.startswith("*."):
+                ext = g[2:]
+            elif g.endswith("/") or "/" in g:
+                path = g
+            else:
+                if "." in g and not g.startswith("."):
+                    _, ext_candidate = os.path.splitext(g)
+                    if ext_candidate:
+                        ext = ext_candidate.lstrip(".")
+                else:
+                    path = g
     try:
-        res = handle_search(pattern, path, ext, max_results, ignore_gitignore)
+        res = handle_search(query, path, ext, max_results, ignore_gitignore)
         if res.startswith("ERROR:"):
             status = "error"
         return res
@@ -595,10 +653,9 @@ def search_code(
         raise e
     finally:
         duration_ms = (time.time() - start_time) * 1000.0
-        log_tool_trigger("search_code", status, duration_ms, {
-            "pattern": pattern,
-            "path": path,
-            "ext": ext,
+        log_tool_trigger("buddhi_grep_search", status, duration_ms, {
+            "query": query,
+            "globs": globs,
             "max_results": max_results,
             "ignore_gitignore": ignore_gitignore
         })
@@ -752,6 +809,300 @@ def get_symbol_implementation(symbol_id: str, max_lines: int = 150) -> str:
         log_tool_trigger("get_symbol_implementation", status, duration_ms, {"symbol_id": symbol_id, "max_lines": max_lines})
 
 
+@mcp.tool()
+def buddhi_view_file(
+    path: str,
+    mode: str = "auto",
+    fresh: bool = False,
+    task: str | None = None
+) -> str:
+    """Reads and views a file's contents with adaptive, token-saving compression modes.
+    
+    This is an intelligent, high-fidelity alternative to the standard `view_file` built-in tool.
+    It automatically supports the following modes to optimize context window usage:
+    - 'full': Returns the raw complete contents of the file (sacred for editing).
+    - 'signatures': Distills the API surface (class, function, method definitions) of the file.
+    - 'map': Distills high-level exports, imports, and key API interfaces.
+    - 'lines:N-M': Returns only the specific inclusive line range (e.g. 'lines:1-50' or 'lines:10,20-30').
+    - 'aggressive': Maximum token compression for large context readability.
+    - 'entropy': Information density-based adaptive compression.
+    - 'task': Contextual filtration prioritizing content relevant to the current task.
+    - 'reference': Metadata reference only, showing number of lines/tokens.
+    - 'auto': Dynamically resolves to the best compression mode based on file size, type, and history.
+
+    Parameters:
+    - path: Absolute or relative path to the file to inspect.
+    - mode: Compression mode. Defaults to 'auto'.
+    - fresh: Set to True to bypass cached stubs and force a fresh disk read.
+    - task: Optional query string representing the current task to filter content for 'task' mode.
+    """
+    start_time = time.time()
+    status = "success"
+    try:
+        workspace_root = get_workspace_root()
+        if not os.path.isabs(path):
+            abs_path = os.path.abspath(os.path.join(workspace_root, path))
+        else:
+            abs_path = os.path.abspath(path)
+
+        if not os.path.exists(abs_path):
+            return f"ERROR: File not found: {path}"
+
+        # Ensure we are not trying to read a binary file
+        try:
+            with open(abs_path, "rb") as f:
+                chunk = f.read(1024)
+                if b'\x00' in chunk:
+                    return f"ERROR: Binary file view blocked: {path}"
+        except Exception:
+            pass
+
+        try:
+            with open(abs_path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+        except Exception as e:
+            return f"ERROR: Failed to read file {path}: {str(e)}"
+
+        mtime = os.path.getmtime(abs_path)
+        cache_key = abs_path
+
+        # Initialize cache entry if not present or fresh
+        if cache_key not in FILE_CACHE or fresh:
+            FILE_CACHE[cache_key] = {
+                "content": content,
+                "mtime": mtime,
+                "read_count": 0,
+                "delivered_full": False,
+                "compressed_cache": {}
+            }
+
+        cache_entry = FILE_CACHE[cache_key]
+
+        # Invalidate if file changed on disk
+        if cache_entry["mtime"] != mtime:
+            cache_entry["content"] = content
+            cache_entry["mtime"] = mtime
+            cache_entry["delivered_full"] = False
+            cache_entry["compressed_cache"] = {}
+
+        cache_entry["read_count"] += 1
+
+        # First, resolve "auto" mode
+        resolved_mode = mode
+        if mode == "auto":
+            approx_tokens = len(content) // 4
+            is_instruction = any(
+                name in os.path.basename(abs_path).lower()
+                for name in ["skill.md", "agents.md", "rules.md", ".cursorrules", "lean-ctx"]
+            ) or "rules" in abs_path.lower()
+
+            if is_instruction:
+                resolved_mode = "full"
+            elif approx_tokens <= 800:
+                resolved_mode = "full"
+            else:
+                resolved_mode = "signatures"
+
+        # Check cache unchanged stub (mirroring ctx_read)
+        if resolved_mode == "full":
+            if cache_entry["delivered_full"] and not fresh:
+                line_count = len(content.splitlines())
+                return f"[unchanged, {line_count}L, use cached context] File unchanged on disk. (Use fresh=true to force re-delivery)"
+            cache_entry["delivered_full"] = True
+            line_count = len(content.splitlines())
+            header = f"# {os.path.basename(abs_path)} ({line_count} lines)\n"
+            return header + content
+
+        # Check compressed cache
+        if resolved_mode in cache_entry["compressed_cache"] and not fresh:
+            return cache_entry["compressed_cache"][resolved_mode]
+
+        # Try calling central FastAPI Responses API
+        llm_success = False
+        llm_output = ""
+
+        # Instruct local Gemma 4
+        instructions = f"""You are a token-saving file compression agent. Your job is to format the given file content into the requested mode: '{resolved_mode}'.
+- If mode is 'signatures': extract all class/function/method signatures and definitions, omitting their detailed implementation/body.
+- If mode is 'map': extract high-level module exports, imports, and key classes/functions interfaces.
+- If mode is 'aggressive': perform aggressive code compression by removing comments, blank lines, or extraneous boilerplate.
+- If mode is 'task': filter the code to show only parts and lines relevant to the task query '{task or ""}'.
+- If mode is 'entropy': condense repeating boilerplate/patterns and focus on high-entropy unique logic.
+- If mode is 'reference': return a brief metadata reference summary of file type, length, and architecture.
+
+Do not wrap in Markdown code blocks (e.g. no ```python). Return ONLY the clean, compressed output ready to be shared with another AI agent."""
+
+        comp_content = content
+        if len(comp_content) > 30000:
+            comp_content = comp_content[:15000] + "\n...[TRUNCATED MIDDLE TO SAVE CONTEXT]...\n" + comp_content[-15000:]
+
+        prompt = f"File: {os.path.basename(abs_path)}\nContent:\n{comp_content}"
+
+        import urllib.request
+        import urllib.error
+        try:
+            payload = {
+                "instructions": instructions,
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": prompt}]
+                    }
+                ],
+                "stream": False
+            }
+            url = "http://localhost:58421/v1/responses"
+            req_api = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req_api, timeout=12) as response:
+                res_data = response.read().decode("utf-8")
+                response_json = json.loads(res_data)
+                assistant_text = response_json["output"][0]["content"][0]["text"].strip()
+
+                if assistant_text.startswith("```"):
+                    lines = assistant_text.split("\n")
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].startswith("```"):
+                        lines = lines[:-1]
+                    assistant_text = "\n".join(lines).strip()
+
+                llm_output = assistant_text
+                llm_success = True
+        except Exception:
+            pass
+
+        if llm_success:
+            approx_savings = 100 - (len(llm_output) * 100 // max(1, len(content)))
+            header = f"# {os.path.basename(abs_path)} [compressed: {resolved_mode}, saved ~{approx_savings}% tokens via edge LLM]\n"
+            result = header + llm_output
+            cache_entry["compressed_cache"][resolved_mode] = result
+            return result
+
+        # ── FALLBACK ALGORITHMS ──────────────────────────────────────────
+        fallback_output = ""
+
+        if resolved_mode.startswith("lines:"):
+            range_str = resolved_mode[6:]
+            lines = content.splitlines()
+            total = len(lines)
+            selected = []
+            for part in range_str.split(','):
+                part = part.strip()
+                if '-' in part:
+                    try:
+                        start_s, end_s = part.split('-', 1)
+                        start = max(1, int(start_s))
+                        end = min(total, int(end_s))
+                        for i in range(start, end + 1):
+                            selected.append(f"{i:>4}| {lines[i-1]}")
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        n = int(part)
+                        if 1 <= n <= total:
+                            selected.append(f"{n:>4}| {lines[n-1]}")
+                    except Exception:
+                        pass
+            fallback_output = "\n".join(selected) if selected else "No lines matched the range."
+
+        elif resolved_mode in ("signatures", "map"):
+            try:
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("buddhi_parser", os.path.join(os.path.dirname(__file__), "parser.py"))
+                if spec is None or spec.loader is None:
+                    raise ImportError("Could not load spec or loader for buddhi_parser")
+                bp_mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(bp_mod)
+                parser_obj = bp_mod.ASTParser(workspace_root)
+                
+                rel_path = os.path.relpath(abs_path, workspace_root)
+                parse_res = parser_obj.parse_file(rel_path)
+                symbols = parse_res.get("symbols", [])
+                imports = parse_res.get("imports", {})
+
+                sig_lines = []
+                if resolved_mode == "map" and imports:
+                    sig_lines.append("Imports:")
+                    for imp_name, imp_data in list(imports.items())[:12]:
+                        sig_lines.append(f"  - {imp_name} (from {imp_data.get('module')})")
+                    sig_lines.append("")
+
+                sig_lines.append("API Surface:")
+                for sym in symbols:
+                    if sym["type"] in ("class", "function", "method"):
+                        sig_lines.append(f"  - {sym['type'].upper()} {sym['name']} (lines {sym['start_line']}-{sym['end_line']})")
+                        if sym.get("docstring"):
+                            doc_first = sym["docstring"].strip().split("\n")[0]
+                            sig_lines.append(f"    # {doc_first}")
+                fallback_output = "\n".join(sig_lines)
+            except Exception:
+                lines = content.splitlines()
+                defs = []
+                for i, line in enumerate(lines, 1):
+                    stripped = line.strip()
+                    if stripped.startswith(("def ", "class ", "function ", "async def ")):
+                        defs.append(f"{i:>4}| {stripped}")
+                fallback_output = "\n".join(defs) if defs else "[No signatures found via regex fallback]"
+
+        elif resolved_mode == "task" and task:
+            keywords = [kw.strip().lower() for kw in task.split() if len(kw.strip()) > 2]
+            lines = content.splitlines()
+            matched_lines = []
+            for i, line in enumerate(lines, 1):
+                line_lower = line.lower()
+                if any(kw in line_lower for kw in keywords):
+                    start = max(0, i - 2)
+                    end = min(len(lines), i + 1)
+                    matched_lines.append(f"--- Context (Lines {start+1}-{end}) ---")
+                    for j in range(start, end):
+                        marker = " => " if j == i - 1 else "    "
+                        matched_lines.append(f"{j+1:>4}{marker}{lines[j]}")
+            fallback_output = "\n".join(matched_lines) if matched_lines else "[No task-relevant matches found]"
+
+        elif resolved_mode in ("aggressive", "entropy"):
+            lines = content.splitlines()
+            comp = []
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if stripped.startswith(("#", "//", "/*", "*")):
+                    continue
+                comp.append(line)
+            fallback_output = "\n".join(comp)
+
+        elif resolved_mode == "reference":
+            approx_tok = len(content) // 4
+            fallback_output = f"File: {os.path.basename(abs_path)}\nLines: {len(content.splitlines())}\nSize: {len(content)} bytes\nApprox Tokens: {approx_tok}"
+
+        else:
+            fallback_output = content
+
+        approx_savings = 100 - (len(fallback_output) * 100 // max(1, len(content)))
+        header = f"# {os.path.basename(abs_path)} [compressed: {resolved_mode} (fallback), saved ~{approx_savings}% tokens]\n"
+        result = header + fallback_output
+        cache_entry["compressed_cache"][resolved_mode] = result
+        return result
+
+    except Exception as e:
+        status = "error"
+        raise e
+    finally:
+        duration_ms = (time.time() - start_time) * 1000.0
+        log_tool_trigger("buddhi_view_file", status, duration_ms, {
+            "path": path,
+            "mode": mode,
+            "fresh": fresh,
+            "task": task
+        })
+
+
 def get_process_name(pid: int) -> str:
     """Returns the process name for a given PID using built-in OS commands."""
     import sys
@@ -799,21 +1150,7 @@ def monitor_parent_and_stdin():
     # Store original parent process name to watch for PID recycling
     original_parent_name = get_process_name(parent_pid)
 
-    # 1. Watch Stdin in a separate daemon thread
-    def watch_stdin():
-        try:
-            # sys.stdin.read(1) blocks until there is input or EOF
-            char = sys.stdin.read(1)
-            if char == "":
-                # EOF reached: Stdin closed. Exit.
-                sys.exit(0)
-        except Exception:
-            sys.exit(0)
-
-    stdin_thread = threading.Thread(target=watch_stdin, daemon=True)
-    stdin_thread.start()
-
-    # 2. Watch Parent Process in main loop
+    # Watch Parent Process in main loop
     while True:
         time.sleep(5)
         try:

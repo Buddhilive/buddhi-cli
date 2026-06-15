@@ -570,44 +570,48 @@ class CodeIndexer:
         let activeHighlight = false;
         let clickedNode = null;
 
+        function highlightNode(nodeId) {
+            clickedNode = nodeId;
+            activeHighlight = true;
+            
+            // Find immediate connected nodes
+            const connectedNodes = network.getConnectedNodes(clickedNode);
+            
+            // Dim everything except active and neighbors
+            const updatedNodes = allNodes.map(node => {
+                const isSelf = node.id === clickedNode;
+                const isNeighbor = connectedNodes.includes(node.id);
+                const opacity = (isSelf || isNeighbor) ? 1.0 : 0.2;
+                const isTypeVisible = activeFilters[node.type];
+                
+                return {
+                    ...node,
+                    opacity: opacity,
+                    hidden: !isTypeVisible,
+                    font: {
+                        ...node.font,
+                        color: (isSelf || isNeighbor) ? '#f8fafc' : 'rgba(248, 250, 252, 0.2)'
+                    }
+                };
+            });
+            nodesDataSet.update(updatedNodes);
+
+            // Dim non-connected edges
+            const updatedEdges = allEdges.map(edge => {
+                const isConnected = edge.from === clickedNode || edge.to === clickedNode;
+                return {
+                    ...edge,
+                    color: isConnected ? { color: '#38bdf8', opacity: 1.0 } : { color: 'rgba(71, 85, 105, 0.1)', opacity: 0.1 }
+                };
+            });
+            edgesDataSet.update(updatedEdges);
+
+            showNodeDetails(clickedNode);
+        }
+
         network.on("click", function(params) {
             if (params.nodes.length > 0) {
-                clickedNode = params.nodes[0];
-                activeHighlight = true;
-                
-                // Find immediate connected nodes
-                const connectedNodes = network.getConnectedNodes(clickedNode);
-                
-                // Dim everything except active and neighbors
-                const updatedNodes = allNodes.map(node => {
-                    const isSelf = node.id === clickedNode;
-                    const isNeighbor = connectedNodes.includes(node.id);
-                    const opacity = (isSelf || isNeighbor) ? 1.0 : 0.2;
-                    const isTypeVisible = activeFilters[node.type];
-                    
-                    return {
-                        ...node,
-                        opacity: opacity,
-                        hidden: !isTypeVisible,
-                        font: {
-                            ...node.font,
-                            color: (isSelf || isNeighbor) ? '#f8fafc' : 'rgba(248, 250, 252, 0.2)'
-                        }
-                    };
-                });
-                nodesDataSet.update(updatedNodes);
-
-                // Dim non-connected edges
-                const updatedEdges = allEdges.map(edge => {
-                    const isConnected = edge.from === clickedNode || edge.to === clickedNode;
-                    return {
-                        ...edge,
-                        color: isConnected ? { color: '#38bdf8', opacity: 1.0 } : { color: 'rgba(71, 85, 105, 0.1)', opacity: 0.1 }
-                    };
-                });
-                edgesDataSet.update(updatedEdges);
-
-                showNodeDetails(clickedNode);
+                highlightNode(params.nodes[0]);
             } else {
                 resetHighlight();
             }
@@ -695,7 +699,7 @@ class CodeIndexer:
                 searchResults.innerHTML = '<div class="p-2.5 text-xs text-slate-400 italic">No matches found</div>';
             } else {
                 searchResults.innerHTML = matches.map(node => `
-                    <div onclick="focusNode('${node.id}')" class="p-2.5 hover:bg-white/5 cursor-pointer flex flex-col border-b border-white/5 last:border-0 transition-colors">
+                    <div data-node-id="${encodeURIComponent(node.id)}" class="search-item p-2.5 hover:bg-white/5 cursor-pointer flex flex-col border-b border-white/5 last:border-0 transition-colors">
                         <span class="text-sm font-semibold text-white truncate">${node.label}</span>
                         <span class="text-[10px] text-slate-400 truncate font-mono">${node.file_path}</span>
                     </div>
@@ -708,6 +712,15 @@ class CodeIndexer:
         document.addEventListener('click', (e) => {
             if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
                 searchResults.classList.add('hidden');
+            }
+        });
+
+        // Add Event Delegation Listener for safe decoded navigation
+        searchResults.addEventListener('click', (e) => {
+            const item = e.target.closest('.search-item');
+            if (item) {
+                const nodeId = decodeURIComponent(item.dataset.nodeId);
+                focusNode(nodeId);
             }
         });
 
@@ -728,8 +741,8 @@ class CodeIndexer:
 
             setTimeout(() => {
                 network.selectNodes([nodeId]);
-                // Trigger clicked neighborhood highlight
-                network.trigger("click", { nodes: [nodeId] });
+                // Highlight the selected node and its connections
+                highlightNode(nodeId);
                 
                 // Freeze again if physics was manually turned off
                 if (!physicsRunning) {
