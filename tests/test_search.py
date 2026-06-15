@@ -1,217 +1,317 @@
-# ruff: noqa: E402
-import sys
-import os
-import unittest
-import tempfile
-import shutil
-import tiktoken
+"""Tests for the buddhi_search pipeline."""
+import sqlite3
+from pathlib import Path
 
-# Add local mcp/ directory to sys.path so we can import search directly
-_mcp_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "mcp")
-if _mcp_dir not in sys.path:
-    sys.path.insert(0, _mcp_dir)
+import pytest
 
-from search import (
-    SymbolMap,
-    should_register,
-    extract_identifiers,
-    GitIgnoreFilter,
-    is_binary_ext,
-    is_generated_file,
-    is_secret_like,
-    handle_search
+from buddhi_ai.search.query_expansion import expand_query, build_fts_query
+from buddhi_ai.search.formatter import (
+    SearchResult,
+    extract_signature,
+    extract_map_entry,
+    filter_low_entropy_lines,
+    u_curve_sort,
+    serialize_context,
+    render_content,
 )
+from buddhi_ai.search.compressor import (
+    _tier1_strip_bridges,
+    _tier2_degrade_modes,
+)
+from buddhi_ai.search.search import buddhi_search
 
 
-class TestSymbolMap(unittest.TestCase):
-    def test_registration_and_apply(self):
-        sym_map = SymbolMap()
-        # Short strings should be rejected from mapping
-        self.assertIsNone(sym_map.register("foo"))
-        
-        # Valid longer identifiers
-        sig1 = sym_map.register("validateTokenSignature")
-        sig2 = sym_map.register("processUserRequest")
-        
-        self.assertIsNotNone(sig1)
-        self.assertIsNotNone(sig2)
-        self.assertNotEqual(sig1, sig2)
-        
-        # Duplicate registration should return existing
-        self.assertEqual(sym_map.register("validateTokenSignature"), sig1)
-        
-        # Test applying substitutions
-        test_text = "def validateTokenSignature(req):\n    processUserRequest(req)"
-        replaced = sym_map.apply(test_text)
-        self.assertIn("α1", replaced)
-        self.assertIn("α2", replaced)
-        self.assertNotIn("validateTokenSignature", replaced)
-        self.assertNotIn("processUserRequest", replaced)
-        
-        # Table output formatting
-        table = sym_map.format_table()
-        self.assertIn("§MAP:", table)
-        self.assertIn("α1=validateTokenSignature", table)
-        self.assertIn("α2=processUserRequest", table)
+# --------------------------------------------------------------------------
+# Fixtures
+# --------------------------------------------------------------------------
 
-    def test_apply_descending_length_safety(self):
-        sym_map = SymbolMap()
-        # "validate" is a prefix of "validateToken"
-        sym_map.register("validate")
-        sym_map.register("validateToken")
-        
-        text = "we validate a validateToken here"
-        replaced = sym_map.apply(text)
-        
-        # If "validate" replaced first, "validateToken" would become "α1Token", which is incorrect.
-        # It must replace "validateToken" first, yielding "α2" and "validate" to "α1".
-        self.assertNotIn("Token", replaced)
+@pytest.fixture
+def db_path(tmp_path: Path) -> str:
+    """Create a test SQLite database with schema, FTS5, and sample data."""
+    db_file = str(tmp_path / "graph.db")
+    conn = sqlite3.connect(db_file)
 
+    # Run schema
+    schema_path = Path(__file__).parent.parent / "src" / "buddhi_ai" / "db" / "schema.sql"
+    with open(schema_path, "r", encoding="utf-8") as f:
+        conn.executescript(f.read())
 
-class TestROICompression(unittest.TestCase):
-    def setUp(self):
-        try:
-            self.encoder = tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            self.encoder = tiktoken.encoding_for_model("gpt-4")
+    # Insert files
+    conn.execute("INSERT INTO files (id, path, mtime, last_scanned) VALUES (1, 'src/parser.py', 1.0, 1.0)")
+    conn.execute("INSERT INTO files (id, path, mtime, last_scanned) VALUES (2, 'src/utils.py', 1.0, 1.0)")
+    conn.execute("INSERT INTO files (id, path, mtime, last_scanned) VALUES (3, 'src/db.py', 1.0, 1.0)")
 
-    def test_should_register(self):
-        # Short string
-        self.assertFalse(should_register("foo", 100, 1, self.encoder))
-        
-        # Extremely long identifier occurring many times (highly positive ROI)
-        self.assertTrue(should_register("authenticate_user_credentials_handler", 10, 1, self.encoder))
-        
-        # Long identifier occurring only once (negative ROI due to lookup table overhead)
-        self.assertFalse(should_register("authenticate_user_credentials_handler", 1, 1, self.encoder))
+    # Insert nodes in community 0 (parser domain)
+    conn.execute(
+        "INSERT INTO nodes (id, file_id, language, node_type, name, content, start_line, end_line, community_id) "
+        "VALUES (1, 1, 'python', 'function_definition', 'parse_file', "
+        "'def parse_file(filepath: Path) -> List[Dict]:\\n    \"\"\"Parse a file.\"\"\"\\n    pass', 10, 20, 0)"
+    )
+    conn.execute(
+        "INSERT INTO nodes (id, file_id, language, node_type, name, content, start_line, end_line, community_id) "
+        "VALUES (2, 1, 'python', 'function_definition', 'walk_tree', "
+        "'def walk_tree(node, source):\\n    pass', 25, 40, 0)"
+    )
 
-    def test_extract_identifiers(self):
-        content = "authenticate_user_credentials_handler authenticate_user_credentials_handler " * 5
-        content += " short word " * 2
-        idents = extract_identifiers(content, "py", self.encoder)
-        
-        self.assertIn("authenticate_user_credentials_handler", idents)
-        self.assertNotIn("short", idents)
-        self.assertNotIn("word", idents)
+    # Insert node in community 1 (utils domain)
+    conn.execute(
+        "INSERT INTO nodes (id, file_id, language, node_type, name, content, start_line, end_line, community_id) "
+        "VALUES (3, 2, 'python', 'function_definition', 'helper_util', "
+        "'def helper_util(x):\\n    return x * 2', 1, 5, 1)"
+    )
+
+    # Insert node in community 2 (db domain)
+    conn.execute(
+        "INSERT INTO nodes (id, file_id, language, node_type, name, content, start_line, end_line, community_id) "
+        "VALUES (4, 3, 'python', 'class_definition', 'DatabaseConnection', "
+        "'class DatabaseConnection:\\n    \"\"\"DB conn.\"\"\"\\n    def connect(self):\\n        pass', 1, 15, 2)"
+    )
+
+    # Insert edges
+    # parse_file -> walk_tree (internal call, same community)
+    conn.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (1, 2, 'call', 3.0)")
+    # parse_file -> helper_util (cross-community bridge, call weight)
+    conn.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (1, 3, 'call', 3.0)")
+    # walk_tree -> DatabaseConnection (cross-community bridge, weak reference)
+    conn.execute("INSERT INTO edges (source_id, target_id, relationship_type, weight) VALUES (2, 4, 'reference', 1.0)")
+
+    conn.commit()
+    conn.close()
+    return db_file
 
 
-class TestGitIgnoreFilter(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.gi_filter = GitIgnoreFilter(self.temp_dir)
+# --------------------------------------------------------------------------
+# Query Expansion Tests
+# --------------------------------------------------------------------------
 
-    def tearDown(self):
-        shutil.rmtree(self.temp_dir)
+class TestQueryExpansion:
+    def test_camel_case(self):
+        assert expand_query("getUserData") == ["get", "User", "Data"]
 
-    def test_gitignore_matching(self):
-        # Write temporary .gitignore in root
-        with open(os.path.join(self.temp_dir, ".gitignore"), "w") as f:
-            f.write("# comment\n*.log\nbuild/\n")
-            
-        # Write sub-directory gitignore
-        subdir = os.path.join(self.temp_dir, "src")
-        os.makedirs(subdir, exist_ok=True)
-        with open(os.path.join(subdir, ".gitignore"), "w") as f:
-            f.write("target/\n")
+    def test_pascal_case(self):
+        assert expand_query("UserService") == ["User", "Service"]
 
-        # Test root rules
-        self.assertTrue(self.gi_filter.is_ignored(os.path.join(self.temp_dir, "error.log")))
-        self.assertTrue(self.gi_filter.is_ignored(os.path.join(self.temp_dir, "build", "main.o")))
-        self.assertFalse(self.gi_filter.is_ignored(os.path.join(self.temp_dir, "src", "main.py")))
-        
-        # Test recursive sub-directory rules
-        self.assertTrue(self.gi_filter.is_ignored(os.path.join(subdir, "target", "debug")))
-        self.assertFalse(self.gi_filter.is_ignored(os.path.join(self.temp_dir, "target", "debug")))
+    def test_snake_case(self):
+        assert expand_query("parse_file") == ["parse", "file"]
 
+    def test_mixed_case_with_acronym(self):
+        result = expand_query("XMLParser")
+        assert result == ["XML", "Parser"]
 
-class TestCodeSearcher(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-        # Patch workspace root in os.environ for db.get_workspace_root()
-        os.environ["BUDDHI_WORKSPACE_ROOT"] = self.temp_dir
+    def test_short_tokens_filtered(self):
+        result = expand_query("a_b_cd")
+        assert result == ["cd"]
 
-        # Create mock directories
-        os.makedirs(os.path.join(self.temp_dir, "src"), exist_ok=True)
-        os.makedirs(os.path.join(self.temp_dir, "tests"), exist_ok=True)
-        os.makedirs(os.path.join(self.temp_dir, ".git"), exist_ok=True)  # should be skipped
+    def test_space_separated(self):
+        result = expand_query("load graph builder")
+        assert result == ["load", "graph", "builder"]
 
-        # Create test code files
-        self.file1 = os.path.join(self.temp_dir, "src", "app.py")
-        self.file2 = os.path.join(self.temp_dir, "src", "utils.py")
-        self.file3 = os.path.join(self.temp_dir, ".git", "config")
-        self.file_large = os.path.join(self.temp_dir, "src", "large.py")
-        self.file_binary = os.path.join(self.temp_dir, "src", "image.png")
-        self.file_generated = os.path.join(self.temp_dir, "src", "app.min.js")
-        self.file_secret = os.path.join(self.temp_dir, "src", "key.pem")
+    def test_empty_string(self):
+        assert expand_query("") == []
 
-        # Code inside files
-        with open(self.file1, "w", encoding="utf-8") as f:
-            f.write("def setup_user_session():\n    print('setting up')\n    return 'success'\n")
-        with open(self.file2, "w", encoding="utf-8") as f:
-            f.write("def helper_session():\n    setup_user_session()\n    return True\n")
-        with open(self.file3, "w", encoding="utf-8") as f:
-            f.write("def setup_user_session():\n    pass\n")
-        with open(self.file_large, "w", encoding="utf-8") as f:
-            f.write("pass\n" * 100000)  # > 512KB
-        with open(self.file_binary, "wb") as f:
-            f.write(b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
-        with open(self.file_generated, "w", encoding="utf-8") as f:
-            f.write("def setup_user_session(): pass")
-        with open(self.file_secret, "w", encoding="utf-8") as f:
-            f.write("def setup_user_session():\n    private_key = 'some_sensitive_stuff'\n")
+    def test_build_fts_single(self):
+        assert build_fts_query(["parse"]) == "parse"
 
-    def tearDown(self):
-        shutil.rmtree(self.temp_dir)
-        if "BUDDHI_WORKSPACE_ROOT" in os.environ:
-            del os.environ["BUDDHI_WORKSPACE_ROOT"]
+    def test_build_fts_multiple(self):
+        assert build_fts_query(["get", "User", "Data"]) == "get OR User OR Data"
 
-    def test_handle_search_basic(self):
-        res = handle_search("setup_user_session", search_path=self.temp_dir)
-        
-        # Matches in app.py and utils.py
-        self.assertIn("src/app.py:", res)
-        self.assertIn("src/utils.py:", res)
-        
-        # Should not match in .git directory
-        self.assertNotIn(".git/config", res)
-        # Should skip large, binary, generated, and secret-like files
-        self.assertNotIn("large.py", res)
-        self.assertNotIn("image.png", res)
-        self.assertNotIn("app.min.js", res)
-        self.assertNotIn("key.pem", res)
-
-    def test_handle_search_extension_filtering(self):
-        res = handle_search("setup_user_session", search_path=self.temp_dir, ext_filter="py")
-        self.assertIn("src/app.py:", res)
-        
-        res_js = handle_search("setup_user_session", search_path=self.temp_dir, ext_filter="js")
-        self.assertNotIn("src/app.py:", res_js)
-
-    def test_handle_search_secrets_filtering(self):
-        secret_content_file = os.path.join(self.temp_dir, "src", "secrets.py")
-        with open(secret_content_file, "w", encoding="utf-8") as f:
-            f.write("# DB Config\nDB_API_KEY = \"abcd-efgh-ijkl-mnop-1234\"\n")
-            
-        res = handle_search("DB_API_KEY", search_path=self.temp_dir)
-        # Should skip due to secret content matcher
-        self.assertNotIn("secrets.py", res)
-
-    def test_handle_search_stable_alphabetical_ordering(self):
-        res = handle_search("setup_user_session", search_path=self.temp_dir)
-        # app.py matches should appear before utils.py matches alphabetically
-        idx_app = res.index("src/app.py:")
-        idx_utils = res.index("src/utils.py:")
-        self.assertTrue(idx_app < idx_utils)
-
-    def test_pattern_limits_and_invalid_regex(self):
-        # Invalid regex
-        res_invalid = handle_search("(invalid", search_path=self.temp_dir)
-        self.assertTrue(res_invalid.startswith("ERROR: invalid regex"))
-
-        # Too long pattern
-        res_long = handle_search("a" * 2000, search_path=self.temp_dir)
-        self.assertTrue(res_long.startswith("ERROR: pattern too long"))
+    def test_build_fts_empty(self):
+        assert build_fts_query([]) == ""
 
 
-if __name__ == "__main__":
-    unittest.main()
+# --------------------------------------------------------------------------
+# Formatter Tests
+# --------------------------------------------------------------------------
+
+class TestFormatter:
+    def _make_result(self, tier: str = "anchor", mode: str = "full", **kwargs) -> SearchResult:
+        defaults = dict(
+            node_id=1,
+            name="test_func",
+            file_path="src/test.py",
+            content="def test_func(x: int) -> int:\n    return x + 1",
+            start_line=10,
+            end_line=12,
+            community_id=0,
+            salience_tier=tier,
+            node_type="function_definition",
+        )
+        defaults.update(kwargs)
+        r = SearchResult(**defaults)
+        r.mode = mode
+        return r
+
+    def test_extract_signature_function(self):
+        content = "def parse_file(filepath: Path) -> List[Dict]:\n    \"\"\"Parse a file.\"\"\"\n    pass\n    return result"
+        sig = extract_signature(content, "function_definition")
+        assert "def parse_file" in sig
+        assert "return result" not in sig
+
+    def test_extract_signature_class(self):
+        content = "class MyClass:\n    \"\"\"A class.\"\"\"\n    def method(self):\n        pass"
+        sig = extract_signature(content, "class_definition")
+        assert "class MyClass" in sig
+        assert "def method" not in sig
+
+    def test_extract_map_entry(self):
+        result = self._make_result()
+        entry = extract_map_entry(result)
+        assert "test_func" in entry
+        assert "src/test.py" in entry
+        assert "L10" in entry
+
+    def test_u_curve_sort_ordering(self):
+        anchor = self._make_result(tier="anchor", name="anchor_fn")
+        community = self._make_result(tier="community", name="comm_fn")
+        bridge = self._make_result(tier="bridge", name="bridge_fn")
+
+        sorted_nodes = u_curve_sort([community, bridge, anchor])
+
+        assert sorted_nodes[0].name == "anchor_fn"     # Top
+        assert sorted_nodes[1].name == "bridge_fn"      # Middle (dead zone)
+        assert sorted_nodes[2].name == "comm_fn"         # Bottom
+
+    def test_serialize_context_delimiters(self):
+        result = self._make_result()
+        output = serialize_context([result])
+        assert "--- START SYMBOL:" in output
+        assert "--- END SYMBOL ---" in output
+        assert "src/test.py::test_func" in output
+
+    def test_render_content_full_mode(self):
+        result = self._make_result(mode="full")
+        content = render_content(result)
+        assert "def test_func" in content
+        assert "return x + 1" in content
+
+    def test_render_content_signatures_mode(self):
+        result = self._make_result(mode="signatures")
+        content = render_content(result)
+        assert "def test_func" in content
+
+    def test_render_content_map_mode(self):
+        result = self._make_result(mode="map")
+        content = render_content(result)
+        assert "test_func" in content
+        assert "function_definition" in content
+        assert "L10" in content
+
+    def test_filter_low_entropy_keeps_code(self):
+        code = "def complex_function(x: int, y: float) -> Dict[str, Any]:"
+        result = filter_low_entropy_lines(code)
+        assert "def complex_function" in result
+
+    def test_filter_low_entropy_drops_boilerplate(self):
+        boilerplate = "//////////////////////////////////////////////////////"
+        code = "def real_code(x):\n" + boilerplate + "\n    return x"
+        result = filter_low_entropy_lines(code)
+        assert boilerplate not in result
+        assert "def real_code" in result
+
+
+# --------------------------------------------------------------------------
+# Compressor Tests
+# --------------------------------------------------------------------------
+
+class TestCompressor:
+    def _make_result(self, tier: str, name: str, mode: str = "full") -> SearchResult:
+        r = SearchResult(
+            node_id=hash(name) % 10000,
+            name=name,
+            file_path="src/test.py",
+            content="def " + name + "(x):\n    return x * 2\n    # some more code\n    pass",
+            start_line=1,
+            end_line=4,
+            community_id=0,
+            salience_tier=tier,
+            node_type="function_definition",
+        )
+        r.mode = mode
+        return r
+
+    def test_tier1_removes_bridges(self):
+        nodes = [
+            self._make_result("anchor", "anchor_fn"),
+            self._make_result("community", "comm_fn"),
+            self._make_result("bridge", "bridge_fn"),
+        ]
+        result = _tier1_strip_bridges(nodes)
+        tiers = [n.salience_tier for n in result]
+        assert "bridge" not in tiers
+        assert len(result) == 2
+
+    def test_tier2_degrades_modes(self):
+        nodes = [
+            self._make_result("anchor", "fn1", mode="full"),
+            self._make_result("community", "fn2", mode="full"),
+        ]
+        result = _tier2_degrade_modes(nodes)
+        assert all(n.mode == "signatures" for n in result)
+
+        result2 = _tier2_degrade_modes(result)
+        assert all(n.mode == "map" for n in result2)
+
+
+# --------------------------------------------------------------------------
+# Integration Tests (End-to-End)
+# --------------------------------------------------------------------------
+
+class TestBuddhiSearch:
+    def test_basic_search(self, db_path: str):
+        result = buddhi_search("parse_file", db_path)
+        assert "parse_file" in result
+        assert "--- START SYMBOL:" in result
+
+    def test_returns_community_members(self, db_path: str):
+        result = buddhi_search("parse_file", db_path)
+        # walk_tree is in the same community as parse_file
+        assert "walk_tree" in result
+
+    def test_includes_bridges(self, db_path: str):
+        result = buddhi_search("parse_file", db_path, include_bridges=True)
+        # helper_util is connected via call edge (w=3.0) to parse_file
+        assert "helper_util" in result
+
+    def test_excludes_bridges_when_disabled(self, db_path: str):
+        result = buddhi_search("parse_file", db_path, include_bridges=False)
+        assert "helper_util" not in result
+
+    def test_excludes_weak_bridges(self, db_path: str):
+        result = buddhi_search("walk_tree", db_path, include_bridges=True)
+        # DatabaseConnection is connected via reference (w=1.0) < threshold 3.0
+        assert "DatabaseConnection" not in result
+
+    def test_mode_signatures(self, db_path: str):
+        result = buddhi_search("parse_file", db_path, mode="signatures")
+        assert "parse_file" in result
+        assert "--- START SYMBOL:" in result
+
+    def test_mode_map(self, db_path: str):
+        result = buddhi_search("parse_file", db_path, mode="map")
+        assert "parse_file" in result
+        assert "function_definition" in result
+
+    def test_zero_hit_fallback(self, db_path: str):
+        query = "xyzNonexistent" + "Thing"
+        result = buddhi_search(query, db_path)
+        # Should trigger fallback and return fallback unlocked message
+        assert "unlocked" in result
+
+    def test_budget_compression(self, db_path: str):
+        # First, get unbounded result to know the full size
+        full_result = buddhi_search("parse_file", db_path)
+        full_len = len(full_result)
+
+        # Set budget to half the full size — should trigger compression
+        budget = full_len // 2
+        compressed_result = buddhi_search("parse_file", db_path, budget=budget)
+
+        # Compressed output should be smaller than full output
+        assert len(compressed_result) < full_len
+        # Should still contain the anchor node
+        assert "parse_file" in compressed_result
+
+    def test_empty_query(self, db_path: str):
+        result = buddhi_search("", db_path)
+        # Should trigger fallback to file map
+        assert "FILE MAP" in result or len(result) > 0

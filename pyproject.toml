@@ -1,90 +1,58 @@
-[build-system]
-requires = ["setuptools>=42", "wheel", "huggingface_hub"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "buddhi-ai"
-version = "1.0.0-beta.4"
-description = "Buddhi AI CLI - Intelligent Development Assistant"
+version = "1.0.0-beta.5"
+description = "Buddhi AI CLI"
 readme = "README.md"
-requires-python = ">=3.10"
-urls.documentation = "https://github.com/Buddhilive/buddhi-ai#readme"
-urls.homepage = "https://buddhilive.com"
-urls.issues = "https://github.com/Buddhilive/buddhi-ai/issues"
-urls.repository = "https://github.com/Buddhilive/buddhi-ai"
-license = "MIT"
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
+license = { file = "LICENSE" }
+keywords = ["ast", "tree-sitter", "mcp", "cli", "code-search", "boilerplate"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "Natural Language :: English",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Quality Assurance",
 ]
+requires-python = ">=3.10"
 dependencies = [
-    "fastapi>=0.136.1",
-    "uvicorn>=0.47.0",
-    "pydantic-settings>=2.2.1",
-    "sse-starlette>=2.0.0",
-    "litert-lm-api",
-    "huggingface_hub",
+    "igraph>=1.0.0",
+    "mcp>=1.0.0",
+    "tree-sitter>=0.25.2",
+    "tree-sitter-c-sharp>=0.23.5",
+    "tree-sitter-go>=0.25.0",
+    "tree-sitter-haskell>=0.23.1",
+    "tree-sitter-java>=0.23.5",
+    "tree-sitter-javascript>=0.25.0",
+    "tree-sitter-kotlin>=1.1.0",
+    "tree-sitter-python>=0.25.0",
+    "tree-sitter-rust>=0.24.2",
+    "tree-sitter-swift>=0.7.2",
+    "tree-sitter-typescript>=0.23.2",
+    "tiktoken>=0.9.0",
+    "textual>=0.86.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "litert-lm-api>=0.1.0",
+    "psutil>=5.9.0",
+    "huggingface_hub>=0.20.0",
     "httpx>=0.27.0",
-    "streamlit>=1.35.0",
-    "mcp>=0.1.0",
-    "networkx>=3.0",
-    "tree-sitter>=0.21.3",
-    "tree-sitter-languages>=1.10.0",
-    "tree-sitter-python>=0.21.0",
-    "tree-sitter-javascript>=0.21.0",
-    "tree-sitter-typescript>=0.21.0",
-    "tree-sitter-go>=0.21.0",
-    "tree-sitter-java>=0.21.0",
-    "tree-sitter-rust>=0.21.0",
-    "tree-sitter-c>=0.21.0",
-    "tree-sitter-cpp>=0.21.0",
-    "tree-sitter-ruby>=0.21.0",
-    "tree-sitter-c-sharp>=0.21.0",
-    "tree-sitter-kotlin>=0.3.0",
-    "tree-sitter-php>=0.22.0",
-    "tree-sitter-bash>=0.21.0",
-    "tree-sitter-scala>=0.21.0",
-    "tree-sitter-elixir>=0.2.0",
-    "langgraph>=0.1.0",
-    "langchain-core>=0.2.0",
-    "langchain-openai>=0.1.0",
-    "openai>=1.0.0",
-    "tiktoken>=0.6.0",
 ]
 
-[dependency-groups]
-dev = ["twine>=5.0.0", "build>=1.0.0"]
+[project.urls]
+Homepage = "https://github.com/Buddhilive/buddhi-cli"
+Repository = "https://github.com/Buddhilive/buddhi-cli.git"
+Issues = "https://github.com/Buddhilive/buddhi-cli/issues"
 
 [project.scripts]
-buddhi = "cli.main:cli"
+buddhi = "buddhi_ai.cli:main"
+buddhi-mcp = "buddhi_ai.mcp.server:main"
 
-[tool.setuptools.packages.find]
-include = ["server*", "cli*", "ui*", "mcp*"]
-namespaces = true
+[build-system]
+requires = ["uv_build>=0.9.28,<0.10.0"]
+build-backend = "uv_build"
 
-[tool.setuptools.package-data]
-"*" = ["*.png", "*.ico", "*.css", "*.js", "*.html"]
-"ui" = ["assets/*", "assets/**/*"]
-
-[tool.setuptools.exclude-package-data]
-"server.static.model" = ["*"]
-
-[tool.mypy]
-explicit_package_bases = true
-ignore_missing_imports = true
-exclude = ['^main\.py$', '^tests/', '^server/', '^ui/', '^_lean-ctx/']
-
-[tool.ruff]
-exclude = ["server", "ui", "_lean-ctx", "tests"]
-
-[tool.ruff.lint]
-ignore = ["F401", "E741", "E402", "F841"]
+[dependency-groups]
+dev = ["mypy>=2.1.0", "pytest>=9.0.3", "ruff>=0.15.15"]
