@@ -18,6 +18,7 @@ def cli():
     
     # Default behavior: run TUI
     app = BuddhiApp()
+    app.title = "Buddhi CLI"
     app.run()
 
 if __name__ == "__main__":
