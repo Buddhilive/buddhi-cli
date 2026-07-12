@@ -1,1 +1,0 @@
-# Buddhi MCP Server package.
