@@ -9,9 +9,6 @@ env/
 venv/
 ENV/
 
-# uv
-uv.lock
-
 # Distribution / packaging
 dist/
 build/
