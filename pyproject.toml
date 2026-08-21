@@ -6,6 +6,7 @@ readme = "README.md"
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
 requires-python = ">=3.10"
 dependencies = [
+    "igraph>=1.0.0",
     "pathspec>=1.1.1",
     "rich>=15.0.0",
     "tree-sitter>=0.26.0",

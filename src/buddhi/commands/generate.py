@@ -7,6 +7,7 @@ from rich.console import Console
 
 from buddhi.discovery.walker import walk
 from buddhi.graph.builder import build_graph
+from buddhi.graph.clustering import assign_communities
 from buddhi.graph.resolver import resolve
 from buddhi.languages.registry import available_languages
 from buddhi.persist.html_writer import write_html
@@ -55,6 +56,7 @@ def generate(
 
     build_ctx = build_graph(walk_result)
     resolve(build_ctx)
+    community_count = assign_communities(build_ctx.graph)
 
     if verbose:
         for warning in build_ctx.warnings:
@@ -87,7 +89,8 @@ def generate(
     )
     console.print(f"  languages: {', '.join(languages_seen) if languages_seen else '(none)'}")
     console.print(
-        f"  graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges"
+        f"  graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges, "
+        f"{community_count} communities"
     )
     console.print(f"  wrote: {json_path}")
     console.print(f"  wrote: {db_path}")

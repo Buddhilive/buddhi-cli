@@ -33,6 +33,8 @@ class GraphNode:
     parent_id: str | None = None
     signature: str | None = None
     external: bool = False
+    snippet: str | None = None
+    community_id: int | None = None
 
 
 @dataclass

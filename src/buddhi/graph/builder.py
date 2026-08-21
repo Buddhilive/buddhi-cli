@@ -29,6 +29,7 @@ from buddhi.graph.model import (
 from buddhi.languages.registry import get_spec
 
 _SELF_RECEIVERS = {"self", "this"}
+_SNIPPET_MAX_CHARS = 4000
 
 
 @dataclass
@@ -100,12 +101,19 @@ def build_graph(walk_result: WalkResult) -> BuildContext:
             ctx.warnings.append(f"parsed with syntax errors (best-effort): {discovered.rel_path}")
 
         files_parsed += 1
-        _integrate_file(discovered, extracted, ctx)
+        _integrate_file(discovered, extracted, ctx, source)
 
     ctx.stats["files_parsed"] = files_parsed
     ctx.stats["files_failed"] = files_failed
     ctx.stats["node_count"] = len(ctx.graph.nodes)
     return ctx
+
+
+def _make_snippet(source: bytes, start_byte: int, end_byte: int) -> str:
+    text = source[start_byte:end_byte].decode("utf-8", errors="replace")
+    if len(text) > _SNIPPET_MAX_CHARS:
+        return text[:_SNIPPET_MAX_CHARS] + "\n… (truncated)"
+    return text
 
 
 def _add_directory_nodes(ctx: BuildContext, walk_result: WalkResult) -> None:
@@ -125,7 +133,9 @@ def _add_directory_nodes(ctx: BuildContext, walk_result: WalkResult) -> None:
             ctx.graph.add_edge(GraphEdge(source=parent_id, target=node.id, kind=CONTAINS))
 
 
-def _integrate_file(discovered: DiscoveredFile, extracted: ExtractedFile, ctx: BuildContext) -> None:
+def _integrate_file(
+    discovered: DiscoveredFile, extracted: ExtractedFile, ctx: BuildContext, source: bytes
+) -> None:
     graph = ctx.graph
     rel_path = discovered.rel_path
     parent_dir = Path(rel_path).parent.as_posix()
@@ -202,6 +212,7 @@ def _integrate_file(discovered: DiscoveredFile, extracted: ExtractedFile, ctx: B
                 start_line=defn.start_line,
                 end_line=defn.end_line,
                 parent_id=node_parent_id,
+                snippet=_make_snippet(source, defn.start_byte, defn.end_byte),
             )
         )
         graph.add_edge(GraphEdge(source=node_parent_id, target=node_id, kind=CONTAINS))
