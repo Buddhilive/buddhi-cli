@@ -22,6 +22,8 @@ def to_cytoscape_elements(graph: CodeGraph) -> dict:
             "start_line": node.start_line,
             "end_line": node.end_line,
             "external": node.external,
+            "snippet": node.snippet,
+            "community_id": node.community_id,
         }
         if node.parent_id:
             data["parent"] = node.parent_id

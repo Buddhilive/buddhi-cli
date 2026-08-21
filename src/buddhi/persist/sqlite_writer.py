@@ -23,7 +23,9 @@ CREATE TABLE nodes (
     end_line        INTEGER,
     parent_id       TEXT REFERENCES nodes(id) ON DELETE CASCADE,
     signature       TEXT,
-    external        INTEGER NOT NULL DEFAULT 0
+    external        INTEGER NOT NULL DEFAULT 0,
+    snippet         TEXT,
+    community_id    INTEGER
 );
 
 CREATE INDEX idx_nodes_parent ON nodes(parent_id);
@@ -57,8 +59,8 @@ def write_sqlite(graph: CodeGraph, path: Path, *, root_path: str) -> None:
         conn.executescript(_SCHEMA)
         conn.executemany(
             "INSERT INTO nodes (id, kind, name, qualified_name, file_path, language, "
-            "start_line, end_line, parent_id, signature, external) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "start_line, end_line, parent_id, signature, external, snippet, community_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 (
                     n.id,
@@ -72,6 +74,8 @@ def write_sqlite(graph: CodeGraph, path: Path, *, root_path: str) -> None:
                     n.parent_id,
                     n.signature,
                     int(n.external),
+                    n.snippet,
+                    n.community_id,
                 )
                 for n in graph.nodes.values()
             ),

@@ -42,3 +42,27 @@ uv run pytest
 uv run ruff check src tests
 uv run mypy src
 ```
+
+## Publishing
+
+Releases to PyPI are handled by the [`publish.yml`](.github/workflows/publish.yml)
+GitHub Actions workflow. It builds the package with `uv build` and publishes it
+using [PyPI trusted publishing](https://docs.pypi.org/trusted-publishers/) (OIDC),
+so no API token is stored in the repository.
+
+The workflow triggers on any pushed tag matching `v*` (e.g. `v0.1.0`). To cut a
+release:
+
+1. Bump `version` in [`pyproject.toml`](pyproject.toml).
+2. Commit the change and tag it to match, e.g.:
+   ```sh
+   git commit -am "Bump version to 0.1.1"
+   git tag v0.1.1
+   git push origin main v0.1.1
+   ```
+3. The tag push triggers the workflow, which builds and publishes the package
+   to PyPI automatically.
+
+This requires a trusted publisher to be configured once on PyPI for the
+`buddhi` project, pointing at this repository, the `publish.yml` workflow
+file, and the `pypi` environment.
