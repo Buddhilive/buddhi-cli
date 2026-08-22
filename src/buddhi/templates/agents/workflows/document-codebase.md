@@ -1,4 +1,10 @@
+---
+description: Generate or refresh OKF codebase documentation under .buddhi/docs/, using buddhi's code graph and RepoAgent-style bottom-up doc generation.
+---
+
 # /document-codebase
+
+$ARGUMENTS
 
 Generate or refresh this codebase's OKF documentation under `.buddhi/docs/`, using
 buddhi's code graph and the RepoAgent-style bottom-up doc-generation method.

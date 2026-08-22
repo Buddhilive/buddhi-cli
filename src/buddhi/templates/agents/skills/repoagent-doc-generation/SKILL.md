@@ -1,6 +1,9 @@
 ---
 name: repoagent-doc-generation
-description: Generates or refreshes per-symbol codebase documentation as Open Knowledge Format (OKF) markdown, in dependency order, using buddhi's code graph. Use when asked to document this codebase, update its docs, or when .buddhi/docs-plan.json exists and has entries with needs_generation true.
+description: Generates or refreshes per-symbol codebase documentation as Open Knowledge Format (OKF) markdown, in dependency order, using buddhi's code graph.
+when_to_use: "When asked to document this codebase or update its docs, when .buddhi/docs-plan.json has entries with needs_generation true, or when /document-codebase is invoked."
+allowed-tools: Read, Write, Bash, Glob, Grep
+effort: medium
 ---
 
 # RepoAgent-style OKF doc generation
@@ -85,3 +88,4 @@ Newest entries first, one heading per date:
 ## 2026-08-22
 **Update**: refreshed docs for 3 changed symbols in src/buddhi/graph/builder.py.
 ```
+

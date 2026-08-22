@@ -1,6 +1,9 @@
 ---
 name: okf-context
-description: Use the codebase's generated OKF documentation under .buddhi/docs/ as the first source of truth for understanding code, before reading raw source files. Use whenever you need to explain, navigate, or reason about how this codebase works.
+description: Use the codebase's generated OKF documentation under .buddhi/docs/ as the first source of truth for understanding code, before reading raw source files.
+when_to_use: "Whenever you need to explain, navigate, or reason about how this codebase works — before grepping or reading raw source files for context."
+allowed-tools: Read, Glob, Grep
+effort: low
 ---
 
 # Prefer OKF docs over re-reading source
@@ -34,3 +37,4 @@ caller/callee relationships you'd otherwise have to re-trace by hand.
 Never treat an OKF doc as authoritative over the actual source code — it's a cache of
 understanding, not the ground truth. When the two conflict, the source wins and the
 doc needs regenerating.
+
