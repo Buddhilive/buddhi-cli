@@ -23,8 +23,14 @@ advice.
    `tree-graph.json` (see the `okf-context` skill) for the subsystem(s) the
    request touches. Do not start from raw source.
 3. Ask clarifying questions one at a time — purpose, constraints, success
-   criteria — until the request is well-scoped. Stop and wait for answers
-   between questions; do not batch them.
+   criteria — until the request is well-scoped. For each question, propose a
+   concrete suggested answer grounded in what step 2's docs/graph lookup
+   found (e.g. "Looks like this touches the `auth` module via
+   `src/auth/session.py` — assuming session-based auth, not JWT. Correct?")
+   so the user can confirm with one word instead of answering from a blank
+   page. If nothing in the codebase supports a specific guess, ask openly
+   rather than inventing one. Stop and wait for the answer between
+   questions; do not batch them.
 4. Classify which domains the request actually touches: frontend, backend,
    database, testing, security, deployment, git. Dispatch **only** the
    specialist agents for those domains, in parallel. Give each one concrete

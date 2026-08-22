@@ -1,6 +1,6 @@
 [project]
-name = "buddhi"
-version = "0.1.0"
+name = "buddhi-ai"
+version = "1.0.0b6"
 description = "Buddhi is a command-line tool that helps you find and fix issues in your code."
 readme = "README.md"
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
@@ -28,6 +28,9 @@ buddhi = "buddhi:main"
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "buddhi"
 
 [dependency-groups]
 dev = ["mypy>=2.3.1", "pytest>=9.1.1", "ruff>=0.16.3"]
