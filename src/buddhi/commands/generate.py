@@ -5,11 +5,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
-from buddhi.discovery.walker import walk
-from buddhi.graph.builder import build_graph
-from buddhi.graph.clustering import assign_communities
-from buddhi.graph.resolver import resolve
-from buddhi.languages.registry import available_languages
+from buddhi.graph.pipeline import run_pipeline
 from buddhi.persist.html_writer import write_html
 from buddhi.persist.json_writer import write_json
 from buddhi.persist.sqlite_writer import write_sqlite
@@ -42,21 +38,16 @@ def generate(
         err_console.print(f"[red]error:[/red] not a directory: {root}")
         raise typer.Exit(code=1)
 
-    lang_status = available_languages()
-    avail = {lang for lang, err in lang_status.items() if err is None}
-    if verbose:
-        for lang, err in lang_status.items():
-            if err is not None:
-                err_console.print(f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}")
+    result = run_pipeline(root, max_file_size=max_file_size)
+    walk_result = result.walk_result
+    build_ctx = result.build_ctx
 
-    walk_result = walk(root, max_file_size=max_file_size, available_languages=avail)
+    if verbose:
+        for lang, err in result.language_warnings.items():
+            err_console.print(f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}")
 
     if not walk_result.files:
         console.print("[yellow]warning:[/yellow] no supported source files found under this path.")
-
-    build_ctx = build_graph(walk_result)
-    resolve(build_ctx)
-    community_count = assign_communities(build_ctx.graph)
 
     if verbose:
         for warning in build_ctx.warnings:
@@ -90,7 +81,7 @@ def generate(
     console.print(f"  languages: {', '.join(languages_seen) if languages_seen else '(none)'}")
     console.print(
         f"  graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges, "
-        f"{community_count} communities"
+        f"{result.community_count} communities"
     )
     console.print(f"  wrote: {json_path}")
     console.print(f"  wrote: {db_path}")

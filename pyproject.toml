@@ -1,9 +1,37 @@
 [project]
-name = "buddhi"
-version = "0.1.0"
-description = "Buddhi is a command-line tool that helps you find and fix issues in your code."
+name = "buddhi-ai"
+version = "1.0.0b7"
+description = "Turn a codebase into a code graph and a grounded AI coding agent harness."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Buddhi Kavindra", email = "info@buddhilive.com" }]
+keywords = [
+    "ai",
+    "agent",
+    "cli",
+    "code-graph",
+    "codebase-analysis",
+    "static-analysis",
+    "tree-sitter",
+    "antigravity",
+    "developer-tools",
+    "documentation-generator",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Utilities",
+]
 requires-python = ">=3.10"
 dependencies = [
     "igraph>=1.0.0",
@@ -22,12 +50,20 @@ dependencies = [
     "typer>=0.27.1",
 ]
 
+[project.urls]
+Homepage = "https://www.buddhilive.com"
+Repository = "https://github.com/Buddhilive/buddhi-cli"
+Issues = "https://github.com/Buddhilive/buddhi-cli/issues"
+
 [project.scripts]
 buddhi = "buddhi:main"
 
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "buddhi"
 
 [dependency-groups]
 dev = ["mypy>=2.3.1", "pytest>=9.1.1", "ruff>=0.16.3"]
