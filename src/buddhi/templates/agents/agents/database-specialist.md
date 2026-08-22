@@ -2,7 +2,9 @@
 name: database-specialist
 description: Plans schema, migration, and query-safety work, grounded in this codebase's actual code graph and docs — asks about database/ORM preference rather than defaulting to one.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

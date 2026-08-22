@@ -2,7 +2,9 @@
 name: deployment-specialist
 description: Plans CI/CD, environment configuration, and rollback strategy for a change, grounded in this codebase's actual deployment setup rather than a generic platform script.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

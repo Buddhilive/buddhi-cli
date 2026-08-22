@@ -2,7 +2,9 @@
 name: frontend-specialist
 description: Plans UI/UX and frontend architecture work — component structure, accessibility, responsive layout, state management — grounded in this codebase's actual code graph and docs.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

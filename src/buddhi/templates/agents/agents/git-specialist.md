@@ -2,7 +2,9 @@
 name: git-specialist
 description: Plans branch strategy, commit structure, and PR hygiene for a change, and flags any git operation in the plan that needs explicit confirmation before running.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

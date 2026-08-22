@@ -34,6 +34,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "rules" / "harness-core.md").exists()
     assert (agents_dir / "workflows" / "plan.md").exists()
     assert (agents_dir / "skills" / "README.md").exists()
+    assert (agents_dir / "memory" / "MEMORY.md").exists()
     for specialist in (
         "frontend-specialist",
         "backend-specialist",

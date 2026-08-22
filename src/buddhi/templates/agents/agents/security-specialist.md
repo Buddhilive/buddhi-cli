@@ -2,7 +2,9 @@
 name: security-specialist
 description: Plans and reviews security-relevant aspects of a change — OWASP top 10 exposure, secrets handling, authn/authz — grounded in this codebase's actual code graph and docs.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

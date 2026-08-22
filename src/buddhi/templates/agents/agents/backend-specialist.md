@@ -2,7 +2,9 @@
 name: backend-specialist
 description: Plans backend work — API design, request validation, error handling, service boundaries — grounded in this codebase's actual code graph and docs.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

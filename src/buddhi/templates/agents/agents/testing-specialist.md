@@ -2,7 +2,9 @@
 name: testing-specialist
 description: Plans test strategy — what to test, at what level, and how to verify it actually passes — grounded in this codebase's actual code graph, docs, and existing test conventions.
 model: inherit
-tools: Read, Grep, Glob
+tools:
+  - view_file
+  - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false

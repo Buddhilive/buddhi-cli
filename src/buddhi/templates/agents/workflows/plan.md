@@ -36,5 +36,9 @@ advice.
 6. Synthesize the specialists' sections into one implementation plan: ordered
    steps, files to be touched, and a testing/verification section (always
    include this even if `testing-specialist` wasn't dispatched, using
-   whatever specialists were involved). Present the synthesized plan and wait
-   for explicit approval before any implementation begins.
+   whatever specialists were involved).
+7. Write the synthesized plan to a root-level file named from the request —
+   lowercase, hyphen-separated, at most 30 characters (e.g. "add dark mode
+   feature" -> `dark-mode.md`) — so it's durable and reviewable outside chat.
+   Present the plan and its file path, and wait for explicit approval before
+   any implementation begins.
