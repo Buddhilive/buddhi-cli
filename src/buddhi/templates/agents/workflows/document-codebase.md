@@ -1,5 +1,10 @@
 ---
+name: document-codebase
 description: Generate or refresh OKF codebase documentation under .buddhi/docs/, using buddhi's code graph and RepoAgent-style bottom-up doc generation.
+version: 1.0.0
+requires_agents: none
+requires_skills: repoagent-doc-generation, okf-context
+artifact_outputs: docs-plan, okf-docs
 ---
 
 # /document-codebase

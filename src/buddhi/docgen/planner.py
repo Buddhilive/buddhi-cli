@@ -17,15 +17,23 @@ from pathlib import Path, PurePosixPath
 from buddhi.graph.model import (
     CALLS,
     CLASS,
+    CONTAINS,
     FUNCTION,
     INHERITS,
     METHOD,
+    MODULE,
     CodeGraph,
     GraphNode,
 )
 
-_CLUSTERABLE_KINDS = (CLASS, FUNCTION, METHOD)
-_ORDER_EDGE_KINDS = (CALLS, INHERITS)
+# RepoAgent documents every AST-visited object, not just callables: each module
+# gets its own summary aggregating the classes/functions it contains. MODULE is
+# included here (unlike the Leiden-clustering node sets elsewhere) so buddhi
+# plans a file-level doc alongside its members.
+_CLUSTERABLE_KINDS = (MODULE, CLASS, FUNCTION, METHOD)
+# CONTAINS orders a module/class after its own members (mirrors RepoAgent's
+# bottom-up DFS, where a container's summary is written after its children's).
+_ORDER_EDGE_KINDS = (CONTAINS, CALLS, INHERITS)
 
 _CONTENT_HASH_RE = re.compile(r"content_hash:\s*([0-9a-fA-F]+)")
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)

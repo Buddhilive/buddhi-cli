@@ -1,4 +1,7 @@
 ---
+name: okf-docs
+version: 1.0.0
+priority: P1
 trigger: always_on
 ---
 

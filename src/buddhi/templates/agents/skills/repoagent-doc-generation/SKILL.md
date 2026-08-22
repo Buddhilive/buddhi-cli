@@ -3,7 +3,7 @@ name: repoagent-doc-generation
 description: Generates or refreshes per-symbol codebase documentation as Open Knowledge Format (OKF) markdown, in dependency order, using buddhi's code graph.
 when_to_use: "When asked to document this codebase or update its docs, when .buddhi/docs-plan.json has entries with needs_generation true, or when /document-codebase is invoked."
 allowed-tools: Read, Write, Bash, Glob, Grep
-effort: medium
+version: 1.0.0
 ---
 
 # RepoAgent-style OKF doc generation
@@ -20,7 +20,7 @@ graph -> bottom-up topological order -> per-symbol doc with caller/callee contex
    `.buddhi/docs-plan.json`.
 2. Read `.buddhi/docs-plan.json`. It is a JSON array, **already in dependency order**
    (every `callees` entry appears earlier in the array than its caller). Each entry has:
-   - `node_id`, `kind` (`class`/`function`/`method`), `name`, `qualified_name`
+   - `node_id`, `kind` (`module`/`class`/`function`/`method`), `name`, `qualified_name`
    - `file_path`, `start_line`, `end_line`, `snippet` — the source to document
    - `content_hash` — hash of the current snippet
    - `callers` / `callees` — `node_id`s of related symbols

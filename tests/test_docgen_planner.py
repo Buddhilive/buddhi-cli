@@ -7,7 +7,15 @@ from buddhi.docgen.planner import (
     read_existing_content_hash,
     topological_doc_order,
 )
-from buddhi.graph.model import CALLS, FUNCTION, CodeGraph, GraphEdge, GraphNode
+from buddhi.graph.model import (
+    CALLS,
+    CONTAINS,
+    FUNCTION,
+    MODULE,
+    CodeGraph,
+    GraphEdge,
+    GraphNode,
+)
 
 
 def _fn(node_id: str, name: str, file_path: str = "mod.py") -> GraphNode:
@@ -32,6 +40,27 @@ def test_topological_order_puts_callee_before_caller() -> None:
     order = [n.id for n in topological_doc_order(graph)]
 
     assert order.index(helper.id) < order.index(caller.id)
+
+
+def test_topological_order_includes_module_after_its_members() -> None:
+    graph = CodeGraph()
+    module = graph.add_node(
+        GraphNode(
+            id="m:mod",
+            kind=MODULE,
+            name="mod",
+            qualified_name="mod",
+            file_path="mod.py",
+            snippet="",
+        )
+    )
+    fn = graph.add_node(_fn("f:helper", "helper"))
+    graph.add_edge(GraphEdge(source=module.id, target=fn.id, kind=CONTAINS))
+
+    order = [n.id for n in topological_doc_order(graph)]
+
+    assert fn.id in order and module.id in order
+    assert order.index(fn.id) < order.index(module.id)
 
 
 def test_topological_order_handles_cycles_without_raising() -> None:

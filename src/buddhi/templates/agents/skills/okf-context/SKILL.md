@@ -3,7 +3,7 @@ name: okf-context
 description: Use the codebase's generated OKF documentation under .buddhi/docs/ as the first source of truth for understanding code, before reading raw source files.
 when_to_use: "Whenever you need to explain, navigate, or reason about how this codebase works — before grepping or reading raw source files for context."
 allowed-tools: Read, Glob, Grep
-effort: low
+version: 1.0.0
 ---
 
 # Prefer OKF docs over re-reading source
