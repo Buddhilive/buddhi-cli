@@ -31,6 +31,20 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "skills" / "okf-context" / "SKILL.md").exists()
     assert (agents_dir / "workflows" / "document-codebase.md").exists()
     assert (agents_dir / "rules" / "okf-docs.md").exists()
+    assert (agents_dir / "rules" / "harness-core.md").exists()
+    assert (agents_dir / "workflows" / "plan.md").exists()
+    assert (agents_dir / "skills" / "README.md").exists()
+    for specialist in (
+        "frontend-specialist",
+        "backend-specialist",
+        "database-specialist",
+        "testing-specialist",
+        "security-specialist",
+        "deployment-specialist",
+        "git-specialist",
+        "terminal-runner",
+    ):
+        assert (agents_dir / "agents" / f"{specialist}.md").exists()
 
 
 def test_init_is_idempotent_and_never_overwrites_agents_files(tmp_path: Path) -> None:

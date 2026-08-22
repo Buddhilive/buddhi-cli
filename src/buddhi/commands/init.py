@@ -34,8 +34,11 @@ def init(
 ) -> None:
     """Build the code graph, plan docs, and scaffold a Google Antigravity agent harness.
 
-    Idempotent: rerunning never overwrites a harness file you've already
-    created or edited under .agents/ — it only fills in what's missing.
+    The harness covers doc generation plus a general full-stack planning layer
+    (frontend/backend/database/testing/security/deployment/git specialist
+    agents, orchestrated by the /plan workflow). Idempotent: rerunning never
+    overwrites a harness file you've already created or edited under .agents/
+    — it only fills in what's missing.
     """
     root = path.resolve()
 
@@ -101,4 +104,6 @@ def init(
     console.print(f"  wrote: {db_path}")
     console.print(f"  wrote: {html_path}")
     console.print(f"  wrote: {plan_path}")
-    console.print("  next: open this codebase in Antigravity and run /document-codebase")
+    console.print(
+        "  next: open this codebase in Antigravity and run /document-codebase, then /plan"
+    )
