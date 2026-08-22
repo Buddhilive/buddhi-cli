@@ -37,8 +37,11 @@ advice.
    steps, files to be touched, and a testing/verification section (always
    include this even if `testing-specialist` wasn't dispatched, using
    whatever specialists were involved).
-7. Write the synthesized plan to a root-level file named from the request —
-   lowercase, hyphen-separated, at most 30 characters (e.g. "add dark mode
-   feature" -> `dark-mode.md`) — so it's durable and reviewable outside chat.
+7. Write the synthesized plan to `.buddhi/plans/{slug}.md` — lowercase,
+   hyphen-separated, at most 30 characters, derived from the request (e.g.
+   "add dark mode feature" -> `.buddhi/plans/dark-mode.md`), creating
+   `.buddhi/plans/` if it doesn't exist yet. This keeps plan artifacts out of
+   the project root and grouped with buddhi's other generated state
+   (`.buddhi/docs/`, `.buddhi/graphs/`), durable and reviewable outside chat.
    Present the plan and its file path, and wait for explicit approval before
    any implementation begins.
