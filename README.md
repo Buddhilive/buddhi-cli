@@ -1,15 +1,27 @@
-# buddhi
+# Buddhi AI CLI
 
-buddhi turns a codebase into two things an AI coding agent actually needs:
+<p align="center">
+  <a href="https://pypi.org/project/buddhi-ai/">
+    <img src="https://img.shields.io/pypi/v/buddhi-ai?style=flat-square&logo=pypi" alt="PyPI Version" />
+  </a>
+  <a href="https://pypi.org/project/buddhi-ai/">
+    <img src="https://img.shields.io/pypi/dm/buddhi-ai?style=flat-square" alt="PyPI Downloads" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/github/license/Buddhilive/buddhi-cli?style=flat-square" alt="License" />
+  </a>
+</p>
+
+Buddhi AI CLI turns a codebase into two things an AI coding agent actually needs:
 a **code graph** (files, directories, classes, functions/methods, and their
 containment/import/call relationships, via tree-sitter) and a scaffolded
 **Google Antigravity agent harness** that's grounded in that graph instead of
 generic advice.
 
-The idea: point buddhi at a project, and it gives Antigravity a `/plan`
+The idea: point Buddhi AI CLI at a project, and it gives Antigravity a `/plan`
 workflow with domain specialist agents (frontend, backend, database, testing,
 security, deployment, git) plus a `/document-codebase` workflow that
-generates real per-symbol documentation — both reading from buddhi's graph
+generates real per-symbol documentation — both reading from Buddhi AI CLI's graph
 and docs instead of re-deriving understanding from raw source every time.
 
 Supported languages: Python, JavaScript, TypeScript/TSX, Go, Rust, C#, Java,
@@ -145,5 +157,5 @@ release:
    to PyPI automatically.
 
 This requires a trusted publisher to be configured once on PyPI for the
-`buddhi` project, pointing at this repository, the `publish.yml` workflow
+`buddhi-ai` project, pointing at this repository, the `publish.yml` workflow
 file, and the `pypi` environment.
