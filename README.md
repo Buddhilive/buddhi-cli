@@ -107,11 +107,14 @@ reflects the current source.
   execution
 - **`rules/`** — always-on conventions: consult `.buddhi/docs/` and the code
   graph before raw source, require confirmation before destructive commands,
-  read/append to the memory index for durable decisions. `hooks.json`
-  registers a real `PreToolUse` hook (`hooks/guard_destructive.py`) that
-  mechanically denies destructive commands (force-push, `reset --hard`,
-  `DROP`/`TRUNCATE`, disk-format commands, etc.) as a backstop to that rule,
-  not just an advisory
+  read/append to the memory index for durable decisions
+- **`hooks.json`** / **`hooks/guard_destructive.py`** — a real `PreToolUse`
+  hook that mechanically denies destructive commands (force-push,
+  `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
+  backstop to the rule above, not just an advisory — though Antigravity's
+  hook-firing reliability is reportedly better in the CLI than in the IDE
+  (per community reports), so treat this as a backstop, not a guarantee, in
+  every environment
 - **`skills/`** — `okf-context` (how to read the generated docs),
   `repoagent-doc-generation` (how to write them), `system-design` (an
   architecture/trade-off decision framework used by `/plan`), and a slot for
@@ -120,7 +123,10 @@ reflects the current source.
 - **`memory/MEMORY.md`** — a pure index into four topic files under
   `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
   `tech-decisions.md`, `feedback-history.md`), populated passively across
-  `/plan` runs or explicitly via `/remember`
+  `/plan` runs or explicitly via `/remember`. Since template sync never
+  overwrites existing files, a project that already had a flat `MEMORY.md`
+  before upgrading buddhi will keep it as-is on re-running `init` — only a
+  fresh `buddhi init` gets the new topic-file split.
 
 ### Documentation format
 
