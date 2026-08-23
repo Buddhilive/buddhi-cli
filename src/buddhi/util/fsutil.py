@@ -66,7 +66,7 @@ def sync_template_tree(src_dir: Path, dest_dir: Path) -> TemplateSyncReport:
         raise BuddhiFsError(f"template source missing: {src_dir}")
 
     for src_path in sorted(src_dir.rglob("*")):
-        if src_path.is_dir() or src_path.suffix != ".md":
+        if src_path.is_dir():
             continue
         rel = src_path.relative_to(src_dir)
         dest_path = dest_dir / rel
