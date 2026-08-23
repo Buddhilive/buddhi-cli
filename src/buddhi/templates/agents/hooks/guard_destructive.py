@@ -37,7 +37,10 @@ CONFIRMED_MARKER = "CONFIRMED"
 #     from this rule; if False, the rule always denies on match.
 DENY_RULES = [
     (
-        re.compile(r"\brm\s+-(?:rf|fr)\s+(?:/|~)(?:/|\*)?(?:\s|$)", re.IGNORECASE),
+        re.compile(
+            r"\brm\s+-(?:rf|fr)\b(?:\s+-\S+)*\s+(?:/|~)(?:/|\*)?(?:\s|$)",
+            re.IGNORECASE,
+        ),
         "rm -rf/-fr targeting root or home directory",
         False,
     ),
