@@ -80,8 +80,8 @@ wheels = [
 ]
 
 [[package]]
-name = "buddhi"
-version = "0.1.0"
+name = "buddhi-ai"
+version = "1.0.0b8"
 source = { editable = "." }
 dependencies = [
     { name = "igraph" },

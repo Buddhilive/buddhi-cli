@@ -130,7 +130,7 @@ _TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>buddhi code graph — {root_label}</title>
+<title>Buddhi AI Code Graph — {root_label}</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script type="text/javascript" src="{cdn_url}"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -173,7 +173,7 @@ _TEMPLATE = """<!doctype html>
             </svg>
         </div>
         <div>
-            <h1 class="text-lg font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">buddhi code graph</h1>
+            <h1 class="text-lg font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text text-transparent">Buddhi AI Code Graph</h1>
             <p class="text-xs text-slate-400 font-medium" id="stats-indicator">Loading {root_label}...</p>
         </div>
     </div>
