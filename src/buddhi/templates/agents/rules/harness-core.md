@@ -19,7 +19,11 @@ trigger: always_on
 - Destructive operations — force-push, `git reset --hard`, dropping or truncating
   a database table, deploying to a production environment — require explicit
   user confirmation first. Never chain one of these into a larger command without
-  a stop for confirmation.
+  a stop for confirmation. This is now also enforced mechanically: `.agents/hooks.json`
+  registers a `PreToolUse` hook (`.agents/hooks/guard_destructive.py`) that denies
+  these same categories of command outright as a backstop — the rule above still
+  matters for judgment calls the hook's pattern-matching can't cover (e.g. "deploying
+  to production" is not a single grep-able command).
 - Prefer delegating verbose or exploratory shell/build/test command execution to
   the `terminal-runner` subagent instead of running it inline: it reports back a
   condensed, no-bluff summary instead of raw output, keeping the main agent's
