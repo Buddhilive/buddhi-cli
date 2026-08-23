@@ -91,9 +91,15 @@ reflects the current source.
 
 `buddhi init` scaffolds `.agents/` with:
 
-- **`workflows/`** — `/document-codebase` (generate or refresh docs) and
+- **`workflows/`** — `/document-codebase` (generate or refresh docs),
   `/plan` (turn a request into an implementation plan grounded in the real
-  codebase, without writing any code)
+  codebase, without writing any code), `/verify` (run the project's real
+  build/lint/test commands and report genuine pass/fail evidence), `/debug`
+  (systematic investigation producing a confirmed root-cause and fix plan,
+  plan-only like `/plan`), `/remember` (explicit, user-invocable capture of a
+  preference/convention/decision into memory), and `/status` (a dashboard of
+  the harness's own docs/graph staleness, open plans, and memory size — not
+  live agent sessions or a preview server)
 - **`agents/`** — read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
@@ -101,13 +107,20 @@ reflects the current source.
   execution
 - **`rules/`** — always-on conventions: consult `.buddhi/docs/` and the code
   graph before raw source, require confirmation before destructive commands,
-  read/append to the memory index for durable decisions
+  read/append to the memory index for durable decisions. `hooks.json`
+  registers a real `PreToolUse` hook (`hooks/guard_destructive.py`) that
+  mechanically denies destructive commands (force-push, `reset --hard`,
+  `DROP`/`TRUNCATE`, disk-format commands, etc.) as a backstop to that rule,
+  not just an advisory
 - **`skills/`** — `okf-context` (how to read the generated docs),
-  `repoagent-doc-generation` (how to write them), and a slot for
+  `repoagent-doc-generation` (how to write them), `system-design` (an
+  architecture/trade-off decision framework used by `/plan`), and a slot for
   tech-stack-specific skills you drop in yourself (see
   `.agents/skills/README.md`)
-- **`memory/MEMORY.md`** — a durable, append-only index of project
-  conventions and decisions discovered across `/plan` runs
+- **`memory/MEMORY.md`** — a pure index into four topic files under
+  `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
+  `tech-decisions.md`, `feedback-history.md`), populated passively across
+  `/plan` runs or explicitly via `/remember`
 
 ### Documentation format
 

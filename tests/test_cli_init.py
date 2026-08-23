@@ -35,6 +35,17 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "workflows" / "plan.md").exists()
     assert (agents_dir / "skills" / "README.md").exists()
     assert (agents_dir / "memory" / "MEMORY.md").exists()
+    assert (agents_dir / "hooks.json").exists()
+    assert (agents_dir / "hooks" / "guard_destructive.py").exists()
+    assert (agents_dir / "workflows" / "verify.md").exists()
+    assert (agents_dir / "workflows" / "debug.md").exists()
+    assert (agents_dir / "workflows" / "remember.md").exists()
+    assert (agents_dir / "workflows" / "status.md").exists()
+    assert (agents_dir / "memory" / "user-preferences.md").exists()
+    assert (agents_dir / "memory" / "project-conventions.md").exists()
+    assert (agents_dir / "memory" / "tech-decisions.md").exists()
+    assert (agents_dir / "memory" / "feedback-history.md").exists()
+    assert (agents_dir / "skills" / "system-design" / "SKILL.md").exists()
     for specialist in (
         "frontend-specialist",
         "backend-specialist",
@@ -57,10 +68,14 @@ def test_init_is_idempotent_and_never_overwrites_agents_files(tmp_path: Path) ->
     rule_path = tmp_path / ".agents" / "rules" / "okf-docs.md"
     rule_path.write_text("# customized by the user\n", encoding="utf-8")
 
+    hook_path = tmp_path / ".agents" / "hooks" / "guard_destructive.py"
+    hook_path.write_text("# customized by the user\n", encoding="utf-8")
+
     result2 = runner.invoke(app, ["init", str(tmp_path)])
     assert result2.exit_code == 0, result2.output
 
     assert rule_path.read_text(encoding="utf-8") == "# customized by the user\n"
+    assert hook_path.read_text(encoding="utf-8") == "# customized by the user\n"
 
 
 def test_init_bad_path_errors_cleanly(tmp_path: Path) -> None:

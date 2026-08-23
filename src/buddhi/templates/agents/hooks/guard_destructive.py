@@ -124,7 +124,7 @@ def main():
         raw = sys.stdin.read()
         payload = json.loads(raw)
         result = decide(payload)
-    except Exception:
+    except Exception:  # noqa: BLE001 - must never block tool use on this hook's own bugs
         # Never block tool use because this hook itself is broken or the
         # input was malformed/non-JSON.
         result = {"decision": "allow"}
