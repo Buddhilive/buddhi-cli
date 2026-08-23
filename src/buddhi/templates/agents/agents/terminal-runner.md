@@ -26,7 +26,11 @@ to run — the caller decides that.
   happened, let the caller judge it.
 - If a command looks destructive (force-push, `reset --hard`, `DROP`/`TRUNCATE`,
   a production deploy target) and the caller didn't explicitly mark it as
-  confirmed, stop and report that back instead of running it.
+  confirmed, stop and report that back instead of running it. "Marked as
+  confirmed" means the command text includes the literal `CONFIRMED` marker
+  string — that is the exact substring `.agents/hooks/guard_destructive.py`
+  checks for to let an otherwise-denied command through, so it must be
+  present verbatim, not just implied by context.
 
 ## What to return
 
