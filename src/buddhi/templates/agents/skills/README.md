@@ -21,3 +21,8 @@ no changes are needed there when a new pack is added.
 
 This file itself is plain documentation, not a skill — it has no `SKILL.md`
 frontmatter and Antigravity will not load it as one.
+
+Note that some skills under this directory, such as `system-design`, are
+general and ship bundled with every harness rather than being stack-specific
+packs you drop in — the "add a folder here" guidance above is for tech-stack
+knowledge, not for these bundled skills.
