@@ -20,25 +20,40 @@ generic advice.
 
 The idea: point Buddhi AI CLI at a project, and it gives Antigravity a `/plan`
 workflow with domain specialist agents (frontend, backend, database, testing,
-security, deployment, git) plus a `/document-codebase` workflow that
-generates real per-symbol documentation — both reading from Buddhi AI CLI's graph
-and docs instead of re-deriving understanding from raw source every time.
+security, deployment, git), a `/document-codebase` workflow that generates
+real per-symbol documentation, and `/verify`, `/debug`, `/remember`, and
+`/status` workflows for evidence-backed testing, systematic debugging,
+explicit memory capture, and a harness state dashboard — all reading from
+Buddhi AI CLI's graph and docs instead of re-deriving understanding from raw
+source every time.
 
 Supported languages: Python, JavaScript, TypeScript/TSX, Go, Rust, C#, Java,
 Kotlin, Swift.
 
-## Install
+## Installation
+
+Requires Python 3.10+.
 
 ```sh
-uv sync
+pip install buddhi-ai
 ```
+
+Or, if you prefer an isolated tool install:
+
+```sh
+pipx install buddhi-ai
+# or
+uv tool install buddhi-ai
+```
+
+This installs the `buddhi` command.
 
 ## Usage
 
 ### `buddhi init` — full setup (recommended)
 
 ```sh
-uv run buddhi init [path]
+buddhi init [path]
 ```
 
 Scans `path` (defaults to the current directory), builds the code graph,
@@ -68,7 +83,7 @@ Next step printed at the end: open the project in Antigravity and run
 ### `buddhi generate` — graph only
 
 ```sh
-uv run buddhi generate [path]
+buddhi generate [path]
 ```
 
 Scans `path` and writes just the three graph artifacts under
@@ -79,7 +94,7 @@ the Antigravity harness.
 ### `buddhi docs plan` — refresh the doc plan only
 
 ```sh
-uv run buddhi docs plan [path]
+buddhi docs plan [path]
 ```
 
 Recomputes `.buddhi/docs-plan.json` against the current source tree without
@@ -91,9 +106,15 @@ reflects the current source.
 
 `buddhi init` scaffolds `.agents/` with:
 
-- **`workflows/`** — `/document-codebase` (generate or refresh docs) and
+- **`workflows/`** — `/document-codebase` (generate or refresh docs),
   `/plan` (turn a request into an implementation plan grounded in the real
-  codebase, without writing any code)
+  codebase, without writing any code), `/verify` (run the project's real
+  build/lint/test commands and report genuine pass/fail evidence), `/debug`
+  (systematic investigation producing a confirmed root-cause and fix plan,
+  plan-only like `/plan`), `/remember` (explicit, user-invocable capture of a
+  preference/convention/decision into memory), and `/status` (a dashboard of
+  the harness's own docs/graph staleness, open plans, and memory size — not
+  live agent sessions or a preview server)
 - **`agents/`** — read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
@@ -102,12 +123,25 @@ reflects the current source.
 - **`rules/`** — always-on conventions: consult `.buddhi/docs/` and the code
   graph before raw source, require confirmation before destructive commands,
   read/append to the memory index for durable decisions
+- **`hooks.json`** / **`hooks/guard_destructive.py`** — a real `PreToolUse`
+  hook that mechanically denies destructive commands (force-push,
+  `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
+  backstop to the rule above, not just an advisory — though Antigravity's
+  hook-firing reliability is reportedly better in the CLI than in the IDE
+  (per community reports), so treat this as a backstop, not a guarantee, in
+  every environment
 - **`skills/`** — `okf-context` (how to read the generated docs),
-  `repoagent-doc-generation` (how to write them), and a slot for
+  `repoagent-doc-generation` (how to write them), `system-design` (an
+  architecture/trade-off decision framework used by `/plan`), and a slot for
   tech-stack-specific skills you drop in yourself (see
   `.agents/skills/README.md`)
-- **`memory/MEMORY.md`** — a durable, append-only index of project
-  conventions and decisions discovered across `/plan` runs
+- **`memory/MEMORY.md`** — a pure index into four topic files under
+  `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
+  `tech-decisions.md`, `feedback-history.md`), populated passively across
+  `/plan` runs or explicitly via `/remember`. Since template sync never
+  overwrites existing files, a project that already had a flat `MEMORY.md`
+  before upgrading buddhi will keep it as-is on re-running `init` — only a
+  fresh `buddhi init` gets the new topic-file split.
 
 ### Documentation format
 
@@ -128,7 +162,23 @@ resolved to real nodes; everything else (external packages, ambiguous
 cross-file calls, ...) becomes an `external` placeholder node so the graph
 stays informative without producing false edges.
 
-## Development
+---
+
+## Contributing
+
+The sections below are for working on Buddhi AI CLI itself, not for using it.
+
+### Setup
+
+```sh
+uv sync
+```
+
+Once dependencies are installed, run the CLI from source with `uv run`,
+e.g. `uv run buddhi init [path]`, instead of the plain `buddhi` command shown
+above.
+
+### Development
 
 ```sh
 uv run pytest
@@ -136,7 +186,7 @@ uv run ruff check src tests
 uv run mypy src
 ```
 
-## Publishing
+### Publishing
 
 Releases to PyPI are handled by the [`publish.yml`](.github/workflows/publish.yml)
 GitHub Actions workflow. It builds the package with `uv build` and publishes it

@@ -1,6 +1,6 @@
 [project]
 name = "buddhi-ai"
-version = "1.0.0b7"
+version = "1.0.0b8"
 description = "Turn a codebase into a code graph and a grounded AI coding agent harness."
 readme = "README.md"
 license = "MIT"
