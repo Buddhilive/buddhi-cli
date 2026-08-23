@@ -28,7 +28,12 @@ trigger: always_on
   the `terminal-runner` subagent instead of running it inline: it reports back a
   condensed, no-bluff summary instead of raw output, keeping the main agent's
   context lean for reasoning.
-- If `.agents/memory/MEMORY.md` exists, read it at session start for durable
-  project conventions and prior decisions. When `/plan` or other harness work
-  surfaces a convention or decision worth keeping across sessions, append it
-  there rather than letting it live only in this conversation.
+- `.agents/memory/MEMORY.md` is an index into topic files under
+  `.agents/memory/` — `user-preferences.md`, `project-conventions.md`,
+  `tech-decisions.md`, `feedback-history.md`. Read the index at session start
+  for durable project conventions and prior decisions. When `/plan` or other
+  harness work surfaces a convention or decision worth keeping across
+  sessions, append it to the matching topic file and add a pointer to the
+  index, rather than letting it live only in this conversation. Use the
+  `/remember` workflow for the same thing when the user explicitly asks to
+  capture something.
