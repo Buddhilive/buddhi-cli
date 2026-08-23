@@ -68,6 +68,16 @@ def sync_template_tree(src_dir: Path, dest_dir: Path) -> TemplateSyncReport:
     for src_path in sorted(src_dir.rglob("*")):
         if src_path.is_dir():
             continue
+        if "__pycache__" in src_path.parts:
+            continue
+        if src_path.suffix in (".pyc", ".pyo"):
+            continue
+        if src_path.name == "__init__.py":
+            # The template tree is itself a Python package (so it can be
+            # packaged/imported), but __init__.py exists only for that
+            # purpose — it is not harness content and must never be
+            # scaffolded into a target project's `.agents/`.
+            continue
         rel = src_path.relative_to(src_dir)
         dest_path = dest_dir / rel
         try:

@@ -58,6 +58,9 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     ):
         assert (agents_dir / "agents" / f"{specialist}.md").exists()
 
+    assert not (agents_dir / "__init__.py").exists()
+    assert not any(agents_dir.rglob("__pycache__"))
+
 
 def test_init_is_idempotent_and_never_overwrites_agents_files(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("def helper():\n    pass\n")

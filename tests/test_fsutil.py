@@ -100,3 +100,28 @@ def test_sync_template_tree_preserves_existing_non_md_files(tmp_path: Path) -> N
     assert len(report.created) == 0
     assert len(report.kept_existing) == 1
     assert (dest_dir / "config.json") in report.kept_existing
+
+
+def test_sync_template_tree_skips_init_py_and_pycache(tmp_path: Path) -> None:
+    src_dir = tmp_path / "src"
+    dest_dir = tmp_path / "dest"
+    src_dir.mkdir()
+    dest_dir.mkdir()
+
+    # The template tree is a Python package: root __init__.py plus a stray
+    # __pycache__ dir (present under a pip install, which byte-compiles).
+    (src_dir / "__init__.py").write_text("", encoding="utf-8")
+    (src_dir / "hooks").mkdir()
+    (src_dir / "hooks" / "__init__.py").write_text("", encoding="utf-8")
+    (src_dir / "hooks" / "guard_destructive.py").write_text("print('ok')", encoding="utf-8")
+    pycache_dir = src_dir / "__pycache__"
+    pycache_dir.mkdir()
+    (pycache_dir / "foo.pyc").write_bytes(b"\x00\x01")
+
+    report = sync_template_tree(src_dir, dest_dir)
+
+    assert not (dest_dir / "__init__.py").exists()
+    assert not (dest_dir / "hooks" / "__init__.py").exists()
+    assert not any(dest_dir.rglob("__pycache__"))
+    assert (dest_dir / "hooks" / "guard_destructive.py").exists()
+    assert len(report.created) == 1

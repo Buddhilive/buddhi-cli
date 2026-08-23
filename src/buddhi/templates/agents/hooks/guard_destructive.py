@@ -38,10 +38,12 @@ CONFIRMED_MARKER = "CONFIRMED"
 DENY_RULES = [
     (
         re.compile(
-            r"\brm\s+-(?:rf|fr)\b(?:\s+-\S+)*\s+(?:/|~)(?:/|\*)?(?:\s|$)",
+            r"\brm\s+(?:-(?:rf|fr)|-r\s+-f|-f\s+-r|"
+            r"--recursive\s+--force|--force\s+--recursive)\b"
+            r"(?:\s+-\S+)*\s+[\"']?(?:/|~)(?:/|\*)?[\"']?(?:\s|$)",
             re.IGNORECASE,
         ),
-        "rm -rf/-fr targeting root or home directory",
+        "rm -rf/-fr (short, split, or long-form flags) targeting root or home directory",
         False,
     ),
     (
@@ -58,8 +60,11 @@ DENY_RULES = [
         True,
     ),
     (
-        re.compile(r"\b(?:DROP|TRUNCATE)\s+TABLE\b", re.IGNORECASE),
-        "DROP TABLE / TRUNCATE TABLE",
+        re.compile(
+            r"\bDROP\s+(?:TABLE|DATABASE|SCHEMA)\b|\bTRUNCATE\s+(?:TABLE\s+)?\w+",
+            re.IGNORECASE,
+        ),
+        "DROP TABLE/DATABASE/SCHEMA or TRUNCATE [TABLE]",
         True,
     ),
     (
@@ -81,22 +86,31 @@ DENY_RULES = [
 
 
 def extract_command(payload):
-    """Pull the shell command string out of a tool-call payload.
+    """Pull the shell command string out of a tool-call payload, if any.
 
     The field holding the command text varies by tool/hook shape, so check
-    a few known locations in order. If none are present (or the payload
-    isn't a dict), fall back to stringifying the whole payload so pattern
-    matching still has something to look at.
+    a few known locations in order. This hook only ever backstops
+    shell/terminal-command-shaped tool calls (run_command, git-specialist
+    shells out, etc.) — if none of those fields are present (or the payload
+    isn't a dict), this is not a command invocation at all (e.g. a Write/Edit
+    of file content), and there is nothing to safely pattern-match against:
+    return None rather than stringifying the whole payload, which would
+    otherwise deny file writes whose *content* merely mentions a destructive
+    command (including this harness's own rule docs).
     """
     if isinstance(payload, dict):
-        command = payload.get("command")
-        if isinstance(command, str):
-            return command
+        for key in ("command", "cmd"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                return value
 
         for outer_key, inner_key in (
             ("input", "command"),
             ("tool_input", "command"),
             ("parameters", "command"),
+            ("input", "cmd"),
+            ("tool_input", "cmd"),
+            ("parameters", "cmd"),
         ):
             outer = payload.get(outer_key)
             if isinstance(outer, dict):
@@ -104,11 +118,16 @@ def extract_command(payload):
                 if isinstance(inner, str):
                     return inner
 
-    return json.dumps(payload)
+    return None
 
 
 def decide(payload):
     command = extract_command(payload)
+    if command is None:
+        # Not a shell/terminal-command-shaped tool call — nothing to check,
+        # so fail open rather than scanning unrelated payloads (file content,
+        # etc.) against command deny-patterns.
+        return {"decision": "allow"}
 
     for pattern, reason, confirmable in DENY_RULES:
         if pattern.search(command):
