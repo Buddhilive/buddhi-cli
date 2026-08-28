@@ -23,9 +23,9 @@ No code writing in this workflow — only plan generation.
 2. **Read specification**: Read `spec.md` to understand all user stories, priorities (`P1`, `P2`...),
    functional requirements, and success criteria.
 3. **Refresh codebase context**: Run `buddhi docs plan` (via `terminal-runner`) so `.buddhi/docs-plan.json`
-   reflects the current source tree. Read `.buddhi/docs/index.md` and query `.buddhi/graphs/tree-graph.db` /
-   `tree-graph.json` (see the `okf-context` skill) for touched subsystems. If OKF docs are absent,
-   proceed directly with existing source files.
+   reflects the current source tree. Read `.buddhi/docs/index.md` and use Buddhi MCP tools (`buddhi_search`,
+   `buddhi_read`, see the `okf-context` skill) or query `.buddhi/graphs/tree-graph.db` / `tree-graph.json`
+   for touched subsystems. If OKF docs are absent, proceed directly with existing source files.
 4. **Clarify technical ambiguities**: Ask clarifying questions one at a time regarding tech stack,
    dependencies, storage, performance goals, or constraints. Provide suggested answers grounded
    in the codebase context found in step 3. Stop and wait for the answer between questions.

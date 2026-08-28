@@ -26,10 +26,11 @@ against acceptance criteria, rather than claiming success from static reading.
    Run `git diff` / `git status` (via `terminal-runner`) to determine changed files, or use the
    explicit target specified in `$ARGUMENTS`.
 3. **Determine project verification commands**:
-   Consult `.buddhi/docs/` and the code graph (see the `okf-context` skill) plus the project's
-   manifest/build configuration files to detect the exact build, lint, typecheck, and test commands
-   genuinely used by this project. Never guess or assume generic commands (e.g. `npm test`) without
-   confirming them in the project configuration. If unclear, ask the user.
+   Consult `.buddhi/docs/` and query the code graph via Buddhi MCP tools (`buddhi_search`,
+   `buddhi_read`, see the `okf-context` skill) plus the project's manifest/build configuration
+   files to detect the exact build, lint, typecheck, and test commands genuinely used by this
+   project. Never guess or assume generic commands (e.g. `npm test`) without confirming them
+   in the project configuration. If unclear, ask the user.
 4. **Execute verification via terminal-runner**:
    Execute every verification command exclusively through the `terminal-runner` agent. Never execute
    verification commands directly in the main agent's context.

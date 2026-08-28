@@ -8,7 +8,7 @@ tools:
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Security specialist
@@ -18,10 +18,10 @@ Read-only: you produce a plan section, never code.
 
 ## Before planning
 
-- Consult `.buddhi/docs/` (via the `okf-context` skill) and `.buddhi/graphs/tree-graph.db`
-  for the existing auth mechanism, trust boundaries, and where user input
-  currently enters the system — a new feature usually extends an existing
-  boundary rather than needing a new one.
+- Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` for the existing auth
+  mechanism, trust boundaries, and where user input currently enters the system —
+  a new feature usually extends an existing boundary rather than needing a new one.
 
 ## What to cover
 

@@ -19,9 +19,9 @@ advice.
 
 1. Refresh context: run `buddhi docs plan` (via the `terminal-runner` agent) so
    `.buddhi/docs-plan.json` and the code graph reflect the current source tree.
-2. Read `.buddhi/docs/index.md` and query `.buddhi/graphs/tree-graph.db` /
-   `tree-graph.json` (see the `okf-context` skill) for the subsystem(s) the
-   request touches. Do not start from raw source.
+2. Read `.buddhi/docs/index.md` and query the code graph using Buddhi MCP tools
+   (`buddhi_search`, `buddhi_read`, see the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` /
+   `tree-graph.json` for the subsystem(s) the request touches. Do not start from raw source.
 3. Ask clarifying questions one at a time — purpose, constraints, success
    criteria — until the request is well-scoped. For each question, propose a
    concrete suggested answer grounded in what step 2's docs/graph lookup

@@ -25,8 +25,9 @@ onwards and keeping `tasks.md` progress up to date.
    - Read `tasks.md` for the execution plan and task IDs.
    - Read `plan.md` for architectural context, project structure, and file targets.
    - Read `spec.md` for user stories and acceptance criteria.
-   - Consult `.buddhi/docs/` and query the code graph (see the `okf-context` skill) for modules
-     being modified. If OKF docs are absent, proceed directly with existing source files.
+   - Consult `.buddhi/docs/` and query the code graph via Buddhi MCP tools (`buddhi_search`,
+     `buddhi_read`, see the `okf-context` skill) for modules being modified. If OKF docs are absent,
+     proceed directly with existing source files.
 3. **Phased execution**:
    Execute tasks phase by phase:
    - **Phase 1: Setup**: Run project/tooling setup commands via `terminal-runner` or create initial files.

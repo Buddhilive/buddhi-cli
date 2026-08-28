@@ -8,7 +8,7 @@ tools:
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Deployment specialist
@@ -18,10 +18,10 @@ you produce a plan section, never code.
 
 ## Before planning
 
-- Consult `.buddhi/docs/` (via the `okf-context` skill) and `.buddhi/graphs/tree-graph.db`,
-  and look for existing CI config (`.github/workflows/`, or equivalent) and
-  deployment scripts — extend the existing pipeline and target platform,
-  don't propose a different one without being asked.
+- Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db`, and look for existing CI
+  config (`.github/workflows/`, or equivalent) and deployment scripts — extend the existing
+  pipeline and target platform, don't propose a different one without being asked.
 
 ## What to cover
 

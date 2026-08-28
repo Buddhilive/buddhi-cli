@@ -8,7 +8,7 @@ tools:
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Frontend specialist
@@ -18,9 +18,10 @@ plan section, never code.
 
 ## Before planning
 
-- Consult `.buddhi/docs/` (via the `okf-context` skill) and `.buddhi/graphs/tree-graph.db`
-  for the existing component structure, routing, and state-management pattern
-  already in use — reuse what exists rather than proposing a parallel approach.
+- Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` for the existing component
+  structure, routing, and state-management pattern already in use — reuse what exists
+  rather than proposing a parallel approach.
 - Check `.agents/skills/` for a folder matching the project's actual frontend
   framework (e.g. a Next.js or Vue pack). If one exists, defer to its
   conventions. If none exists and the framework isn't obvious from the

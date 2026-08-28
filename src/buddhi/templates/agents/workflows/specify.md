@@ -21,9 +21,10 @@ prioritized, independently testable user stories. No code writing in this workfl
    agent. This computes the feature number, branch name, creates `.buddhi/specs/<branch>/`,
    and initializes `spec.md` from the spec template. Parse the returned JSON to obtain
    `BRANCH_NAME` and `SPEC_FILE`.
-2. **Codebase grounding**: Consult `.buddhi/docs/index.md` and query `.buddhi/graphs/tree-graph.db` /
-   `tree-graph.json` (see the `okf-context` skill) for any subsystems the request touches. If
-   OKF docs are missing or not generated yet, proceed gracefully without failing.
+2. **Codebase grounding**: Consult `.buddhi/docs/index.md` and use Buddhi MCP tools (`buddhi_search`,
+   `buddhi_read`, see the `okf-context` skill) or query `.buddhi/graphs/tree-graph.db` / `tree-graph.json`
+   for any subsystems the request touches. If OKF docs are missing or not generated yet, proceed
+   gracefully without failing.
 3. **Clarify requirements**: Ask clarifying questions one at a time — purpose, target users,
    constraints, and scope boundaries. Propose concrete answers grounded in what step 2's docs
    found so the user can confirm with minimal friction. Stop and wait for the user's answer

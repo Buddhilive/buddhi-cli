@@ -8,10 +8,10 @@ trigger: always_on
 # Harness core protocol
 
 - Before reading raw source to understand how this codebase works, consult
-  `.buddhi/docs/` (OKF docs, see the `okf-context` skill) and, for structural
-  questions ("what calls this", "what depends on this"), `.buddhi/graphs/tree-graph.db`
-  or `.buddhi/graphs/tree-graph.json` — buddhi's code graph. Only fall back to
-  grepping raw source when neither answers the question.
+  `.buddhi/docs/` (OKF docs) and use the Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  see the `okf-context` skill) for structural queries ("what calls this", "what depends on
+  this", symbol search). Only fall back to direct graph queries (`.buddhi/graphs/tree-graph.db` /
+  `tree-graph.json`) or grepping raw source when MCP tools or docs do not answer the question.
 - A request that spans more than one domain (e.g. "add a feature" touching UI,
   an API, and a schema change) should go through the `/plan` workflow before any
   code is written, so the relevant specialist agents can ground a plan in the

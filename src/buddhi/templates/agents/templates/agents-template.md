@@ -14,8 +14,7 @@
 - **Lint & Format**: [e.g., `uv run ruff check .` / `npm run lint`]
 - **Typecheck**: [e.g., `uv run mypy src/` / `npx tsc --noEmit`]
 
-## Codebase Understanding & Architecture
-- **Knowledge Base**: Consult `.buddhi/docs/` (OKF concept documentation) and query `.buddhi/graphs/tree-graph.db` before grepping raw source files.
+- **Knowledge Base & Code Graph**: Consult `.buddhi/docs/` (OKF concept documentation) and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`) before grepping raw source files.
 - **Spec-Driven Development (SDD)**: Features follow the SDD lifecycle:
   1. `/specify` — create feature branch and refine `spec.md`
   2. `/plan` — synthesize technical architecture into `plan.md`

@@ -14,11 +14,15 @@
 
 Buddhi AI CLI turns a codebase into what an AI coding agent actually needs:
 a **code graph** (files, directories, classes, functions/methods, and their
-containment/import/call relationships, via tree-sitter), a scaffolded
+containment/import/call relationships, via tree-sitter), a **Model Context Protocol (MCP) server**
+for topology-aware code search and compressed reading, a scaffolded
 **Google Antigravity agent harness** grounded in that graph, and a full
 **Spec-Driven Development (SDD)** lifecycle based on open standards like [AGENTS.md](https://agents.md/).
 
 The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
+- A workspace **MCP Server** (`buddhi-mcp`) exposing:
+  - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
+  - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
 - A full **Spec-Driven Development (SDD)** workflow:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
   2. `/plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
@@ -38,18 +42,18 @@ Kotlin, Swift.
 Requires Python 3.10+.
 
 ```sh
-pip install buddhi-ai
+pip install "buddhi-ai[mcp]"
 ```
 
 Or, if you prefer an isolated tool install:
 
 ```sh
-pipx install buddhi-ai
+pipx install "buddhi-ai[mcp]"
 # or
-uv tool install buddhi-ai
+uv tool install "buddhi-ai[mcp]"
 ```
 
-This installs the `buddhi` command.
+This installs both the `buddhi` CLI command and the `buddhi-mcp` Stdio server entrypoint.
 
 ## Usage
 
@@ -73,6 +77,7 @@ Writes:
   internet access)
 - `.buddhi/docs-plan.json` — a bottom-up, staleness-aware plan of what needs
   documenting
+- `.agents/mcp_config.json` — workspace MCP server configuration registering `buddhi-mcp` with Antigravity IDE
 - `.agents/` — the Antigravity agent harness (agents, workflows, rules,
   skills, templates, memory index — see below). **Idempotent**: rerunning `init` never
   overwrites a harness file you've already edited under `.agents/`, it only
@@ -84,27 +89,40 @@ run so generated artifacts don't get committed to your project's own repo.
 Next step printed at the end: open the project in Antigravity, run
 `/document-codebase`, and start a feature with `/specify`.
 
-### `buddhi generate` — graph only
+### `buddhi mcp` — Model Context Protocol server
+
+```sh
+buddhi mcp [--db-path <path>]
+# or run the dedicated entrypoint directly:
+buddhi-mcp [--db-path <path>]
+```
+
+Runs the Buddhi Model Context Protocol (MCP) server over **StdIO**, allowing AI coding agents to dynamically query the code graph and read compressed files:
+
+- **`buddhi_search`**: Topology-aware codebase search. Uses lexical anchors, expands into community neighborhoods, filters boilerplate using Shannon entropy, and sorts results using a U-curve positional layout within a token/character budget.
+- **`buddhi_read`**: Dynamic, AST-pruned file reading with multiple compression modes (`auto`, `signatures`, `map`, `entropy`, `full`) and token-budget awareness to prevent context window saturation.
+
+The MCP server auto-detects `.buddhi/graphs/tree-graph.db` in the workspace root or parent directories and is scoped per-workspace with zero port conflicts.
+
+### `buddhi generate` — update / refresh code graph
 
 ```sh
 buddhi generate [path]
 ```
 
-Scans `path` and writes just the three graph artifacts under
-`.buddhi/graphs/`, without touching `.buddhi/docs-plan.json` or `.agents/`.
-Useful for refreshing the graph on its own, or in contexts that don't need
-the Antigravity harness.
+Scans `path` and rebuilds all three graph artifacts under `.buddhi/graphs/` (`tree-graph.json`, `tree-graph.db`, `tree-graph.html`) without modifying `.buddhi/docs-plan.json` or `.agents/`.
+**Use this whenever the codebase grows or changes** to update the SQLite graph database queried by the Buddhi MCP server (`buddhi_search` and `buddhi_read`).
 
-### `buddhi docs plan` — refresh the doc plan only
+### `buddhi docs plan` — refresh documentation plan
 
 ```sh
 buddhi docs plan [path]
 ```
 
-Recomputes `.buddhi/docs-plan.json` against the current source tree without
-touching `.agents/`. This is what `/document-codebase` and `/plan`
-Antigravity workflows call before doing anything else, so the plan always
-reflects the current source.
+Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/plan` Antigravity workflows call automatically before planning.
+
+> [!TIP]
+> **Rerunning `buddhi init`**: You can also rerun `buddhi init` at any time to refresh both the graph and the documentation plan in one step. `buddhi init` is fully idempotent: it never overwrites your existing or customized files in `.agents/` or `AGENTS.md`.
 
 ### `buddhi sdd` — Spec-Driven Development CLI helpers
 
@@ -134,20 +152,21 @@ Underlying helper commands used by the SDD workflows:
   - **`/debug`** — Systematic bug investigation producing a confirmed root cause and concrete fix plan without modifying code.
   - **`/remember`** — Capture user preferences, project conventions, and technical decisions into memory.
   - **`/status`** — Dashboard of harness state (docs staleness, active plans, memory size, git branch).
+- **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
 - **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
 - **`agents/`** — Read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
   in parallel by `/plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
   execution.
-- **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and the code
-  graph before raw source, require confirmation before destructive commands,
+- **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and Buddhi MCP code graph
+  tools before raw source, require confirmation before destructive commands,
   read/append to the memory index for durable decisions.
 - **`hooks.json`** / **`hooks/guard_destructive.py`** — A `PreToolUse`
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
   safety backstop.
-- **`skills/`** — `okf-context` (how to read the generated docs and query SQLite code graph),
+- **`skills/`** — `okf-context` (how to read OKF docs and use Buddhi MCP code graph tools `buddhi_search` and `buddhi_read`),
   `repoagent-doc-generation` (how to write docs), `system-design` (an
   architecture/trade-off decision framework used during planning), and custom skill slots (see
   `.agents/skills/README.md`).
