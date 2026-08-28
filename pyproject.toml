@@ -57,6 +57,12 @@ Issues = "https://github.com/Buddhilive/buddhi-cli/issues"
 
 [project.scripts]
 buddhi = "buddhi:main"
+buddhi-mcp = "buddhi.mcp.server:main"
+
+[project.optional-dependencies]
+mcp = [
+    "mcp[cli]>=1.2.0,<2.0.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.15,<0.9.0"]
