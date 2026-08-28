@@ -8,7 +8,7 @@ tools:
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Backend specialist
@@ -18,10 +18,10 @@ section, never code.
 
 ## Before planning
 
-- Consult `.buddhi/docs/` (via the `okf-context` skill) and `.buddhi/graphs/tree-graph.db`
-  for existing service/module boundaries, the request/response shape already
-  in use, and existing error-handling conventions — extend them, don't
-  introduce a second pattern next to them.
+- Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` for existing service/module
+  boundaries, the request/response shape already in use, and existing error-handling
+  conventions — extend them, don't introduce a second pattern next to them.
 - Check `.agents/skills/` for a folder matching the project's actual backend
   framework/language pack. Defer to it when present; otherwise ask the user
   if the stack isn't obvious from the codebase.

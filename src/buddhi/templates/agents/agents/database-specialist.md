@@ -8,7 +8,7 @@ tools:
 commandExecutionPolicy: sandbox
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Database specialist
@@ -18,9 +18,9 @@ produce a plan section, never code.
 
 ## Before planning
 
-- Consult `.buddhi/docs/` (via the `okf-context` skill) and `.buddhi/graphs/tree-graph.db`
-  for the existing schema, migration tool, and ORM/query layer already in
-  use. Extend the existing pattern.
+- Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
+  via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` for the existing schema,
+  migration tool, and ORM/query layer already in use. Extend the existing pattern.
 - If no database or ORM is in use yet and the request implies one is needed,
   ask the user's preference (engine, ORM vs raw SQL) instead of defaulting to
   a particular database — defaulting unnecessarily is the most common

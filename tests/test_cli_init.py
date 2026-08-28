@@ -53,6 +53,11 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "memory" / "tech-decisions.md").exists()
     assert (agents_dir / "memory" / "feedback-history.md").exists()
     assert (agents_dir / "skills" / "system-design" / "SKILL.md").exists()
+    assert (agents_dir / "mcp_config.json").exists()
+    mcp_cfg = json.loads((agents_dir / "mcp_config.json").read_text(encoding="utf-8"))
+    assert "mcpServers" in mcp_cfg
+    assert "buddhi" in mcp_cfg["mcpServers"]
+    assert mcp_cfg["mcpServers"]["buddhi"]["command"] == "buddhi-mcp"
     for specialist in (
         "frontend-specialist",
         "backend-specialist",

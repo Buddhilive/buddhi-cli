@@ -21,10 +21,10 @@ real root cause in this codebase, not a plausible-sounding guess.
    expected vs. actual behavior, and what changed recently (check via
    `git log`, run through the `terminal-runner` agent) — stopping and waiting
    for the answer before asking the next. Do not batch questions.
-2. Before reading raw source, consult `.buddhi/docs/` and query
-   `.buddhi/graphs/tree-graph.db` / `tree-graph.json` (see the `okf-context`
-   skill) for the subsystem the symptom points to, per the harness's
-   docs/graph-before-source convention.
+2. Before reading raw source, consult `.buddhi/docs/` and use Buddhi MCP tools
+   (`buddhi_search`, `buddhi_read`, see the `okf-context` skill) or query
+   `.buddhi/graphs/tree-graph.db` / `tree-graph.json` for the subsystem the symptom
+   points to, per the harness's docs/graph-before-source convention.
 3. Form a ranked list of candidate root causes, most likely first, based on
    what step 2 turned up. If the failing area spans domains ambiguously
    enough that a `/plan`-style breakdown would help, optionally dispatch the
