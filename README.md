@@ -104,27 +104,25 @@ Runs the Buddhi Model Context Protocol (MCP) server over **StdIO**, allowing AI 
 
 The MCP server auto-detects `.buddhi/graphs/tree-graph.db` in the workspace root or parent directories and is scoped per-workspace with zero port conflicts.
 
-### `buddhi generate` — graph only
+### `buddhi generate` — update / refresh code graph
 
 ```sh
 buddhi generate [path]
 ```
 
-Scans `path` and writes just the three graph artifacts under
-`.buddhi/graphs/`, without touching `.buddhi/docs-plan.json` or `.agents/`.
-Useful for refreshing the graph on its own, or in contexts that don't need
-the Antigravity harness.
+Scans `path` and rebuilds all three graph artifacts under `.buddhi/graphs/` (`tree-graph.json`, `tree-graph.db`, `tree-graph.html`) without modifying `.buddhi/docs-plan.json` or `.agents/`.
+**Use this whenever the codebase grows or changes** to update the SQLite graph database queried by the Buddhi MCP server (`buddhi_search` and `buddhi_read`).
 
-### `buddhi docs plan` — refresh the doc plan only
+### `buddhi docs plan` — refresh documentation plan
 
 ```sh
 buddhi docs plan [path]
 ```
 
-Recomputes `.buddhi/docs-plan.json` against the current source tree without
-touching `.agents/`. This is what `/document-codebase` and `/plan`
-Antigravity workflows call before doing anything else, so the plan always
-reflects the current source.
+Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/plan` Antigravity workflows call automatically before planning.
+
+> [!TIP]
+> **Rerunning `buddhi init`**: You can also rerun `buddhi init` at any time to refresh both the graph and the documentation plan in one step. `buddhi init` is fully idempotent: it never overwrites your existing or customized files in `.agents/` or `AGENTS.md`.
 
 ### `buddhi sdd` — Spec-Driven Development CLI helpers
 
