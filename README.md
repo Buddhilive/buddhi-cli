@@ -12,20 +12,23 @@
   </a>
 </p>
 
-Buddhi AI CLI turns a codebase into two things an AI coding agent actually needs:
+Buddhi AI CLI turns a codebase into what an AI coding agent actually needs:
 a **code graph** (files, directories, classes, functions/methods, and their
-containment/import/call relationships, via tree-sitter) and a scaffolded
-**Google Antigravity agent harness** that's grounded in that graph instead of
-generic advice.
+containment/import/call relationships, via tree-sitter), a scaffolded
+**Google Antigravity agent harness** grounded in that graph, and a full
+**Spec-Driven Development (SDD)** lifecycle based on open standards like [AGENTS.md](https://agents.md/).
 
-The idea: point Buddhi AI CLI at a project, and it gives Antigravity a `/plan`
-workflow with domain specialist agents (frontend, backend, database, testing,
-security, deployment, git), a `/document-codebase` workflow that generates
-real per-symbol documentation, and `/verify`, `/debug`, `/remember`, and
-`/status` workflows for evidence-backed testing, systematic debugging,
-explicit memory capture, and a harness state dashboard — all reading from
-Buddhi AI CLI's graph and docs instead of re-deriving understanding from raw
-source every time.
+The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
+- A full **Spec-Driven Development (SDD)** workflow:
+  1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
+  2. `/plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
+  3. `/tasks` — Generate a phased, story-oriented task breakdown into `tasks.md` with `[P]` parallelism markers.
+  4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
+  5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
+- A `/quick-plan` workflow for lightweight, non-SDD multi-specialist planning.
+- A `/document-codebase` workflow that generates dependency-aware OKF symbol documentation.
+- Specialized `/debug`, `/remember`, and `/status` workflows for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
+- Domain specialist agents (frontend, backend, database, testing, security, deployment, git) and `terminal-runner` for delegated command execution.
 
 Supported languages: Python, JavaScript, TypeScript/TSX, Go, Rust, C#, Java,
 Kotlin, Swift.
@@ -57,9 +60,10 @@ buddhi init [path]
 ```
 
 Scans `path` (defaults to the current directory), builds the code graph,
-computes a documentation plan, and scaffolds the Antigravity agent harness.
+computes a documentation plan, scaffolds the root `AGENTS.md`, and prepares the Antigravity agent harness.
 Writes:
 
+- `AGENTS.md` — standard project instructions, dev commands, and architecture rules at the project root (created if not already present)
 - `.buddhi/graphs/tree-graph.json` — the graph in Cytoscape.js elements format
 - `.buddhi/graphs/tree-graph.db` — a SQLite database (`nodes`/`edges` tables,
   indexed for recursive CTE traversal — ancestor/descendant lookups,
@@ -70,15 +74,15 @@ Writes:
 - `.buddhi/docs-plan.json` — a bottom-up, staleness-aware plan of what needs
   documenting
 - `.agents/` — the Antigravity agent harness (agents, workflows, rules,
-  skills, memory index — see below). **Idempotent**: rerunning `init` never
+  skills, templates, memory index — see below). **Idempotent**: rerunning `init` never
   overwrites a harness file you've already edited under `.agents/`, it only
   fills in what's missing.
 
 A `.buddhi/.gitignore` (ignoring `graphs/` and `docs/`) is created on first
 run so generated artifacts don't get committed to your project's own repo.
 
-Next step printed at the end: open the project in Antigravity and run
-`/document-codebase`, then `/plan`.
+Next step printed at the end: open the project in Antigravity, run
+`/document-codebase`, and start a feature with `/specify`.
 
 ### `buddhi generate` — graph only
 
@@ -98,50 +102,58 @@ buddhi docs plan [path]
 ```
 
 Recomputes `.buddhi/docs-plan.json` against the current source tree without
-touching `.agents/`. This is what the `/document-codebase` and `/plan`
+touching `.agents/`. This is what `/document-codebase` and `/plan`
 Antigravity workflows call before doing anything else, so the plan always
 reflects the current source.
+
+### `buddhi sdd` — Spec-Driven Development CLI helpers
+
+```sh
+buddhi sdd <command> [options]
+```
+
+Underlying helper commands used by the SDD workflows:
+- `buddhi sdd create <description>` — Create a new feature directory under `.buddhi/specs/<branch>/`, create branch name, and instantiate `spec.md` from template.
+- `buddhi sdd setup-plan` — Set up `plan.md` for the active feature branch from `plan-template.md`.
+- `buddhi sdd setup-tasks` — Verify prerequisites and output task resolution context for `tasks.md`.
+- `buddhi sdd check` — Consolidated prerequisite checker supporting `--require-tasks`, `--include-tasks`, `--paths-only`, and `--json`.
+- `buddhi sdd resolve-template <name>` — Resolve and compose templates across `.agents/templates/` and built-in defaults.
 
 ## The Antigravity agent harness
 
 `buddhi init` scaffolds `.agents/` with:
 
-- **`workflows/`** — `/document-codebase` (generate or refresh docs),
-  `/plan` (turn a request into an implementation plan grounded in the real
-  codebase, without writing any code), `/verify` (run the project's real
-  build/lint/test commands and report genuine pass/fail evidence), `/debug`
-  (systematic investigation producing a confirmed root-cause and fix plan,
-  plan-only like `/plan`), `/remember` (explicit, user-invocable capture of a
-  preference/convention/decision into memory), and `/status` (a dashboard of
-  the harness's own docs/graph staleness, open plans, and memory size — not
-  live agent sessions or a preview server)
-- **`agents/`** — read-only specialist subagents (`backend-specialist`,
+- **`workflows/`**
+  - **`/specify`** — Initialize a new feature branch, scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
+  - **`/plan`** — Spec-Driven Development architecture workflow: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
+  - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
+  - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
+  - **`/verify`** — Repurposed verification workflow: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
+  - **`/quick-plan`** — Lightweight implementation planning for requests that do not require full SDD branching/spec overhead.
+  - **`/document-codebase`** — Generate or refresh OKF symbol documentation bottom-up.
+  - **`/debug`** — Systematic bug investigation producing a confirmed root cause and concrete fix plan without modifying code.
+  - **`/remember`** — Capture user preferences, project conventions, and technical decisions into memory.
+  - **`/status`** — Dashboard of harness state (docs staleness, active plans, memory size, git branch).
+- **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
+- **`agents/`** — Read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
-  in parallel by `/plan`, plus `terminal-runner` for delegated shell/build/test
-  execution
-- **`rules/`** — always-on conventions: consult `.buddhi/docs/` and the code
+  in parallel by `/plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
+  execution.
+- **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and the code
   graph before raw source, require confirmation before destructive commands,
-  read/append to the memory index for durable decisions
-- **`hooks.json`** / **`hooks/guard_destructive.py`** — a real `PreToolUse`
+  read/append to the memory index for durable decisions.
+- **`hooks.json`** / **`hooks/guard_destructive.py`** — A `PreToolUse`
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
-  backstop to the rule above, not just an advisory — though Antigravity's
-  hook-firing reliability is reportedly better in the CLI than in the IDE
-  (per community reports), so treat this as a backstop, not a guarantee, in
-  every environment
-- **`skills/`** — `okf-context` (how to read the generated docs),
-  `repoagent-doc-generation` (how to write them), `system-design` (an
-  architecture/trade-off decision framework used by `/plan`), and a slot for
-  tech-stack-specific skills you drop in yourself (see
-  `.agents/skills/README.md`)
-- **`memory/MEMORY.md`** — a pure index into four topic files under
+  safety backstop.
+- **`skills/`** — `okf-context` (how to read the generated docs and query SQLite code graph),
+  `repoagent-doc-generation` (how to write docs), `system-design` (an
+  architecture/trade-off decision framework used during planning), and custom skill slots (see
+  `.agents/skills/README.md`).
+- **`memory/MEMORY.md`** — A structured index into topic files under
   `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
-  `tech-decisions.md`, `feedback-history.md`), populated passively across
-  `/plan` runs or explicitly via `/remember`. Since template sync never
-  overwrites existing files, a project that already had a flat `MEMORY.md`
-  before upgrading buddhi will keep it as-is on re-running `init` — only a
-  fresh `buddhi init` gets the new topic-file split.
+  `tech-decisions.md`, `feedback-history.md`).
 
 ### Documentation format
 

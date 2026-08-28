@@ -1,35 +1,44 @@
 ---
 name: verify
-description: Prove a change actually works by running its real build/lint/test commands via the terminal-runner agent and reporting genuine pass/fail evidence, rather than claiming success from static reading.
-version: 1.0.0
+description: Prove that changes work and satisfy acceptance criteria by running real build, lint, and test commands via the terminal-runner agent, mapping evidence to SDD user stories when available, and reporting genuine pass/fail evidence.
+version: 2.0.0
 requires_agents: terminal-runner
-artifact_outputs: verification-report
+requires_skills: okf-context
+artifact_outputs: verification-report, convergence-report
 ---
 
 # /verify
 
 $ARGUMENTS
 
-Prove that a change works by actually running it, not by reasoning about what
-should happen. Report real evidence for every command executed.
+Prove that changes work by actually running real verification commands and mapping results
+against acceptance criteria, rather than claiming success from static reading.
 
 ## Steps
 
-1. Identify the scope: run `git diff` / `git status` (via the `terminal-runner`
-   agent) to see which files changed, or use the explicit target named in
-   `$ARGUMENTS` if the user gave one.
-2. Determine this project's real verification commands: consult
-   `.buddhi/docs/` and the code graph (see the `okf-context` skill pattern)
-   plus the project's actual manifest/build files to find the build, lint,
-   and test commands genuinely in use here. Never assume a generic command
-   (e.g. `npm test`) without confirming it applies to this project — if the
-   right command can't be found, ask the user instead of guessing.
-3. Execute every determined command exclusively via the `terminal-runner`
-   agent. Never run verification commands directly in the main agent's
-   context.
-4. For each command, report the command itself, its exit code, and a
-   condensed summary of the real output (pass/fail counts, error lines) —
-   never a paraphrase of expected behavior.
-5. Flag anything that couldn't be verified this way (a UI flow, an
-   interactive prompt, anything needing a browser) as requiring manual
-   testing. Never omit it silently or claim it passed.
+1. **Check feature context (SDD convergence check)**:
+   Run `buddhi sdd check --paths-only --json` (via the `terminal-runner` agent).
+   - If a valid feature spec (`FEATURE_SPEC`) and tasks (`TASKS`) exist for the current branch,
+     operate in **SDD Convergence Mode**: read `spec.md` to extract each user story's acceptance
+     scenarios (Given/When/Then) and success criteria (`SC-001`...).
+   - If no feature context is active, operate in **Generic Verification Mode**.
+2. **Identify changed scope**:
+   Run `git diff` / `git status` (via `terminal-runner`) to determine changed files, or use the
+   explicit target specified in `$ARGUMENTS`.
+3. **Determine project verification commands**:
+   Consult `.buddhi/docs/` and the code graph (see the `okf-context` skill) plus the project's
+   manifest/build configuration files to detect the exact build, lint, typecheck, and test commands
+   genuinely used by this project. Never guess or assume generic commands (e.g. `npm test`) without
+   confirming them in the project configuration. If unclear, ask the user.
+4. **Execute verification via terminal-runner**:
+   Execute every verification command exclusively through the `terminal-runner` agent. Never execute
+   verification commands directly in the main agent's context.
+5. **Analyze and report evidence**:
+   - For each executed command, report the exact command string, exit code, and a condensed summary
+     of stdout/stderr (e.g. test counts, error lines, warnings) — never a paraphrase of expected behavior.
+   - **In SDD Convergence Mode**: Map the test execution results directly back to each user story
+     in `spec.md`. Report pass/fail status per user story with concrete evidence from the test output.
+6. **Flag manual verification requirements**:
+   Flag anything that could not be verified automatically (UI flows, browser interactions, third-party
+   services, interactive prompts) as requiring manual testing. Never omit unverified requirements
+   silently or claim they passed without evidence.

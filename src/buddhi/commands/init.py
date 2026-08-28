@@ -91,6 +91,18 @@ def init(
         err_console.print(f"[red]error:[/red] failed scaffolding .agents/: {exc}")
         raise typer.Exit(code=1) from exc
 
+    agents_md_path = root / "AGENTS.md"
+    agents_md_created = False
+    if not agents_md_path.exists():
+        try:
+            agents_template_file = resources.files(_AGENTS_TEMPLATE_PACKAGE) / "templates" / "agents-template.md"
+            if agents_template_file.is_file():
+                content = agents_template_file.read_text(encoding="utf-8").replace("[PROJECT_NAME]", root.name)
+                agents_md_path.write_text(content, encoding="utf-8")
+                agents_md_created = True
+        except (OSError, UnicodeError, AttributeError, ModuleNotFoundError, TypeError):
+            pass
+
     stale = sum(1 for e in plan_entries if e.needs_generation)
     console.print(f"[bold green]done[/bold green] initialized {root}")
     console.print(
@@ -100,10 +112,12 @@ def init(
     console.print(f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation")
     console.print(f"  .agents/: {len(sync_report.created)} file(s) added, "
                   f"{len(sync_report.kept_existing)} already present (left untouched)")
+    if agents_md_created:
+        console.print(f"  wrote: {agents_md_path}")
     console.print(f"  wrote: {json_path}")
     console.print(f"  wrote: {db_path}")
     console.print(f"  wrote: {html_path}")
     console.print(f"  wrote: {plan_path}")
     console.print(
-        "  next: open this codebase in Antigravity and run /document-codebase, then /plan"
+        "  next: open this codebase in Antigravity and run /document-codebase, then start a feature with /specify"
     )
