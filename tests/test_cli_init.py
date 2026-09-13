@@ -39,6 +39,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "workflows" / "quick-plan.md").exists()
     assert (agents_dir / "workflows" / "verify.md").exists()
     assert (agents_dir / "workflows" / "debug.md").exists()
+    assert (agents_dir / "workflows" / "ask.md").exists()
     assert (agents_dir / "workflows" / "remember.md").exists()
     assert (agents_dir / "workflows" / "status.md").exists()
     assert (agents_dir / "templates" / "spec-template.md").exists()
@@ -56,8 +57,8 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "mcp_config.json").exists()
     mcp_cfg = json.loads((agents_dir / "mcp_config.json").read_text(encoding="utf-8"))
     assert "mcpServers" in mcp_cfg
-    assert "buddhi" in mcp_cfg["mcpServers"]
     assert mcp_cfg["mcpServers"]["buddhi"]["command"] == "buddhi-mcp"
+    assert mcp_cfg["mcpServers"]["buddhi"]["args"] == ["--root", str(tmp_path.resolve())]
     for specialist in (
         "frontend-specialist",
         "backend-specialist",

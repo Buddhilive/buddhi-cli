@@ -91,6 +91,27 @@ def init(
         err_console.print(f"[red]error:[/red] failed scaffolding .agents/: {exc}")
         raise typer.Exit(code=1) from exc
 
+    mcp_config_path = root / ".agents" / "mcp_config.json"
+    if mcp_config_path.exists():
+        try:
+            mcp_data = json.loads(mcp_config_path.read_text(encoding="utf-8"))
+            if "mcpServers" in mcp_data and "buddhi" in mcp_data["mcpServers"]:
+                buddhi_server = mcp_data["mcpServers"]["buddhi"]
+                current_args = list(buddhi_server.get("args", []))
+                if "--root" in current_args:
+                    idx = current_args.index("--root")
+                    if idx + 1 < len(current_args):
+                        current_args[idx + 1] = str(root.resolve())
+                    else:
+                        current_args.append(str(root.resolve()))
+                    buddhi_server["args"] = current_args
+                else:
+                    buddhi_server["args"] = ["--root", str(root.resolve())]
+                mcp_config_path.write_text(json.dumps(mcp_data, indent=2) + "\n", encoding="utf-8")
+        except (json.JSONDecodeError, OSError) as exc:
+            if verbose:
+                err_console.print(f"[yellow]warning:[/yellow] could not configure .agents/mcp_config.json: {exc}")
+
     agents_md_path = root / "AGENTS.md"
     agents_md_created = False
     if not agents_md_path.exists():

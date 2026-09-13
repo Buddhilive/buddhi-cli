@@ -237,10 +237,10 @@ def compress_to_budget(nodes: list[SearchResult], budget: int) -> list[SearchRes
     return nodes
 
 
-def _native_grep_search(query: str) -> str:
+def _native_grep_search(query: str, root_path: Path | None = None) -> str:
     """Fuzzy/regex search files recursively in the workspace as a fallback."""
     matches: list[str] = []
-    p = Path(".")
+    p = root_path if root_path else Path(".")
     try:
         pattern = re.compile(query, re.IGNORECASE)
     except Exception:
@@ -266,7 +266,12 @@ def _native_grep_search(query: str) -> str:
                         with path.open("r", encoding="utf-8", errors="replace") as f:
                             for idx, line in enumerate(f, 1):
                                 if pattern.search(line):
-                                    matches.append(f"{path.as_posix()}:{idx}: {line.strip()}")
+                                    display_path = (
+                                        path.relative_to(p).as_posix()
+                                        if root_path and path.is_relative_to(p)
+                                        else path.as_posix()
+                                    )
+                                    matches.append(f"{display_path}:{idx}: {line.strip()}")
                                     if len(matches) >= 50:
                                         break
                     except Exception:
@@ -321,11 +326,12 @@ def execute_buddhi_search(
     mode: str = "full",
     include_bridges: bool = True,
     budget: int = 8000,
+    root_path: Path | None = None,
 ) -> str:
     """Search the codebase using Buddhi's topology-driven retrieval pipeline with graceful fallbacks."""
     if not Path(db_path).exists():
         # Graph DB not found -> fallback to native grep
-        output = _native_grep_search(query)
+        output = _native_grep_search(query, root_path=root_path)
         if output:
             return output
         return f"Error: Buddhi database not found at '{db_path}' and no native matches found. Please run `buddhi init` first."
@@ -415,7 +421,7 @@ def execute_buddhi_search(
                 return f"### [fallback: direct SQL]\n{serialized}"
 
             # Fallback to Native Grep
-            grep_output = _native_grep_search(query)
+            grep_output = _native_grep_search(query, root_path=root_path)
             if grep_output:
                 return grep_output
 

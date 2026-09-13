@@ -10,7 +10,8 @@ from buddhi.cli import app
 runner = CliRunner()
 
 
-def test_sdd_dry_run_create() -> None:
+def test_sdd_dry_run_create(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
     dry_res = runner.invoke(
         app,
         [

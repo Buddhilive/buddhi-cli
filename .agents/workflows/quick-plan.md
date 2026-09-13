@@ -17,8 +17,9 @@ advice.
 
 ## Steps
 
-1. Refresh context: run `buddhi docs plan` (via the `terminal-runner` agent) so
-   `.buddhi/docs-plan.json` and the code graph reflect the current source tree.
+1. **Update code graph & refresh context**: Run `buddhi generate` via the `terminal-runner`
+   agent so `.buddhi/graphs/tree-graph.db` and `tree-graph.json` reflect the current source tree,
+   then run `buddhi docs plan` so `.buddhi/docs-plan.json` is updated.
 2. Read `.buddhi/docs/index.md` and query the code graph using Buddhi MCP tools
    (`buddhi_search`, `buddhi_read`, see the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` /
    `tree-graph.json` for the subsystem(s) the request touches. Do not start from raw source.

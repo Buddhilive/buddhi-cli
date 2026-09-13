@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import patch
+
 import pytest
 
+from buddhi.graph.model import FILE, FUNCTION, CodeGraph, GraphNode
 from buddhi.mcp.server import _get_db_path, buddhi_read, buddhi_search, mcp
 from buddhi.persist.sqlite_writer import write_sqlite
-from buddhi.graph.model import CodeGraph, GraphNode, FUNCTION, FILE
 
 
 @pytest.fixture
@@ -99,3 +100,44 @@ def test_mcp_read_query_lookup(mock_db: Path):
         assert "demo.py" in result
     finally:
         server.OVERRIDE_DB_PATH = None
+
+
+def test_mcp_path_resolution_root_override(tmp_path: Path):
+    from buddhi.mcp import server
+
+    buddhi_dir = tmp_path / ".buddhi" / "graphs"
+    buddhi_dir.mkdir(parents=True, exist_ok=True)
+    db_file = buddhi_dir / "tree-graph.db"
+    db_file.write_text("test")
+
+    server.OVERRIDE_ROOT = tmp_path
+    try:
+        resolved = _get_db_path()
+        assert resolved.resolve() == db_file.resolve()
+    finally:
+        server.OVERRIDE_ROOT = None
+
+
+def test_mcp_search_with_override_root(tmp_path: Path, mock_db: Path):
+    from buddhi.mcp import server
+
+    server.OVERRIDE_ROOT = tmp_path
+    try:
+        result = buddhi_search("greet")
+        assert "greet" in result
+    finally:
+        server.OVERRIDE_ROOT = None
+
+
+def test_mcp_read_relative_path_with_override_root(tmp_path: Path, mock_db: Path):
+    from buddhi.mcp import server
+
+    test_file = tmp_path / "relative_demo.py"
+    test_file.write_text("def salute():\n    pass\n")
+
+    server.OVERRIDE_ROOT = tmp_path
+    try:
+        result = buddhi_read(filepath="relative_demo.py", mode="full")
+        assert "def salute" in result
+    finally:
+        server.OVERRIDE_ROOT = None

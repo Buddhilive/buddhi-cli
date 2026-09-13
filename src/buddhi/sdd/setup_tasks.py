@@ -120,16 +120,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if json_mode:
         tasks_template = resolve_template("tasks-template", paths.repo_root)
-        sys.stdout.write(
-            _json_line(
-                {
-                    "FEATURE_DIR": str(paths.feature_dir),
-                    "AVAILABLE_DOCS": docs,
-                    "TASKS_TEMPLATE": str(tasks_template) if tasks_template else "",
-                    "TASKS_TEMPLATE_CONTENT": tasks_template_content,
-                }
-            )
+        payload = _json_line(
+            {
+                "FEATURE_DIR": str(paths.feature_dir),
+                "AVAILABLE_DOCS": docs,
+                "TASKS_TEMPLATE": str(tasks_template) if tasks_template else "",
+                "TASKS_TEMPLATE_CONTENT": tasks_template_content,
+            }
         )
+        try:
+            sys.stdout.write(payload)
+        except UnicodeEncodeError:
+            sys.stdout.buffer.write(payload.encode("utf-8", errors="replace"))
+            sys.stdout.buffer.flush()
     else:
         tasks_template = resolve_template("tasks-template", paths.repo_root)
         print(f"FEATURE_DIR: {paths.feature_dir}")
