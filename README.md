@@ -30,6 +30,7 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
   4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
   5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
 - A `/quick-plan` workflow for lightweight, non-SDD multi-specialist planning.
+- An `/ask` workflow for interactive codebase comprehension and architectural Q&A grounded in the code graph.
 - A `/document-codebase` workflow that generates dependency-aware OKF symbol documentation.
 - Specialized `/debug`, `/remember`, and `/status` workflows for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
 - Domain specialist agents (frontend, backend, database, testing, security, deployment, git) and `terminal-runner` for delegated command execution.
@@ -77,7 +78,7 @@ Writes:
   internet access)
 - `.buddhi/docs-plan.json` — a bottom-up, staleness-aware plan of what needs
   documenting
-- `.agents/mcp_config.json` — workspace MCP server configuration registering `buddhi-mcp` with Antigravity IDE
+- `.agents/mcp_config.json` — workspace MCP server configuration registering `buddhi-mcp` with Antigravity IDE, pre-configured with the workspace root directory (`--root`) so agents only need to pass `query`
 - `.agents/` — the Antigravity agent harness (agents, workflows, rules,
   skills, templates, memory index — see below). **Idempotent**: rerunning `init` never
   overwrites a harness file you've already edited under `.agents/`, it only
@@ -92,9 +93,9 @@ Next step printed at the end: open the project in Antigravity, run
 ### `buddhi mcp` — Model Context Protocol server
 
 ```sh
-buddhi mcp [--db-path <path>]
+buddhi mcp [--db-path <path>] [--root <path>]
 # or run the dedicated entrypoint directly:
-buddhi-mcp [--db-path <path>]
+buddhi-mcp [--db-path <path>] [--root <path>]
 ```
 
 Runs the Buddhi Model Context Protocol (MCP) server over **StdIO**, allowing AI coding agents to dynamically query the code graph and read compressed files:
@@ -102,7 +103,7 @@ Runs the Buddhi Model Context Protocol (MCP) server over **StdIO**, allowing AI 
 - **`buddhi_search`**: Topology-aware codebase search. Uses lexical anchors, expands into community neighborhoods, filters boilerplate using Shannon entropy, and sorts results using a U-curve positional layout within a token/character budget.
 - **`buddhi_read`**: Dynamic, AST-pruned file reading with multiple compression modes (`auto`, `signatures`, `map`, `entropy`, `full`) and token-budget awareness to prevent context window saturation.
 
-The MCP server auto-detects `.buddhi/graphs/tree-graph.db` in the workspace root or parent directories and is scoped per-workspace with zero port conflicts.
+Passing `--root <path>` anchors SQLite database resolution (`<root>/.buddhi/graphs/tree-graph.db`), fallback relative filepaths, and native grep lookups to the specified repository root. The MCP server is scoped per-workspace with zero port conflicts.
 
 ### `buddhi generate` — update / refresh code graph
 
@@ -142,14 +143,15 @@ Underlying helper commands used by the SDD workflows:
 `buddhi init` scaffolds `.agents/` with:
 
 - **`workflows/`**
-  - **`/specify`** — Initialize a new feature branch, scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
+  - **`/ask`** — Conversational codebase Q&A workflow: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
+  - **`/specify`** — Initialize a new feature branch (refreshes graph via `buddhi generate` first), scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
   - **`/plan`** — Spec-Driven Development architecture workflow: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
   - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
   - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
   - **`/verify`** — Repurposed verification workflow: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
-  - **`/quick-plan`** — Lightweight implementation planning for requests that do not require full SDD branching/spec overhead.
+  - **`/quick-plan`** — Lightweight implementation planning for requests that do not require full SDD branching/spec overhead (refreshes graph via `buddhi generate` first).
   - **`/document-codebase`** — Generate or refresh OKF symbol documentation bottom-up.
-  - **`/debug`** — Systematic bug investigation producing a confirmed root cause and concrete fix plan without modifying code.
+  - **`/debug`** — Systematic bug investigation (refreshes graph via `buddhi generate` first) producing a confirmed root cause and concrete fix plan without modifying code.
   - **`/remember`** — Capture user preferences, project conventions, and technical decisions into memory.
   - **`/status`** — Dashboard of harness state (docs staleness, active plans, memory size, git branch).
 - **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
