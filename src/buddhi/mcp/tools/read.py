@@ -16,6 +16,7 @@ def execute_buddhi_read(
     task_intent: str | None = None,
     budget: int = 4000,
     query: str | None = None,
+    root_path: Path | None = None,
 ) -> str:
     # ----------------------------------------------------
     # Case 1: Query (glob pattern / symbol search)
@@ -60,7 +61,7 @@ def execute_buddhi_read(
         # Try native glob fallback if database had no matches or failed
         if not matches:
             source = "native fallback"
-            p = Path(".")
+            p = root_path if root_path else Path(".")
             glob_pattern = query if ("*" in query or "?" in query) else f"*{query}*"
             try:
                 for path in p.rglob(glob_pattern):
@@ -78,7 +79,12 @@ def execute_buddhi_read(
                                 "__pycache__",
                             )
                         ):
-                            matches.append(str(path.as_posix()))
+                            display_path = (
+                                path.relative_to(p).as_posix()
+                                if root_path and path.is_relative_to(p)
+                                else path.as_posix()
+                            )
+                            matches.append(str(display_path))
             except Exception as e:
                 logging.warning("Native glob lookup failed: %s", e)
 
@@ -98,6 +104,11 @@ def execute_buddhi_read(
         return "Error: Either 'filepath' or 'query' must be provided to buddhi_read."
 
     path = Path(filepath)
+    if not path.is_absolute() and not path.exists() and root_path is not None:
+        candidate = root_path / path
+        if candidate.exists():
+            path = candidate
+
     if not path.exists() or not path.is_file():
         return f"Error: Target file '{filepath}' does not exist or is not a file."
 

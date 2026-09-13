@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -13,18 +13,21 @@ mcp = FastMCP("buddhi-cli")
 # Global DB path override if provided via CLI argument
 OVERRIDE_DB_PATH: Path | None = None
 
+# Global workspace root override if provided via CLI argument
+OVERRIDE_ROOT: Path | None = None
+
 
 def _get_db_path(cwd: str | None = None) -> Path:
     """Resolve the SQLite graph database path.
 
     1. Use the command-line override if set.
-    2. Traverse upwards from CWD (or given cwd) to auto-detect .buddhi/graphs/tree-graph.db.
-    3. Fallback to (cwd)/.buddhi/graphs/tree-graph.db if not found.
+    2. Traverse upwards from CWD (or given cwd / OVERRIDE_ROOT) to auto-detect .buddhi/graphs/tree-graph.db.
+    3. Fallback to (start_dir)/.buddhi/graphs/tree-graph.db if not found.
     """
     if OVERRIDE_DB_PATH is not None:
         return OVERRIDE_DB_PATH
 
-    start_dir = Path(cwd).resolve() if cwd else Path.cwd().resolve()
+    start_dir = Path(cwd).resolve() if cwd else (OVERRIDE_ROOT if OVERRIDE_ROOT is not None else Path.cwd().resolve())
     for parent in [start_dir] + list(start_dir.parents):
         for rel in [
             Path(".buddhi") / "graphs" / "tree-graph.db",
@@ -63,6 +66,7 @@ def buddhi_search(
     from buddhi.mcp.tools.search import execute_buddhi_search
 
     db_path = _get_db_path(cwd)
+    root_dir = Path(cwd).resolve() if cwd else OVERRIDE_ROOT
     try:
         return execute_buddhi_search(
             query=query,
@@ -71,8 +75,9 @@ def buddhi_search(
             mode=mode,
             include_bridges=include_bridges,
             budget=budget,
+            root_path=root_dir,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Error executing search: {e}"
 
 
@@ -89,6 +94,7 @@ def buddhi_read(
     from buddhi.mcp.tools.read import execute_buddhi_read
 
     db_path = _get_db_path(cwd)
+    root_dir = Path(cwd).resolve() if cwd else OVERRIDE_ROOT
     try:
         return execute_buddhi_read(
             filepath=filepath,
@@ -97,8 +103,9 @@ def buddhi_read(
             task_intent=task_intent,
             budget=budget,
             query=query,
+            root_path=root_dir,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Error executing read: {e}"
 
 
@@ -110,12 +117,30 @@ def main() -> None:
         type=str,
         help="Explicit path to the .buddhi/graphs/tree-graph.db database (overrides auto-detection)",
     )
+    parser.add_argument(
+        "--root",
+        "-r",
+        type=str,
+        help="Explicit path to the workspace root directory",
+    )
+    parser.add_argument(
+        "root_dir",
+        nargs="?",
+        type=str,
+        default=None,
+        help="Optional positional path to the workspace root directory",
+    )
 
     args, unknown = parser.parse_known_args()
 
     if args.db_path:
         global OVERRIDE_DB_PATH
         OVERRIDE_DB_PATH = Path(args.db_path).resolve()
+
+    root_val = args.root or args.root_dir
+    if root_val:
+        global OVERRIDE_ROOT
+        OVERRIDE_ROOT = Path(root_val).resolve()
 
     sys.argv = [sys.argv[0]] + unknown
     mcp.run(transport="stdio")

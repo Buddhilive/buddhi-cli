@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "buddhi": {
+      "command": "buddhi-mcp",
+      "args": [
+        "--root",
+        "c:\\DevDojo\\Buddhi\\buddhi-cli"
+      ],
+      "env": {}
+    }
+  }
+}
