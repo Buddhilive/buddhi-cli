@@ -16,6 +16,7 @@ from buddhi.util.fsutil import (
     BuddhiFsError,
     ensure_buddhi_dirs,
     ensure_docs_dir,
+    migrate_legacy_workflows,
     sync_template_tree,
 )
 
@@ -36,7 +37,7 @@ def init(
 
     The harness covers doc generation plus a general full-stack planning layer
     (frontend/backend/database/testing/security/deployment/git specialist
-    agents, orchestrated by the /plan workflow). Idempotent: rerunning never
+    agents, orchestrated by the /plan skill). Idempotent: rerunning never
     overwrites a harness file you've already created or edited under .agents/
     — it only fills in what's missing.
     """
@@ -87,6 +88,7 @@ def init(
         template_root = resources.files(_AGENTS_TEMPLATE_PACKAGE)
         with resources.as_file(template_root) as template_dir:
             sync_report = sync_template_tree(template_dir, root / ".agents")
+        migration_report = migrate_legacy_workflows(root / ".agents")
     except (BuddhiFsError, ModuleNotFoundError, FileNotFoundError) as exc:
         err_console.print(f"[red]error:[/red] failed scaffolding .agents/: {exc}")
         raise typer.Exit(code=1) from exc
@@ -133,6 +135,11 @@ def init(
     console.print(f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation")
     console.print(f"  .agents/: {len(sync_report.created)} file(s) added, "
                   f"{len(sync_report.kept_existing)} already present (left untouched)")
+    if migration_report.migrated or migration_report.archived:
+        console.print(
+            f"  migrated workflows: {len(migration_report.migrated)} converted to skills, "
+            f"{len(migration_report.archived)} archived as .md.bak"
+        )
     if agents_md_created:
         console.print(f"  wrote: {agents_md_path}")
     console.print(f"  wrote: {json_path}")

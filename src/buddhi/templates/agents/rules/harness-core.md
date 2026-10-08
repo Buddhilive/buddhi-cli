@@ -13,7 +13,7 @@ trigger: always_on
   this", symbol search). Only fall back to direct graph queries (`.buddhi/graphs/tree-graph.db` /
   `tree-graph.json`) or grepping raw source when MCP tools or docs do not answer the question.
 - A request that spans more than one domain (e.g. "add a feature" touching UI,
-  an API, and a schema change) should go through the `/plan` workflow before any
+  an API, and a schema change) should go through the `/plan` skill before any
   code is written, so the relevant specialist agents can ground a plan in the
   actual codebase rather than generic advice.
 - Destructive operations — force-push, `git reset --hard`, dropping or truncating
@@ -38,5 +38,5 @@ trigger: always_on
   harness work surfaces a convention or decision worth keeping across
   sessions, append it to the matching topic file and add a pointer to the
   index, rather than letting it live only in this conversation. Use the
-  `/remember` workflow for the same thing when the user explicitly asks to
+  `/remember` skill for the same thing when the user explicitly asks to
   capture something.

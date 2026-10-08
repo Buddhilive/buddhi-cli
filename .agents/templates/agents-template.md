@@ -21,6 +21,7 @@
   3. `/tasks` — break down tasks by user story in `tasks.md`
   4. `/implement` — execute tasks story by story
   5. `/verify` — prove working behavior with real test evidence
+- **Codebase Q&A**: Use `/ask <query>` to ask questions about architecture, components, and symbol relationships using the code graph.
 - **Lightweight Planning**: Use `/quick-plan` for quick, non-SDD changes.
 
 ## Engineering Principles & Non-Negotiables

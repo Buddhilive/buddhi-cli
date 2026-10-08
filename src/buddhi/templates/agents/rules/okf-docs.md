@@ -15,6 +15,6 @@ trigger: always_on
 - Never write OKF's Attested Computation fields (`runtime`, `parameters`, `executor`,
   `attester`) into these docs — that's out of scope for code documentation here.
 - After a change that alters a documented symbol's behavior or signature, prefer
-  running the `/document-codebase` workflow over leaving `.buddhi/docs/` stale.
+  running the `/document-codebase` skill over leaving `.buddhi/docs/` stale.
 - Treat `.buddhi/docs/` as a cache of understanding, not ground truth — the source
   file named in `sources[0].resource` always wins on conflict.

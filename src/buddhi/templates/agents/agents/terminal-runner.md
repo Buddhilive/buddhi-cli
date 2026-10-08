@@ -1,6 +1,6 @@
 ---
 name: terminal-runner
-description: Executes a given shell/terminal command and returns a condensed, no-bluff summary of the real output instead of the raw stream — used by other agents and workflows to keep verbose command output out of the main agent's context.
+description: Executes a given shell/terminal command and returns a condensed, no-bluff summary of the real output instead of the raw stream — used by other agents and skills to keep verbose command output out of the main agent's context.
 model: flash
 tools:
   - run_command

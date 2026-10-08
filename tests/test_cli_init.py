@@ -27,21 +27,28 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert all("needs_generation" in entry for entry in plan)
 
     agents_dir = tmp_path / ".agents"
-    assert (agents_dir / "skills" / "repoagent-doc-generation" / "SKILL.md").exists()
-    assert (agents_dir / "skills" / "okf-context" / "SKILL.md").exists()
-    assert (agents_dir / "workflows" / "document-codebase.md").exists()
+    expected_skills = (
+        "repoagent-doc-generation",
+        "okf-context",
+        "system-design",
+        "document-codebase",
+        "plan",
+        "specify",
+        "tasks",
+        "implement",
+        "quick-plan",
+        "verify",
+        "debug",
+        "ask",
+        "remember",
+        "status",
+    )
+    for skill_name in expected_skills:
+        assert (agents_dir / "skills" / skill_name / "SKILL.md").exists()
+
+    assert not (agents_dir / "workflows").exists()
     assert (agents_dir / "rules" / "okf-docs.md").exists()
     assert (agents_dir / "rules" / "harness-core.md").exists()
-    assert (agents_dir / "workflows" / "plan.md").exists()
-    assert (agents_dir / "workflows" / "specify.md").exists()
-    assert (agents_dir / "workflows" / "tasks.md").exists()
-    assert (agents_dir / "workflows" / "implement.md").exists()
-    assert (agents_dir / "workflows" / "quick-plan.md").exists()
-    assert (agents_dir / "workflows" / "verify.md").exists()
-    assert (agents_dir / "workflows" / "debug.md").exists()
-    assert (agents_dir / "workflows" / "ask.md").exists()
-    assert (agents_dir / "workflows" / "remember.md").exists()
-    assert (agents_dir / "workflows" / "status.md").exists()
     assert (agents_dir / "templates" / "spec-template.md").exists()
     assert (agents_dir / "templates" / "plan-template.md").exists()
     assert (agents_dir / "templates" / "tasks-template.md").exists()
@@ -53,7 +60,6 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert (agents_dir / "memory" / "project-conventions.md").exists()
     assert (agents_dir / "memory" / "tech-decisions.md").exists()
     assert (agents_dir / "memory" / "feedback-history.md").exists()
-    assert (agents_dir / "skills" / "system-design" / "SKILL.md").exists()
     assert (agents_dir / "mcp_config.json").exists()
     mcp_cfg = json.loads((agents_dir / "mcp_config.json").read_text(encoding="utf-8"))
     assert "mcpServers" in mcp_cfg
@@ -92,6 +98,42 @@ def test_init_is_idempotent_and_never_overwrites_agents_files(tmp_path: Path) ->
 
     assert rule_path.read_text(encoding="utf-8") == "# customized by the user\n"
     assert hook_path.read_text(encoding="utf-8") == "# customized by the user\n"
+
+
+def test_init_migrates_and_archives_legacy_workflows(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("def helper():\n    pass\n")
+
+    # Simulate an existing project with legacy workflows
+    workflows_dir = tmp_path / ".agents" / "workflows"
+    workflows_dir.mkdir(parents=True)
+    (workflows_dir / "plan.md").write_text("---\nname: plan\n---\n# Legacy Plan\n", encoding="utf-8")
+    (workflows_dir / "custom-flow.md").write_text("# Custom User Flow\nDo step A and B.\n", encoding="utf-8")
+    manifest = tmp_path / ".agents" / "workflows.json"
+    manifest.write_text(json.dumps([{"name": "custom-flow", "path": "workflows/custom-flow.md"}]), encoding="utf-8")
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    agents_dir = tmp_path / ".agents"
+    # Bundled plan skill was scaffolded
+    assert (agents_dir / "skills" / "plan" / "SKILL.md").exists()
+    # Custom flow was migrated to a skill with generated frontmatter
+    custom_skill = agents_dir / "skills" / "custom-flow" / "SKILL.md"
+    assert custom_skill.exists()
+    custom_content = custom_skill.read_text(encoding="utf-8")
+    assert "name: custom-flow" in custom_content
+    assert "description:" in custom_content
+    assert "# Custom User Flow" in custom_content
+
+    # Legacy workflow files archived as .md.bak
+    assert (workflows_dir / "plan.md.bak").exists()
+    assert (workflows_dir / "custom-flow.md.bak").exists()
+    assert not (workflows_dir / "plan.md").exists()
+    assert not (workflows_dir / "custom-flow.md").exists()
+
+    # Manifest cleaned up
+    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert manifest_data == []
 
 
 def test_init_bad_path_errors_cleanly(tmp_path: Path) -> None:

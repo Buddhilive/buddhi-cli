@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -93,5 +95,100 @@ def sync_template_tree(src_dir: Path, dest_dir: Path) -> TemplateSyncReport:
     return report
 
 
+@dataclass
+class WorkflowMigrationReport:
+    migrated: list[Path] = field(default_factory=list)
+    skipped_existing: list[Path] = field(default_factory=list)
+    archived: list[Path] = field(default_factory=list)
 
 
+def _ensure_skill_frontmatter(content: str, default_name: str) -> str:
+    """Ensure content has valid YAML frontmatter containing 'name' and 'description'."""
+    match = re.match(r"^---\r?\n(.*?)\r?\n---\r?\n(.*)$", content, flags=re.DOTALL)
+    if not match:
+        desc = f"Custom skill migrated from {default_name}."
+        lines = content.strip().splitlines()
+        for line in lines:
+            if line.startswith("# "):
+                title = line.lstrip("# ").strip()
+                desc = f"Skill for {title}. Migrated from {default_name}."
+                break
+        return f"---\nname: {default_name}\ndescription: {desc}\n---\n\n{content}"
+
+    fm_raw = match.group(1)
+    body = match.group(2)
+
+    has_name = re.search(r"^name:\s*", fm_raw, flags=re.MULTILINE)
+    has_desc = re.search(r"^description:\s*", fm_raw, flags=re.MULTILINE)
+
+    fm_lines = [line for line in fm_raw.splitlines() if line.strip()]
+    if not has_name:
+        fm_lines.insert(0, f"name: {default_name}")
+    if not has_desc:
+        fm_lines.append(f"description: Custom skill migrated from {default_name}.")
+
+    new_fm = "\n".join(fm_lines)
+    return f"---\n{new_fm}\n---\n{body}"
+
+
+def migrate_legacy_workflows(agents_dir: Path) -> WorkflowMigrationReport:
+    """Migrate legacy Antigravity workflows (.agents/workflows/*.md) to skills (.agents/skills/<name>/SKILL.md).
+
+    Follows the Antigravity migration standard:
+    1. For each .agents/workflows/<name>.md:
+       - If .agents/skills/<name>/SKILL.md exists, preserve existing without overwrite.
+       - If .agents/skills/<name>/SKILL.md does not exist, convert workflow to SKILL.md
+         ensuring valid YAML frontmatter (name and description).
+       - Safely archive the workflow file as <name>.md.bak.
+    2. Clean up .agents/workflows.json manifest if present.
+    """
+    report = WorkflowMigrationReport()
+    workflows_dir = agents_dir / "workflows"
+    if not workflows_dir.is_dir():
+        return report
+
+    for wf_file in sorted(workflows_dir.glob("*.md")):
+        if wf_file.name.endswith(".bak"):
+            continue
+        skill_name = wf_file.stem
+        target_skill_dir = agents_dir / "skills" / skill_name
+        target_skill_file = target_skill_dir / "SKILL.md"
+
+        if target_skill_file.exists():
+            report.skipped_existing.append(target_skill_file)
+        else:
+            try:
+                target_skill_dir.mkdir(parents=True, exist_ok=True)
+                raw_content = wf_file.read_text(encoding="utf-8")
+                converted_content = _ensure_skill_frontmatter(raw_content, default_name=skill_name)
+                target_skill_file.write_text(converted_content, encoding="utf-8")
+                report.migrated.append(target_skill_file)
+            except OSError as exc:
+                raise BuddhiFsError(f"could not convert workflow to skill {target_skill_file}: {exc}") from exc
+
+        bak_file = wf_file.with_name(f"{wf_file.name}.bak")
+        try:
+            if bak_file.exists():
+                bak_file.unlink()
+            wf_file.rename(bak_file)
+            report.archived.append(bak_file)
+        except OSError as exc:
+            raise BuddhiFsError(f"could not archive legacy workflow {wf_file} to {bak_file}: {exc}") from exc
+
+    manifest_path = agents_dir / "workflows.json"
+    if manifest_path.is_file():
+        try:
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            archived_names = {p.name[:-7] for p in report.archived}  # strip .md.bak
+            if isinstance(data, list):
+                new_data = [item for item in data if not (isinstance(item, dict) and item.get("name") in archived_names)]
+                manifest_path.write_text(json.dumps(new_data, indent=2) + "\n", encoding="utf-8")
+            elif isinstance(data, dict):
+                for key in ("workflows", "entries"):
+                    if key in data and isinstance(data[key], list):
+                        data[key] = [item for item in data[key] if not (isinstance(item, dict) and item.get("name") in archived_names)]
+                manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    return report

@@ -1,6 +1,7 @@
+import json
 from pathlib import Path
 
-from buddhi.util.fsutil import ensure_buddhi_dirs, sync_template_tree
+from buddhi.util.fsutil import ensure_buddhi_dirs, migrate_legacy_workflows, sync_template_tree
 
 
 def test_creates_buddhi_and_graphs_dirs(tmp_path: Path) -> None:
@@ -125,3 +126,66 @@ def test_sync_template_tree_skips_init_py_and_pycache(tmp_path: Path) -> None:
     assert not any(dest_dir.rglob("__pycache__"))
     assert (dest_dir / "hooks" / "guard_destructive.py").exists()
     assert len(report.created) == 1
+
+
+def test_migrate_legacy_workflows_converts_and_archives(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    workflows_dir = agents_dir / "workflows"
+    workflows_dir.mkdir(parents=True)
+
+    # 1. Plain markdown without frontmatter
+    (workflows_dir / "plain.md").write_text("# Plain Flow\nRun these steps.\n", encoding="utf-8")
+
+    # 2. Markdown with frontmatter lacking description
+    (workflows_dir / "no-desc.md").write_text("---\nversion: 1.0\n---\n# No Desc\nBody.\n", encoding="utf-8")
+
+    # 3. Existing skill that should NOT be overwritten
+    skills_dir = agents_dir / "skills" / "already-exists"
+    skills_dir.mkdir(parents=True)
+    existing_skill = skills_dir / "SKILL.md"
+    existing_skill.write_text("# Existing Skill Kept\n", encoding="utf-8")
+    (workflows_dir / "already-exists.md").write_text("# Old Workflow\n", encoding="utf-8")
+
+    # 4. workflows.json manifest
+    manifest = agents_dir / "workflows.json"
+    manifest.write_text(json.dumps([{"name": "plain"}, {"name": "keep-me"}]), encoding="utf-8")
+
+    report = migrate_legacy_workflows(agents_dir)
+
+    assert len(report.migrated) == 2
+    assert len(report.skipped_existing) == 1
+    assert len(report.archived) == 3
+
+    # Check migrated skills
+    plain_skill = agents_dir / "skills" / "plain" / "SKILL.md"
+    assert plain_skill.exists()
+    plain_text = plain_skill.read_text(encoding="utf-8")
+    assert "name: plain" in plain_text
+    assert "description: Skill for Plain Flow." in plain_text
+    assert "# Plain Flow" in plain_text
+
+    no_desc_skill = agents_dir / "skills" / "no-desc" / "SKILL.md"
+    assert no_desc_skill.exists()
+    no_desc_text = no_desc_skill.read_text(encoding="utf-8")
+    assert "name: no-desc" in no_desc_text
+    assert "description: Custom skill migrated from no-desc." in no_desc_text
+
+    # Check existing preserved
+    assert existing_skill.read_text(encoding="utf-8") == "# Existing Skill Kept\n"
+
+    # Check archives
+    assert (workflows_dir / "plain.md.bak").exists()
+    assert (workflows_dir / "no-desc.md.bak").exists()
+    assert (workflows_dir / "already-exists.md.bak").exists()
+    assert not (workflows_dir / "plain.md").exists()
+
+    # Check manifest cleanup
+    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert manifest_data == [{"name": "keep-me"}]
+
+
+def test_migrate_legacy_workflows_noop_if_no_dir(tmp_path: Path) -> None:
+    report = migrate_legacy_workflows(tmp_path / ".agents")
+    assert len(report.migrated) == 0
+    assert len(report.skipped_existing) == 0
+    assert len(report.archived) == 0

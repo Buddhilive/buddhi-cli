@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .agents/hooks/guard_destructive.py",
+            "command": "python hooks/guard_destructive.py",
             "timeout": 10
           }
         ]
