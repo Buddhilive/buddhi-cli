@@ -1,7 +1,11 @@
 import json
 from pathlib import Path
 
-from buddhi.util.fsutil import ensure_buddhi_dirs, migrate_legacy_workflows, sync_template_tree
+from buddhi.util.fsutil import (
+    ensure_buddhi_dirs,
+    migrate_legacy_workflows,
+    sync_template_tree,
+)
 
 
 def test_creates_buddhi_and_graphs_dirs(tmp_path: Path) -> None:
@@ -128,7 +132,7 @@ def test_sync_template_tree_skips_init_py_and_pycache(tmp_path: Path) -> None:
     assert len(report.created) == 1
 
 
-def test_migrate_legacy_workflows_converts_and_archives(tmp_path: Path) -> None:
+def test_migrate_legacy_workflows_converts_and_removes(tmp_path: Path) -> None:
     agents_dir = tmp_path / ".agents"
     workflows_dir = agents_dir / "workflows"
     workflows_dir.mkdir(parents=True)
@@ -146,7 +150,7 @@ def test_migrate_legacy_workflows_converts_and_archives(tmp_path: Path) -> None:
     existing_skill.write_text("# Existing Skill Kept\n", encoding="utf-8")
     (workflows_dir / "already-exists.md").write_text("# Old Workflow\n", encoding="utf-8")
 
-    # 4. workflows.json manifest
+    # 4. workflows.json manifest with one item to keep and one to remove
     manifest = agents_dir / "workflows.json"
     manifest.write_text(json.dumps([{"name": "plain"}, {"name": "keep-me"}]), encoding="utf-8")
 
@@ -154,7 +158,7 @@ def test_migrate_legacy_workflows_converts_and_archives(tmp_path: Path) -> None:
 
     assert len(report.migrated) == 2
     assert len(report.skipped_existing) == 1
-    assert len(report.archived) == 3
+    assert len(report.removed) == 3
 
     # Check migrated skills
     plain_skill = agents_dir / "skills" / "plain" / "SKILL.md"
@@ -173,19 +177,30 @@ def test_migrate_legacy_workflows_converts_and_archives(tmp_path: Path) -> None:
     # Check existing preserved
     assert existing_skill.read_text(encoding="utf-8") == "# Existing Skill Kept\n"
 
-    # Check archives
-    assert (workflows_dir / "plain.md.bak").exists()
-    assert (workflows_dir / "no-desc.md.bak").exists()
-    assert (workflows_dir / "already-exists.md.bak").exists()
-    assert not (workflows_dir / "plain.md").exists()
+    # Check workflows directory is completely removed
+    assert not workflows_dir.exists()
 
-    # Check manifest cleanup
+    # Check manifest cleanup (one kept item remains)
     manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
     assert manifest_data == [{"name": "keep-me"}]
+
+
+def test_migrate_legacy_workflows_removes_empty_manifest(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    workflows_dir = agents_dir / "workflows"
+    workflows_dir.mkdir(parents=True)
+    (workflows_dir / "flow.md").write_text("# Flow\n", encoding="utf-8")
+    manifest = agents_dir / "workflows.json"
+    manifest.write_text(json.dumps([{"name": "flow"}]), encoding="utf-8")
+
+    migrate_legacy_workflows(agents_dir)
+
+    assert not workflows_dir.exists()
+    assert not manifest.exists()
 
 
 def test_migrate_legacy_workflows_noop_if_no_dir(tmp_path: Path) -> None:
     report = migrate_legacy_workflows(tmp_path / ".agents")
     assert len(report.migrated) == 0
     assert len(report.skipped_existing) == 0
-    assert len(report.archived) == 0
+    assert len(report.removed) == 0

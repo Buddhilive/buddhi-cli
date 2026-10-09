@@ -100,7 +100,7 @@ def test_init_is_idempotent_and_never_overwrites_agents_files(tmp_path: Path) ->
     assert hook_path.read_text(encoding="utf-8") == "# customized by the user\n"
 
 
-def test_init_migrates_and_archives_legacy_workflows(tmp_path: Path) -> None:
+def test_init_migrates_and_removes_legacy_workflows(tmp_path: Path) -> None:
     (tmp_path / "main.py").write_text("def helper():\n    pass\n")
 
     # Simulate an existing project with legacy workflows
@@ -125,15 +125,11 @@ def test_init_migrates_and_archives_legacy_workflows(tmp_path: Path) -> None:
     assert "description:" in custom_content
     assert "# Custom User Flow" in custom_content
 
-    # Legacy workflow files archived as .md.bak
-    assert (workflows_dir / "plan.md.bak").exists()
-    assert (workflows_dir / "custom-flow.md.bak").exists()
-    assert not (workflows_dir / "plan.md").exists()
-    assert not (workflows_dir / "custom-flow.md").exists()
+    # Legacy workflow files and directory completely removed to prevent conflicts
+    assert not (agents_dir / "workflows").exists()
 
-    # Manifest cleaned up
-    manifest_data = json.loads(manifest.read_text(encoding="utf-8"))
-    assert manifest_data == []
+    # Empty manifest removed
+    assert not manifest.exists()
 
 
 def test_init_bad_path_errors_cleanly(tmp_path: Path) -> None:

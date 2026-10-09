@@ -99,7 +99,7 @@ def sync_template_tree(src_dir: Path, dest_dir: Path) -> TemplateSyncReport:
 class WorkflowMigrationReport:
     migrated: list[Path] = field(default_factory=list)
     skipped_existing: list[Path] = field(default_factory=list)
-    archived: list[Path] = field(default_factory=list)
+    removed: list[Path] = field(default_factory=list)
 
 
 def _ensure_skill_frontmatter(content: str, default_name: str) -> str:
@@ -132,21 +132,24 @@ def _ensure_skill_frontmatter(content: str, default_name: str) -> str:
 
 
 def migrate_legacy_workflows(agents_dir: Path) -> WorkflowMigrationReport:
-    """Migrate legacy Antigravity workflows (.agents/workflows/*.md) to skills (.agents/skills/<name>/SKILL.md).
+    """Migrate legacy Antigravity workflows (.agents/workflows/*.md) to skills (.agents/skills/<name>/SKILL.md)
+    and remove legacy workflow files and directory to prevent conflicts.
 
     Follows the Antigravity migration standard:
     1. For each .agents/workflows/<name>.md:
        - If .agents/skills/<name>/SKILL.md exists, preserve existing without overwrite.
        - If .agents/skills/<name>/SKILL.md does not exist, convert workflow to SKILL.md
          ensuring valid YAML frontmatter (name and description).
-       - Safely archive the workflow file as <name>.md.bak.
-    2. Clean up .agents/workflows.json manifest if present.
+       - Delete the legacy workflow file.
+    2. Clean up or remove .agents/workflows.json manifest if present.
+    3. Remove the .agents/workflows directory once all workflows are cleaned up.
     """
     report = WorkflowMigrationReport()
     workflows_dir = agents_dir / "workflows"
     if not workflows_dir.is_dir():
         return report
 
+    # 1. Convert active workflow files (.md)
     for wf_file in sorted(workflows_dir.glob("*.md")):
         if wf_file.name.endswith(".bak"):
             continue
@@ -166,29 +169,53 @@ def migrate_legacy_workflows(agents_dir: Path) -> WorkflowMigrationReport:
             except OSError as exc:
                 raise BuddhiFsError(f"could not convert workflow to skill {target_skill_file}: {exc}") from exc
 
-        bak_file = wf_file.with_name(f"{wf_file.name}.bak")
-        try:
-            if bak_file.exists():
-                bak_file.unlink()
-            wf_file.rename(bak_file)
-            report.archived.append(bak_file)
-        except OSError as exc:
-            raise BuddhiFsError(f"could not archive legacy workflow {wf_file} to {bak_file}: {exc}") from exc
+    # 2. Remove all legacy workflow files (.md and .md.bak)
+    removed_names: set[str] = set()
+    for wf_file in sorted(workflows_dir.iterdir()):
+        if wf_file.is_file():
+            name = wf_file.name
+            if name.endswith(".md.bak"):
+                removed_names.add(name[:-7])
+            elif name.endswith(".md"):
+                removed_names.add(wf_file.stem)
+            try:
+                wf_file.unlink()
+                report.removed.append(wf_file)
+            except OSError as exc:
+                raise BuddhiFsError(f"could not remove legacy workflow file {wf_file}: {exc}") from exc
 
+    # 3. Clean up or remove workflows.json manifest if present
     manifest_path = agents_dir / "workflows.json"
     if manifest_path.is_file():
         try:
             data = json.loads(manifest_path.read_text(encoding="utf-8"))
-            archived_names = {p.name[:-7] for p in report.archived}  # strip .md.bak
             if isinstance(data, list):
-                new_data = [item for item in data if not (isinstance(item, dict) and item.get("name") in archived_names)]
-                manifest_path.write_text(json.dumps(new_data, indent=2) + "\n", encoding="utf-8")
+                new_data = [item for item in data if not (isinstance(item, dict) and item.get("name") in removed_names)]
+                if new_data:
+                    manifest_path.write_text(json.dumps(new_data, indent=2) + "\n", encoding="utf-8")
+                else:
+                    manifest_path.unlink()
             elif isinstance(data, dict):
+                has_remaining = False
                 for key in ("workflows", "entries"):
                     if key in data and isinstance(data[key], list):
-                        data[key] = [item for item in data[key] if not (isinstance(item, dict) and item.get("name") in archived_names)]
-                manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+                        data[key] = [item for item in data[key] if not (isinstance(item, dict) and item.get("name") in removed_names)]
+                        if data[key]:
+                            has_remaining = True
+                if has_remaining:
+                    manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+                else:
+                    manifest_path.unlink()
+            else:
+                manifest_path.unlink()
         except (json.JSONDecodeError, OSError):
             pass
+
+    # 4. Remove workflows_dir if empty
+    try:
+        if workflows_dir.exists():
+            shutil.rmtree(workflows_dir)
+    except OSError as exc:
+        raise BuddhiFsError(f"could not remove legacy workflows directory {workflows_dir}: {exc}") from exc
 
     return report

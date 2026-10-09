@@ -135,10 +135,10 @@ def init(
     console.print(f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation")
     console.print(f"  .agents/: {len(sync_report.created)} file(s) added, "
                   f"{len(sync_report.kept_existing)} already present (left untouched)")
-    if migration_report.migrated or migration_report.archived:
+    if migration_report.migrated or migration_report.removed:
         console.print(
-            f"  migrated workflows: {len(migration_report.migrated)} converted to skills, "
-            f"{len(migration_report.archived)} archived as .md.bak"
+            f"  migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "
+            f"{len(migration_report.removed)} legacy workflow file(s) removed"
         )
     if agents_md_created:
         console.print(f"  wrote: {agents_md_path}")
