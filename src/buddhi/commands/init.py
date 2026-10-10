@@ -16,6 +16,7 @@ from buddhi.util.fsutil import (
     BuddhiFsError,
     ensure_buddhi_dirs,
     ensure_docs_dir,
+    migrate_legacy_plan_skill,
     migrate_legacy_workflows,
     sync_template_tree,
 )
@@ -37,7 +38,7 @@ def init(
 
     The harness covers doc generation plus a general full-stack planning layer
     (frontend/backend/database/testing/security/deployment/git specialist
-    agents, orchestrated by the /plan skill). Idempotent: rerunning never
+    agents, orchestrated by the /spec-plan skill). Idempotent: rerunning never
     overwrites a harness file you've already created or edited under .agents/
     — it only fills in what's missing.
     """
@@ -85,6 +86,7 @@ def init(
         raise typer.Exit(code=1) from exc
 
     try:
+        plan_migration_report = migrate_legacy_plan_skill(root / ".agents", project_root=root)
         template_root = resources.files(_AGENTS_TEMPLATE_PACKAGE)
         with resources.as_file(template_root) as template_dir:
             sync_report = sync_template_tree(template_dir, root / ".agents")
@@ -135,6 +137,8 @@ def init(
     console.print(f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation")
     console.print(f"  .agents/: {len(sync_report.created)} file(s) added, "
                   f"{len(sync_report.kept_existing)} already present (left untouched)")
+    if plan_migration_report.migrated_skill or plan_migration_report.removed_legacy_skill:
+        console.print("  migrated legacy plan skill to spec-plan")
     if migration_report.migrated or migration_report.removed:
         console.print(
             f"  migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "

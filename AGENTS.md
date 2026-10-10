@@ -17,7 +17,7 @@
 - **Knowledge Base & Code Graph**: Consult `.buddhi/docs/` (OKF concept documentation) and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`) before grepping raw source files.
 - **Spec-Driven Development (SDD)**: Features follow the SDD lifecycle:
   1. `/specify` — create feature branch and refine `spec.md`
-  2. `/plan` — synthesize technical architecture into `plan.md`
+  2. `/spec-plan` — synthesize technical architecture into `plan.md`
   3. `/tasks` — break down tasks by user story in `tasks.md`
   4. `/implement` — execute tasks story by story
   5. `/verify` — prove working behavior with real test evidence

@@ -20,7 +20,7 @@ onwards and keeping `tasks.md` progress up to date.
 1. **Verify prerequisites**: Run `buddhi sdd check --require-tasks --include-tasks --json` via
    the `terminal-runner` agent. This strictly ensures that `spec.md`, `plan.md`, and `tasks.md`
    all exist before proceeding. If any are missing, stop immediately and guide the user to run
-   the missing skill (`/specify`, `/plan`, or `/tasks`).
+   the missing skill (`/specify`, `/spec-plan`, or `/tasks`).
 2. **Load context**:
    - Read `tasks.md` for the execution plan and task IDs.
    - Read `plan.md` for architectural context, project structure, and file targets.

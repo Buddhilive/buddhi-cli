@@ -4,7 +4,7 @@
       "command": "buddhi-mcp",
       "args": [
         "--root",
-        "c:\\DevDojo\\Buddhi\\buddhi-cli"
+        "E:\\Projects\\buddhi-cli"
       ],
       "env": {}
     }

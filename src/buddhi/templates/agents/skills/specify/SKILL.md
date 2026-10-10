@@ -44,5 +44,5 @@ prioritized, independently testable user stories. No code writing in this skill.
    - Capture edge cases and boundary conditions.
 7. **Write specification**: Write the refined specification to the `SPEC_FILE` path (`.buddhi/specs/<branch>/spec.md`).
 8. **Next step**: Present the completed `spec.md` summary to the user and prompt them to run
-   `/plan` to proceed to the architecture and implementation planning phase.
+   `/spec-plan` to proceed to the architecture and implementation planning phase.
 

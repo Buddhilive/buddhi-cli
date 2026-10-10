@@ -32,7 +32,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
         "okf-context",
         "system-design",
         "document-codebase",
-        "plan",
+        "spec-plan",
         "specify",
         "tasks",
         "implement",
@@ -46,6 +46,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     for skill_name in expected_skills:
         assert (agents_dir / "skills" / skill_name / "SKILL.md").exists()
 
+    assert not (agents_dir / "skills" / "plan").exists()
     assert not (agents_dir / "workflows").exists()
     assert (agents_dir / "rules" / "okf-docs.md").exists()
     assert (agents_dir / "rules" / "harness-core.md").exists()
@@ -115,8 +116,9 @@ def test_init_migrates_and_removes_legacy_workflows(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
 
     agents_dir = tmp_path / ".agents"
-    # Bundled plan skill was scaffolded
-    assert (agents_dir / "skills" / "plan" / "SKILL.md").exists()
+    # Bundled spec-plan skill was scaffolded
+    assert (agents_dir / "skills" / "spec-plan" / "SKILL.md").exists()
+    assert not (agents_dir / "skills" / "plan").exists()
     # Custom flow was migrated to a skill with generated frontmatter
     custom_skill = agents_dir / "skills" / "custom-flow" / "SKILL.md"
     assert custom_skill.exists()
@@ -148,3 +150,81 @@ def test_docs_plan_command_runs_standalone(tmp_path: Path) -> None:
 
     assert result.exit_code == 0, result.output
     assert (tmp_path / ".buddhi" / "docs-plan.json").exists()
+
+
+def test_init_clean_directory_scaffolds_spec_plan_and_not_plan(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("def run():\n    pass\n")
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    agents_dir = tmp_path / ".agents"
+    spec_plan_skill = agents_dir / "skills" / "spec-plan" / "SKILL.md"
+    legacy_plan_skill = agents_dir / "skills" / "plan"
+
+    assert spec_plan_skill.exists()
+    assert "name: spec-plan" in spec_plan_skill.read_text(encoding="utf-8")
+    assert not legacy_plan_skill.exists()
+
+    agents_md = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "/spec-plan" in agents_md
+    assert "/quick-plan" in agents_md
+    assert "/plan " not in agents_md and "`/plan`" not in agents_md
+
+    harness_core = (agents_dir / "rules" / "harness-core.md").read_text(encoding="utf-8")
+    assert "/spec-plan" in harness_core
+    assert "`/plan`" not in harness_core
+
+
+def test_init_migrates_existing_project_with_legacy_plan_skill(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("def run():\n    pass\n")
+
+    # Simulate existing project with legacy plan skill and user customization
+    legacy_skill_dir = tmp_path / ".agents" / "skills" / "plan"
+    legacy_skill_dir.mkdir(parents=True)
+    custom_content = (
+        "---\n"
+        "name: plan\n"
+        "description: User custom plan skill description\n"
+        "---\n"
+        "# Custom Plan Instructions\n"
+        "Custom rule: Always produce sequence diagrams.\n"
+    )
+    (legacy_skill_dir / "SKILL.md").write_text(custom_content, encoding="utf-8")
+
+    # Simulate existing AGENTS.md and harness-core.md with /plan references
+    (tmp_path / "AGENTS.md").write_text(
+        "1. `/specify` — feature branch\n"
+        "2. `/plan` — synthesize technical architecture\n"
+        "- Use `/quick-plan` for lightweight work.\n",
+        encoding="utf-8",
+    )
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    (rules_dir / "harness-core.md").write_text(
+        "Go through the `/plan` skill before any code is written.\n"
+        "When `/plan` or other harness work surfaces a convention...\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    agents_dir = tmp_path / ".agents"
+    assert not (agents_dir / "skills" / "plan").exists()
+
+    migrated_skill = agents_dir / "skills" / "spec-plan" / "SKILL.md"
+    assert migrated_skill.exists()
+    migrated_text = migrated_skill.read_text(encoding="utf-8")
+    assert "name: spec-plan" in migrated_text
+    assert "Custom rule: Always produce sequence diagrams." in migrated_text
+
+    updated_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "`/spec-plan`" in updated_agents
+    assert "`/quick-plan`" in updated_agents
+    assert "`/plan`" not in updated_agents
+
+    updated_harness = (rules_dir / "harness-core.md").read_text(encoding="utf-8")
+    assert "`/spec-plan`" in updated_harness
+    assert "`/plan`" not in updated_harness
+

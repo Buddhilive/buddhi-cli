@@ -1,13 +1,13 @@
 ---
-name: plan
-description: Orchestrate an architectural implementation plan in the Spec-Driven Development (SDD) lifecycle by setting up plan.md, grounding design in OKF codebase docs and graph, dispatching specialist agents in parallel, and synthesizing a comprehensive technical plan. Use when creating an SDD technical plan with /plan.
+name: spec-plan
+description: Orchestrate an architectural implementation plan in the Spec-Driven Development (SDD) lifecycle by setting up plan.md, grounding design in OKF codebase docs and graph, dispatching specialist agents in parallel, and synthesizing a comprehensive technical plan. Use when creating an SDD technical plan with /spec-plan.
 version: 2.0.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context, system-design
 artifact_outputs: implementation-plan
 ---
 
-# /plan
+# /spec-plan
 
 $ARGUMENTS
 

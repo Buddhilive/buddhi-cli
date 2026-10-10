@@ -3,6 +3,7 @@ from pathlib import Path
 
 from buddhi.util.fsutil import (
     ensure_buddhi_dirs,
+    migrate_legacy_plan_skill,
     migrate_legacy_workflows,
     sync_template_tree,
 )
@@ -204,3 +205,106 @@ def test_migrate_legacy_workflows_noop_if_no_dir(tmp_path: Path) -> None:
     assert len(report.migrated) == 0
     assert len(report.skipped_existing) == 0
     assert len(report.removed) == 0
+
+
+def test_migrate_legacy_plan_skill_renames_dir_and_updates_frontmatter(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    legacy_dir = agents_dir / "skills" / "plan"
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "SKILL.md").write_text(
+        "---\nname: plan\ndescription: Legacy plan skill with /plan\n---\n# /plan\nContent here.\n",
+        encoding="utf-8",
+    )
+
+    report = migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
+
+    spec_plan_file = agents_dir / "skills" / "spec-plan" / "SKILL.md"
+    assert spec_plan_file.exists()
+    content = spec_plan_file.read_text(encoding="utf-8")
+    assert "name: spec-plan" in content
+    assert "Legacy plan skill with /spec-plan" in content
+    assert "# /spec-plan\nContent here." in content
+    assert not legacy_dir.exists()
+    assert report.migrated_skill is True
+
+
+def test_migrate_legacy_plan_skill_preserves_user_customizations(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    legacy_dir = agents_dir / "skills" / "plan"
+    legacy_dir.mkdir(parents=True)
+    custom_body = "# /plan\n- Step 1: Check Jira\n- Step 2: Write RFC\n"
+    (legacy_dir / "SKILL.md").write_text(
+        f"---\nname: plan\ndescription: Custom planner\n---\n{custom_body}",
+        encoding="utf-8",
+    )
+
+    migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
+
+    spec_plan_file = agents_dir / "skills" / "spec-plan" / "SKILL.md"
+    assert spec_plan_file.exists()
+    content = spec_plan_file.read_text(encoding="utf-8")
+    assert "name: spec-plan" in content
+    assert "# /spec-plan\n- Step 1: Check Jira\n- Step 2: Write RFC\n" in content
+    assert not legacy_dir.exists()
+
+
+def test_migrate_legacy_plan_skill_updates_references_without_breaking_quick_plan(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    rules_dir = agents_dir / "rules"
+    rules_dir.mkdir(parents=True)
+    (agents_dir / "skills" / "plan").mkdir(parents=True)
+    (agents_dir / "skills" / "plan" / "SKILL.md").write_text("---\nname: plan\n---\n# /plan\n", encoding="utf-8")
+
+    agents_md = tmp_path / "AGENTS.md"
+    agents_md.write_text(
+        "2. `/plan` — synthesize technical architecture\n"
+        "Use `/quick-plan` for quick, non-SDD changes.\n",
+        encoding="utf-8",
+    )
+
+    harness_core = rules_dir / "harness-core.md"
+    harness_core.write_text(
+        "A request should go through the `/plan` skill before any code is written.\n"
+        "Use `/quick-plan` for lightweight work. When `/plan` or other harness work surfaces...\n",
+        encoding="utf-8",
+    )
+
+    migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
+
+    updated_agents = agents_md.read_text(encoding="utf-8")
+    assert "`/spec-plan` — synthesize technical architecture" in updated_agents
+    assert "`/quick-plan` for quick, non-SDD changes." in updated_agents
+    assert "`/plan`" not in updated_agents
+
+    updated_harness = harness_core.read_text(encoding="utf-8")
+    assert "through the `/spec-plan` skill before" in updated_harness
+    assert "When `/spec-plan` or other harness work surfaces" in updated_harness
+    assert "`/quick-plan` for lightweight work" in updated_harness
+    assert "`/plan`" not in updated_harness
+
+
+def test_migrate_legacy_plan_skill_noop_when_no_legacy_plan(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir(parents=True)
+
+    report = migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
+    assert report.migrated_skill is False
+    assert report.removed_legacy_skill is False
+    assert not (agents_dir / "skills" / "plan").exists()
+
+
+def test_migrate_legacy_plan_skill_removes_legacy_if_target_already_exists(tmp_path: Path) -> None:
+    agents_dir = tmp_path / ".agents"
+    legacy_dir = agents_dir / "skills" / "plan"
+    legacy_dir.mkdir(parents=True)
+    (legacy_dir / "SKILL.md").write_text("---\nname: plan\n---\n# /plan\n", encoding="utf-8")
+
+    spec_plan_dir = agents_dir / "skills" / "spec-plan"
+    spec_plan_dir.mkdir(parents=True)
+    (spec_plan_dir / "SKILL.md").write_text("---\nname: spec-plan\n---\n# /spec-plan\n", encoding="utf-8")
+
+    report = migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
+    assert report.removed_legacy_skill is True
+    assert not legacy_dir.exists()
+    assert spec_plan_dir.exists()
+

@@ -153,7 +153,7 @@ def migrate_legacy_workflows(agents_dir: Path) -> WorkflowMigrationReport:
     for wf_file in sorted(workflows_dir.glob("*.md")):
         if wf_file.name.endswith(".bak"):
             continue
-        skill_name = wf_file.stem
+        skill_name = "spec-plan" if wf_file.stem == "plan" else wf_file.stem
         target_skill_dir = agents_dir / "skills" / skill_name
         target_skill_file = target_skill_dir / "SKILL.md"
 
@@ -219,3 +219,84 @@ def migrate_legacy_workflows(agents_dir: Path) -> WorkflowMigrationReport:
         raise BuddhiFsError(f"could not remove legacy workflows directory {workflows_dir}: {exc}") from exc
 
     return report
+
+
+@dataclass
+class PlanMigrationReport:
+    migrated_skill: bool = False
+    removed_legacy_skill: bool = False
+    updated_files: list[Path] = field(default_factory=list)
+
+
+def migrate_legacy_plan_skill(agents_dir: Path, project_root: Path | None = None) -> PlanMigrationReport:
+    """Migrate legacy .agents/skills/plan to .agents/skills/spec-plan and update references.
+
+    1. Directory Migration:
+       - If .agents/skills/plan exists and .agents/skills/spec-plan does not exist:
+         Moves .agents/skills/plan to .agents/skills/spec-plan, updating its frontmatter
+         ('name: plan' -> 'name: spec-plan', '# /plan' -> '# /spec-plan').
+       - If .agents/skills/plan exists and .agents/skills/spec-plan already exists:
+         Removes .agents/skills/plan to prevent collision with Antigravity's built-in /plan.
+
+    2. Reference Updates:
+       - Safely updates '/plan' references to '/spec-plan' across:
+         * project_root / 'AGENTS.md' (if present)
+         * agents_dir / 'rules' / 'harness-core.md'
+         * agents_dir / 'skills' / 'specify' / 'SKILL.md'
+         * agents_dir / 'skills' / 'implement' / 'SKILL.md'
+         * agents_dir / 'skills' / 'README.md'
+       - Uses regex boundary matching (?<![a-zA-Z0-9_/-])/plan(?![a-zA-Z0-9_/-])
+         ensuring commands like /quick-plan, plan.md, or buddhi docs plan are never touched.
+    """
+    report = PlanMigrationReport()
+    plan_dir = agents_dir / "skills" / "plan"
+    spec_plan_dir = agents_dir / "skills" / "spec-plan"
+
+    if plan_dir.is_dir():
+        if not spec_plan_dir.exists():
+            try:
+                shutil.move(str(plan_dir), str(spec_plan_dir))
+                report.migrated_skill = True
+                spec_plan_file = spec_plan_dir / "SKILL.md"
+                if spec_plan_file.is_file():
+                    content = spec_plan_file.read_text(encoding="utf-8")
+                    content = re.sub(r"^name:\s*plan\s*$", "name: spec-plan", content, flags=re.MULTILINE)
+                    content = re.sub(r"^#\s*/plan\b", "# /spec-plan", content, flags=re.MULTILINE)
+                    content = re.sub(r"(?<![a-zA-Z0-9_/-])/plan(?![a-zA-Z0-9_/-])", "/spec-plan", content)
+                    spec_plan_file.write_text(content, encoding="utf-8")
+            except OSError as exc:
+                raise BuddhiFsError(f"could not migrate legacy plan skill: {exc}") from exc
+        else:
+            try:
+                shutil.rmtree(plan_dir)
+                report.removed_legacy_skill = True
+            except OSError as exc:
+                raise BuddhiFsError(f"could not remove legacy plan skill directory {plan_dir}: {exc}") from exc
+
+    candidates: list[Path] = []
+    if project_root is not None:
+        candidates.append(project_root / "AGENTS.md")
+    candidates.extend(
+        [
+            agents_dir / "rules" / "harness-core.md",
+            agents_dir / "skills" / "specify" / "SKILL.md",
+            agents_dir / "skills" / "implement" / "SKILL.md",
+            agents_dir / "skills" / "README.md",
+        ]
+    )
+
+    pattern = re.compile(r"(?<![a-zA-Z0-9_/-])/plan(?![a-zA-Z0-9_/-])")
+
+    for file_path in candidates:
+        if file_path.is_file():
+            try:
+                original = file_path.read_text(encoding="utf-8")
+                updated = pattern.sub("/spec-plan", original)
+                if updated != original:
+                    file_path.write_text(updated, encoding="utf-8")
+                    report.updated_files.append(file_path)
+            except OSError as exc:
+                raise BuddhiFsError(f"could not update references in {file_path}: {exc}") from exc
+
+    return report
+
