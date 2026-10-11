@@ -23,16 +23,16 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - A workspace **MCP Server** (`buddhi-mcp`) exposing:
   - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
   - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
-- A full **Spec-Driven Development (SDD)** workflow:
+- A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
-  2. `/plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
+  2. `/spec-plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
   3. `/tasks` — Generate a phased, story-oriented task breakdown into `tasks.md` with `[P]` parallelism markers.
   4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
   5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
-- A `/quick-plan` workflow for lightweight, non-SDD multi-specialist planning.
-- An `/ask` workflow for interactive codebase comprehension and architectural Q&A grounded in the code graph.
-- A `/document-codebase` workflow that generates dependency-aware OKF symbol documentation.
-- Specialized `/debug`, `/remember`, and `/status` workflows for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
+- A `/quick-plan` skill for lightweight, non-SDD multi-specialist planning.
+- An `/ask` skill for interactive codebase comprehension and architectural Q&A grounded in the code graph.
+- A `/document-codebase` skill that generates dependency-aware OKF symbol documentation.
+- Specialized `/debug`, `/remember`, and `/status` skills for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
 - Domain specialist agents (frontend, backend, database, testing, security, deployment, git) and `terminal-runner` for delegated command execution.
 
 Supported languages: Python, JavaScript, TypeScript/TSX, Go, Rust, C#, Java,
@@ -79,8 +79,8 @@ Writes:
 - `.buddhi/docs-plan.json` — a bottom-up, staleness-aware plan of what needs
   documenting
 - `.agents/mcp_config.json` — workspace MCP server configuration registering `buddhi-mcp` with Antigravity IDE, pre-configured with the workspace root directory (`--root`) so agents only need to pass `query`
-- `.agents/` — the Antigravity agent harness (agents, workflows, rules,
-  skills, templates, memory index — see below). **Idempotent**: rerunning `init` never
+- `.agents/` — the Antigravity agent harness (agents, skills, rules,
+  templates, memory index — see below). **Idempotent**: rerunning `init` never
   overwrites a harness file you've already edited under `.agents/`, it only
   fills in what's missing.
 
@@ -120,7 +120,7 @@ Scans `path` and rebuilds all three graph artifacts under `.buddhi/graphs/` (`tr
 buddhi docs plan [path]
 ```
 
-Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/plan` Antigravity workflows call automatically before planning.
+Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/spec-plan` Antigravity skills call automatically before planning.
 
 > [!TIP]
 > **Rerunning `buddhi init`**: You can also rerun `buddhi init` at any time to refresh both the graph and the documentation plan in one step. `buddhi init` is fully idempotent: it never overwrites your existing or customized files in `.agents/` or `AGENTS.md`.
@@ -131,35 +131,50 @@ Recomputes `.buddhi/docs-plan.json` against the current source tree without touc
 buddhi sdd <command> [options]
 ```
 
-Underlying helper commands used by the SDD workflows:
+Underlying helper commands used by the SDD skills:
 - `buddhi sdd create <description>` — Create a new feature directory under `.buddhi/specs/<branch>/`, create branch name, and instantiate `spec.md` from template.
 - `buddhi sdd setup-plan` — Set up `plan.md` for the active feature branch from `plan-template.md`.
 - `buddhi sdd setup-tasks` — Verify prerequisites and output task resolution context for `tasks.md`.
 - `buddhi sdd check` — Consolidated prerequisite checker supporting `--require-tasks`, `--include-tasks`, `--paths-only`, and `--json`.
 - `buddhi sdd resolve-template <name>` — Resolve and compose templates across `.agents/templates/` and built-in defaults.
 
+### `buddhi skills` — manage and install custom agent skills
+
+```sh
+buddhi skills [options]
+```
+
+Inspect and install custom Antigravity agent skills into `.agents/skills/`:
+- `buddhi skills` — Display an inventory table of available custom skills.
+- `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
+- `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
+- `--force` / `-f` — Overwrite existing skill files if already present.
+
 ## The Antigravity agent harness
 
 `buddhi init` scaffolds `.agents/` with:
 
-- **`workflows/`**
-  - **`/ask`** — Conversational codebase Q&A workflow: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
+- **`skills/`** — Antigravity Agent Skills with standard YAML frontmatter (`name`, `description`), discoverable and invocable via slash commands:
   - **`/specify`** — Initialize a new feature branch (refreshes graph via `buddhi generate` first), scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
-  - **`/plan`** — Spec-Driven Development architecture workflow: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
+  - **`/spec-plan`** — Spec-Driven Development architecture skill: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
   - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
   - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
-  - **`/verify`** — Repurposed verification workflow: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
+  - **`/verify`** — Verification skill: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
+  - **`/ask`** — Conversational codebase Q&A skill: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
   - **`/quick-plan`** — Lightweight implementation planning for requests that do not require full SDD branching/spec overhead (refreshes graph via `buddhi generate` first).
   - **`/document-codebase`** — Generate or refresh OKF symbol documentation bottom-up.
   - **`/debug`** — Systematic bug investigation (refreshes graph via `buddhi generate` first) producing a confirmed root cause and concrete fix plan without modifying code.
   - **`/remember`** — Capture user preferences, project conventions, and technical decisions into memory.
   - **`/status`** — Dashboard of harness state (docs staleness, active plans, memory size, git branch).
+  - **`okf-context`** — Context skill guiding agents to consult `.buddhi/docs/` and use Buddhi MCP code graph tools (`buddhi_search` and `buddhi_read`) before reading raw source files.
+  - **`repoagent-doc-generation`** — Topological per-symbol documentation engine for generating OKF docs.
+  - **`system-design`** — Architecture and trade-off decision framework used during planning.
 - **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
 - **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
 - **`agents/`** — Read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
-  in parallel by `/plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
+  in parallel by `/spec-plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
   execution.
 - **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and Buddhi MCP code graph
   tools before raw source, require confirmation before destructive commands,
@@ -168,10 +183,6 @@ Underlying helper commands used by the SDD workflows:
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
   safety backstop.
-- **`skills/`** — `okf-context` (how to read OKF docs and use Buddhi MCP code graph tools `buddhi_search` and `buddhi_read`),
-  `repoagent-doc-generation` (how to write docs), `system-design` (an
-  architecture/trade-off decision framework used during planning), and custom skill slots (see
-  `.agents/skills/README.md`).
 - **`memory/MEMORY.md`** — A structured index into topic files under
   `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
   `tech-decisions.md`, `feedback-history.md`).
