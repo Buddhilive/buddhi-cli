@@ -23,6 +23,8 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - A workspace **MCP Server** (`buddhi-mcp`) exposing:
   - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
   - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
+  - `check_contrast` — WCAG 2.x color contrast ratio checker for AI UI generation.
+- An **Anti-Slop Filter Suite** (`antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-code`) preventing generic AI slop in UI, text, and code comments.
 - A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
   2. `/spec-plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
@@ -150,6 +152,17 @@ Inspect and install custom Antigravity agent skills into `.agents/skills/`:
 - `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
 - `--force` / `-f` — Overwrite existing skill files if already present.
 
+### `buddhi scripts` — utility scripts and tools
+
+```sh
+buddhi scripts [subcommand]
+```
+
+Run standalone developer utilities:
+- `buddhi scripts contrast <color_a> <color_b>` — Check WCAG 2.x contrast ratio between two colors (hex codes or `black`/`white`). Exits with code 0 only when both normal (4.5:1) and large (3:1) text pass.
+- `buddhi scripts contrast --selftest` — Recompute and verify the reference contrast table against the WCAG formula.
+- `buddhi scripts antislop-mode [during|after|ask]` — View or set the global anti-slop usage mode in the platform configuration file (`%APPDATA%\antislop\settings.json` on Windows, `~/.config/antislop/settings.json` on macOS/Linux).
+
 ## The Antigravity agent harness
 
 `buddhi init` scaffolds `.agents/` with:
@@ -169,6 +182,12 @@ Inspect and install custom Antigravity agent skills into `.agents/skills/`:
   - **`okf-context`** — Context skill guiding agents to consult `.buddhi/docs/` and use Buddhi MCP code graph tools (`buddhi_search` and `buddhi_read`) before reading raw source files.
   - **`repoagent-doc-generation`** — Topological per-symbol documentation engine for generating OKF docs.
   - **`system-design`** — Architecture and trade-off decision framework used during planning.
+  - **`antislop`** — Core always-on filter stopping generic AI slop across UI, text, and code comments.
+  - **`antislop-ui`** — UI & visual design filter: color, layout, component choices, motion, and anti-AI-aesthetic patterns.
+  - **`antislop-copywriting`** — Copywriting filter: anti-AI prose, headlines, tone, and authentic messaging.
+  - **`antislop-human`** — Accessibility and human factors filter: WCAG contrast compliance, keyboard nav, focus indicators, touch targets.
+  - **`antislop-layoutmobile`** — Mobile & responsive layout filter: reflow, fluid grids, tap targets, zoom resilience.
+  - **`antislop-code`** — Code comment hygiene filter: eliminates redundant or noisy AI-generated comments.
 - **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
 - **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
 - **`agents/`** — Read-only specialist subagents (`backend-specialist`,
@@ -177,8 +196,8 @@ Inspect and install custom Antigravity agent skills into `.agents/skills/`:
   in parallel by `/spec-plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
   execution.
 - **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and Buddhi MCP code graph
-  tools before raw source, require confirmation before destructive commands,
-  read/append to the memory index for durable decisions.
+  tools before raw source (`okf-docs.md`), require confirmation before destructive commands
+  and preserve conventions (`harness-core.md`), and enforce the anti-slop design filter (`antislop.md`).
 - **`hooks.json`** / **`hooks/guard_destructive.py`** — A `PreToolUse`
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
@@ -253,3 +272,9 @@ release:
 This requires a trusted publisher to be configured once on PyPI for the
 `buddhi-ai` project, pointing at this repository, the `publish.yml` workflow
 file, and the `pypi` environment.
+
+---
+
+## Acknowledgments
+
+The `anti-slop` filter suite and contrast-checking scripts are adapted from [anti-slop](https://github.com/miqdadbadjuber/anti-slop) by Miqdad Badjuber (MIT License). See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.

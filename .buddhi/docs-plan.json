@@ -4815,6 +4815,1290 @@
     "needs_generation": true
   },
   {
+    "node_id": "function:temp/anti-slop/cli/index.mjs::displayDir",
+    "kind": "function",
+    "name": "displayDir",
+    "qualified_name": "displayDir",
+    "file_path": "temp/anti-slop/cli/index.mjs",
+    "language": "javascript",
+    "start_line": 38,
+    "end_line": 40,
+    "snippet": "function displayDir(agent, location) {\r\n  return location === 'global' ? `~/${agent.globalDir ?? agent.dir}` : agent.dir\r\n}",
+    "content_hash": "893c450817b8d7e0d12861b0471baf3325e0b386ce259f7eefcde63b4781fb28",
+    "parent_id": "file:temp/anti-slop/cli/index.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/index.mjs::main"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/index/displayDir.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/index.mjs::printPluginDoors",
+    "kind": "function",
+    "name": "printPluginDoors",
+    "qualified_name": "printPluginDoors",
+    "file_path": "temp/anti-slop/cli/index.mjs",
+    "language": "javascript",
+    "start_line": 44,
+    "end_line": 51,
+    "snippet": "function printPluginDoors(found) {\r\n  if (found.length === 0) return\r\n  console.log('\\nInstalled as a plugin (these keep their own copy, so updating them is separate):')\r\n  for (const p of found) {\r\n    console.log(`  ${p.door.label}${p.version ? ` ${p.version}` : ''}`)\r\n    for (const line of p.door.update.split('\\n')) console.log(`    ${line}`)\r\n  }\r\n}",
+    "content_hash": "ce54cafff9f83aeaaf1e9387af2cc29d13508b7b3f2198aad3119b2cd2f89be4",
+    "parent_id": "file:temp/anti-slop/cli/index.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/index.mjs::main"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/index/printPluginDoors.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/index.mjs::stop",
+    "kind": "function",
+    "name": "stop",
+    "qualified_name": "stop",
+    "file_path": "temp/anti-slop/cli/index.mjs",
+    "language": "javascript",
+    "start_line": 31,
+    "end_line": 34,
+    "snippet": "function stop(message) {\r\n  cancel(message)\r\n  process.exit(0)\r\n}",
+    "content_hash": "169d48439d8ee50526ca575ab5e1fad046b6663117af623fe7b4b56db842c143",
+    "parent_id": "file:temp/anti-slop/cli/index.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/index.mjs::main"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/index/stop.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/index.mjs::main",
+    "kind": "function",
+    "name": "main",
+    "qualified_name": "main",
+    "file_path": "temp/anti-slop/cli/index.mjs",
+    "language": "javascript",
+    "start_line": 53,
+    "end_line": 218,
+    "snippet": "async function main() {\r\n  // A mistyped mode is a user error, so it gets one line like the terminal guard below\r\n  // rather than the stack trace the top-level catch would print.\r\n  if (process.argv[2] === '--mode') {\r\n    try {\r\n      console.log(configureMode(process.argv.slice(3)))\r\n    } catch (error) {\r\n      console.error(`antislop: ${error.message}`)\r\n      process.exit(1)\r\n    }\r\n    return\r\n  }\r\n  if (process.argv.includes('--version') || process.argv.includes('-v')) {\r\n    console.log(`antislop ${VERSION}`)\r\n    return\r\n  }\r\n\r\n  // --update is the non-interactive path, so it runs before the terminal guard and prints\r\n  // plain lines: an update is something a script or a user in a hurry can run unattended.\r\n  if (process.argv.includes('--update')) {\r\n    const { results, pointers } = updateAll()\r\n    if (results.length === 0) {\r\n      console.log(`antislop ${VERSION}: no installed folders found. Nothing to update.`)\r\n    } else {\r\n      for (const r of results) {\r\n        const from = r.from ? `antislop ${r.from}` : 'an older release that records no version'\r\n        console.log(`${r.path}`)\r\n        console.log(`  ${from} -> antislop ${VERSION}  (${r.skills.length} skill(s) for ${r.agents.join(', ')})`)\r\n      }\r\n      console.log(`\\nUpdated ${results.length} folder(s) to antislop ${VERSION}.`)\r\n      if (pointers.length > 0) {\r\n        console.log(`Pointer refreshed in ${pointers.map((p) => path.basename(p)).join(', ')}.`)\r\n      }\r\n      console.log('Start a new agent session for the new rules to load.')\r\n    }\r\n    printPluginDoors(detectPluginDoors())\r\n    return\r\n  }\r\n\r\n  // Without a terminal the prompts read EOF at once: the run printed the banner, installed\r\n  // nothing, and still exited 0, so a script around it saw success. Fail loudly instead.\r\n  if (!process.stdin.isTTY) {\r\n    console.error('antislop: this installer needs a terminal. Run `npx antislop-ai` in an interactive shell.')\r\n    process.exit(1)\r\n  }\r\n\r\n  console.log(banner())\r\n  intro('Install antislop into your agent setup')\r\n\r\n  if (!skillSourceDir()) {\r\n    stop('Could not find the antislop skills. Reinstall the antislop package.')\r\n  }\r\n\r\n  log.step('Choose your skills')\r\n  console.log(`  ${pc.green('\u25cf')} ${pc.bold(CORE)}  ${pc.dim('core rules, always on')}`)\r\n\r\n  const extra = await multiselect({\r\n    message: 'Extra skills to install',\r\n    options: EXTRA_SKILLS,\r\n    required: false,\r\n  })\r\n  if (isCancel(extra)) stop('Install cancelled.')\r\n  const skills = [CORE, ...(extra ?? [])]\r\n\r\n  log.step('Choose where antislop goes')\r\n  const location = await select({\r\n    message: 'Install location',\r\n    options: [\r\n      { value: 'project', label: 'This project', hint: 'only this folder' },\r\n      { value: 'global', label: 'Everywhere', hint: 'all your projects' },\r\n    ],\r\n  })\r\n  if (isCancel(location)) stop('Install cancelled.')\r\n\r\n  log.step('Choose which agents get antislop')\r\n  const detected = detectAgents(location)\r\n  const chosen = await multiselect({\r\n    message: 'Which agent(s) should antislop install into?',\r\n    options: AGENTS.map((a) => ({\r\n      value: a.id,\r\n      label: a.label,\r\n      hint: detected.includes(a.id) ? `found here (${displayDir(a, location)})` : `will create ${displayDir(a, location)}`,\r\n    })),\r\n    required: 'Pick at least one agent.',\r\n    initialValues: detected,\r\n  })\r\n  if (isCancel(chosen)) stop('Install cancelled.')\r\n\r\n  const targets = resolveTargets(location, chosen)\r\n  await log.message(\r\n    'Installing into:\\n' + targets.map((t) => '  ' + t.path).join('\\n'),\r\n    { symbol: pc.cyan('\u2502') }\r\n  )\r\n\r\n  const conflicts = detectConflicts({ skills, targets })\r\n  let overwrite = false\r\n  if (conflicts.length > 0) {\r\n    // Overwriting is how an update happens, and the version on disk is the one fact\r\n    // the user cannot look up anywhere. Name both sides so the choice is obvious.\r\n    const found = [...new Set(targets.map((t) => installedVersion(t.path)).filter(Boolean))]\r\n    const have = found.length \n\u2026 (truncated)",
+    "content_hash": "41e5d0ed4dbf39060ac84ca892405a0c91042a00cf50a667ad59d5a3e5b2e46f",
+    "parent_id": "file:temp/anti-slop/cli/index.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/index.mjs::displayDir",
+      "function:temp/anti-slop/cli/index.mjs::printPluginDoors",
+      "function:temp/anti-slop/cli/index.mjs::stop"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/index/main.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/banner.mjs::banner",
+    "kind": "function",
+    "name": "banner",
+    "qualified_name": "banner",
+    "file_path": "temp/anti-slop/cli/lib/banner.mjs",
+    "language": "javascript",
+    "start_line": 12,
+    "end_line": 21,
+    "snippet": "function banner() {\r\n  return [\r\n    '',\r\n    ...LOGO,\r\n    '',\r\n    '  ' + pc.dim('Anti Slop: Rules for AI Coding Agents'),\r\n    '  ' + pc.dim('installer v3.2.22'),\r\n    '',\r\n  ].join('\\n')\r\n}",
+    "content_hash": "f0cb634bae7b2f2a8cb8caaef213abbd6500bd7c36f8a8df489dfb8f48d6d60d",
+    "parent_id": "file:temp/anti-slop/cli/lib/banner.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/banner/banner.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::cloneVersion",
+    "kind": "function",
+    "name": "cloneVersion",
+    "qualified_name": "cloneVersion",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 130,
+    "end_line": 136,
+    "snippet": "function cloneVersion(dir) {\r\n  try {\r\n    return fs.readFileSync(path.join(dir, 'skills', CORE, 'VERSION'), 'utf8').trim()\r\n  } catch {\r\n    return null\r\n  }\r\n}",
+    "content_hash": "5193690b692e9c3cca92474390fb2b21c384044b80f939ad788a69d2a443eb79",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findClone",
+      "function:temp/anti-slop/cli/lib/install.mjs::findCopyUnder",
+      "function:temp/anti-slop/cli/lib/install.mjs::findNestedCopy"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/cloneVersion.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::copyDir",
+    "kind": "function",
+    "name": "copyDir",
+    "qualified_name": "copyDir",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 295,
+    "end_line": 306,
+    "snippet": "function copyDir(src, dest) {\r\n  fs.rmSync(dest, { recursive: true, force: true })\r\n  fs.mkdirSync(dest, { recursive: true })\r\n  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {\r\n    // README.md is GitHub-facing only; never ship it into a user's agent setup.\r\n    if (entry.name === 'README.md') continue\r\n    const s = path.join(src, entry.name)\r\n    const d = path.join(dest, entry.name)\r\n    if (entry.isDirectory()) copyDir(s, d)\r\n    else fs.copyFileSync(s, d)\r\n  }\r\n}",
+    "content_hash": "bda1eb5d01873dfb9b7e2e954b1211969158e2b4ff2e901695fe01831a280a05",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::copyDir",
+      "function:temp/anti-slop/cli/lib/install.mjs::installSkills"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::copyDir"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/copyDir.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::detectConflicts",
+    "kind": "function",
+    "name": "detectConflicts",
+    "qualified_name": "detectConflicts",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 283,
+    "end_line": 293,
+    "snippet": "function detectConflicts({ skills, targets }) {\r\n  const conflicts = []\r\n  for (const t of targets) {\r\n    for (const skill of skills) {\r\n      if (fs.existsSync(path.join(t.path, skill))) {\r\n        conflicts.push({ skill, agents: t.agents.map((a) => a.id), path: path.join(t.path, skill) })\r\n      }\r\n    }\r\n  }\r\n  return conflicts\r\n}",
+    "content_hash": "a47e6ef95a508b491d11d353182ea11a17eb407015027831de8eb7d205d85d65",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/detectConflicts.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::detectPluginDoors",
+    "kind": "function",
+    "name": "detectPluginDoors",
+    "qualified_name": "detectPluginDoors",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 271,
+    "end_line": 281,
+    "snippet": "function detectPluginDoors() {\r\n  return PLUGIN_DOORS.flatMap((door) => {\r\n    let found = null\r\n    try {\r\n      found = door.find()\r\n    } catch {\r\n      found = null\r\n    }\r\n    return found ? [{ door, ...found }] : []\r\n  })\r\n}",
+    "content_hash": "72a1dbc97c6ca48a71bbea16bf1198cb647035694e3976fedd845f407e2c8779",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/detectPluginDoors.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::findClone",
+    "kind": "function",
+    "name": "findClone",
+    "qualified_name": "findClone",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 138,
+    "end_line": 140,
+    "snippet": "function findClone(dir) {\r\n  return fs.existsSync(dir) ? { path: dir, version: cloneVersion(dir) } : null\r\n}",
+    "content_hash": "9e026a2f48372f427d308ea6c6ba0b31bf7b7a0ee86b2315d0fd1a361d90fa60",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::cloneVersion"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/findClone.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::installedVersion",
+    "kind": "function",
+    "name": "installedVersion",
+    "qualified_name": "installedVersion",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 16,
+    "end_line": 19,
+    "snippet": "function installedVersion(targetPath) {\r\n  const file = path.join(targetPath, CORE, 'VERSION')\r\n  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim() : null\r\n}",
+    "content_hash": "bdd111dd9d08cd57e96a61b2c8e80bfccee7a036cae5d425313bf5134aa65dc0",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updateAll"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/installedVersion.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::listDirs",
+    "kind": "function",
+    "name": "listDirs",
+    "qualified_name": "listDirs",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 120,
+    "end_line": 126,
+    "snippet": "function listDirs(dir) {\r\n  try {\r\n    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)\r\n  } catch {\r\n    return []\r\n  }\r\n}",
+    "content_hash": "48ed4ced73b90eda55375300bdd2b298c241ee5330166be8a82f184acdaba50e",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findCopyUnder",
+      "function:temp/anti-slop/cli/lib/install.mjs::findNestedCopy",
+      "function:temp/anti-slop/cli/lib/install.mjs::findOmp",
+      "method:temp/anti-slop/cli/lib/install.mjs::find:L231"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/listDirs.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::findCopyUnder",
+    "kind": "function",
+    "name": "findCopyUnder",
+    "qualified_name": "findCopyUnder",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 144,
+    "end_line": 159,
+    "snippet": "function findCopyUnder(dir) {\r\n  for (const name of listDirs(dir)) {\r\n    const candidate = path.join(dir, name)\r\n    if (fs.existsSync(path.join(candidate, 'skills', CORE))) {\r\n      return { path: candidate, version: cloneVersion(candidate) }\r\n    }\r\n    // A store can nest an install one level deeper, so check that too.\r\n    for (const inner of listDirs(candidate)) {\r\n      const nested = path.join(candidate, inner)\r\n      if (fs.existsSync(path.join(nested, 'skills', CORE))) {\r\n        return { path: nested, version: cloneVersion(nested) }\r\n      }\r\n    }\r\n  }\r\n  return null\r\n}",
+    "content_hash": "670e8abc529339410ae2af7674cb62b69ff59b84bcfa8f279134de5381b17350",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findOmp"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::cloneVersion",
+      "function:temp/anti-slop/cli/lib/install.mjs::listDirs"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/findCopyUnder.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::findNestedCopy",
+    "kind": "function",
+    "name": "findNestedCopy",
+    "qualified_name": "findNestedCopy",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 163,
+    "end_line": 176,
+    "snippet": "function findNestedCopy(dir, depth) {\r\n  for (const name of listDirs(dir)) {\r\n    if (name === 'node_modules' || name === '.git' || name.startsWith('.replace-')) continue\r\n    const candidate = path.join(dir, name)\r\n    if (fs.existsSync(path.join(candidate, 'skills', CORE))) {\r\n      return { path: candidate, version: cloneVersion(candidate) }\r\n    }\r\n    if (depth > 0) {\r\n      const found = findNestedCopy(candidate, depth - 1)\r\n      if (found) return found\r\n    }\r\n  }\r\n  return null\r\n}",
+    "content_hash": "bd3f5304bdbf0bea7ab07019e4450cb0fc3e34f3844879309f19218e30cc0f30",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findNestedCopy"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::cloneVersion",
+      "function:temp/anti-slop/cli/lib/install.mjs::findNestedCopy",
+      "function:temp/anti-slop/cli/lib/install.mjs::listDirs"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/findNestedCopy.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::ompHomes",
+    "kind": "function",
+    "name": "ompHomes",
+    "qualified_name": "ompHomes",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 180,
+    "end_line": 185,
+    "snippet": "function ompHomes() {\r\n  const homes = []\r\n  if (process.env.XDG_DATA_HOME) homes.push(path.join(process.env.XDG_DATA_HOME, 'omp'))\r\n  homes.push(path.join(os.homedir(), '.omp'))\r\n  return [...new Set(homes)]\r\n}",
+    "content_hash": "147963f995c7daeb22f10049022e8c2b58fa2baad0a156722d0bc739ae707532",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findOmp"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/ompHomes.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::findOmp",
+    "kind": "function",
+    "name": "findOmp",
+    "qualified_name": "findOmp",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 189,
+    "end_line": 207,
+    "snippet": "function findOmp() {\r\n  for (const home of ompHomes()) {\r\n    const plugins = path.join(home, 'plugins')\r\n    const cache = path.join(plugins, 'cache', 'plugins')\r\n    const matches = listDirs(cache)\r\n      .map((name) => ({ name, parts: name.split('___') }))\r\n      .filter((m) => m.parts.length === 3 && m.parts[1] === CORE)\r\n      .map((m) => ({ dir: path.join(cache, m.name), version: m.parts[2] }))\r\n      .sort((a, b) => a.version.localeCompare(b.version, undefined, { numeric: true }))\r\n\r\n    if (matches.length > 0) {\r\n      const newest = matches[matches.length - 1]\r\n      return { path: newest.dir, version: newest.version }\r\n    }\r\n    const copy = findCopyUnder(plugins)\r\n    if (copy) return copy\r\n  }\r\n  return null\r\n}",
+    "content_hash": "cea3c608e8c6dc7eef9c73b38d66680c668083bf01d2ed5b296ee82ead9c96f4",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::findCopyUnder",
+      "function:temp/anti-slop/cli/lib/install.mjs::listDirs",
+      "function:temp/anti-slop/cli/lib/install.mjs::ompHomes"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/findOmp.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::pointerBlock",
+    "kind": "function",
+    "name": "pointerBlock",
+    "qualified_name": "pointerBlock",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 342,
+    "end_line": 354,
+    "snippet": "function pointerBlock(skills, skillPaths) {\r\n  return [\r\n    POINTER_START,\r\n    '## antislop',\r\n    'For UI, copy, people, mobile layout, or code comments work, read these installed skill files directly (use these paths even if a same-named global skill exists):',\r\n    ...skills.filter((s) => SKILL_LINES[s] && skillPaths.has(s)).map((s) => `- ${SKILL_LINES[s]}: \\`${skillPaths.get(s)}\\``),\r\n    'Before starting, follow the core\\'s \"Two Usage Modes\" section in strict order: explicit session instruction first, then global preference, then ask. A session instruction always wins. For a resolved mode, say `antislop active: <mode> (session override).` or `antislop active: <mode> (global preference).` once before presenting findings or making edits, using the actual mode and source. Acknowledging the user\\'s request without naming the source does not replace this notice.',\r\n    'Only an explicit choice of antislop during or after selects a session mode. A request to review, audit, or avoid file edits does not select a mode; read the global preference in that case. Another skill\\'s mode does not select antislop\\'s mode.',\r\n    'If the mode is unresolved, ask during/after and end the response; wait for the answer before any UI review, planning, or concept. For read-only tasks, put the active-mode notice only at the start of the final answer, never in progress messages. For editing tasks, announce before the first edit and omit it from the final answer.',\r\n    'To update antislop later: `npx antislop-ai --update`, or run `npx antislop-ai` and pick Overwrite them.',\r\n    POINTER_END,\r\n  ]\r\n}",
+    "content_hash": "ff6f15c2492bf0a2bc5e85cff71ab68518f1294936a8a2a473cbf66a2e6ec5e3",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updatePointers"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/pointerBlock.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::readJSON",
+    "kind": "function",
+    "name": "readJSON",
+    "qualified_name": "readJSON",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 112,
+    "end_line": 118,
+    "snippet": "function readJSON(file) {\r\n  try {\r\n    return JSON.parse(fs.readFileSync(file, 'utf8'))\r\n  } catch {\r\n    return null\r\n  }\r\n}",
+    "content_hash": "5b07c6e93d49fdffe0505174612209062d427310defb6c3af517dda12033512b",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "method:temp/anti-slop/cli/lib/install.mjs::find"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/readJSON.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::resolveBase",
+    "kind": "function",
+    "name": "resolveBase",
+    "qualified_name": "resolveBase",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 64,
+    "end_line": 66,
+    "snippet": "function resolveBase(location) {\r\n  return location === 'global' ? os.homedir() : process.cwd()\r\n}",
+    "content_hash": "aa556d17dc32062861ef7a6e89e81595fb1648813c9a4161285c9458cfba1500",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::detectDuplicateReads",
+      "function:temp/anti-slop/cli/lib/install.mjs::skillPath"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/resolveBase.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::detectDuplicateReads",
+    "kind": "function",
+    "name": "detectDuplicateReads",
+    "qualified_name": "detectDuplicateReads",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 89,
+    "end_line": 102,
+    "snippet": "function detectDuplicateReads({ targets, location }) {\r\n  if (location !== 'project') return []\r\n  const paths = new Set(targets.map((t) => t.path))\r\n  const found = []\r\n  for (const t of targets) {\r\n    for (const agent of t.agents) {\r\n      const others = (agent.readsAlso ?? [])\r\n        .map((d) => path.join(resolveBase(location), d))\r\n        .filter((p) => paths.has(p))\r\n      if (others.length > 0) found.push({ agent, paths: [t.path, ...others] })\r\n    }\r\n  }\r\n  return found\r\n}",
+    "content_hash": "b9cfbf5cf6da9a7fd885d83d4336d876bc15daaf08b390f7516605e2aa53840d",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::resolveBase"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/detectDuplicateReads.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::scanMarkers",
+    "kind": "function",
+    "name": "scanMarkers",
+    "qualified_name": "scanMarkers",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 358,
+    "end_line": 390,
+    "snippet": "function scanMarkers(lines) {\r\n  const fenced = new Array(lines.length).fill(false)\r\n  let mark = null\r\n  let len = 0\r\n  let from = -1\r\n  lines.forEach((line, i) => {\r\n    const m = /^\\s*(`{3,}|~{3,})/.exec(line)\r\n    if (m) {\r\n      if (!mark) {\r\n        mark = m[1][0]\r\n        len = m[1].length\r\n        from = i\r\n      } else if (m[1][0] === mark && m[1].length >= len && /^[ \\t]*$/.test(line.slice(m[0].length))) {\r\n        mark = null\r\n        from = -1\r\n      }\r\n      fenced[i] = true\r\n      return\r\n    }\r\n    fenced[i] = Boolean(mark)\r\n  })\r\n  if (mark) for (let i = from; i < lines.length; i++) fenced[i] = false\r\n\r\n  const starts = []\r\n  const ends = []\r\n  lines.forEach((line, i) => {\r\n    if (fenced[i]) return\r\n    const t = line.trim()\r\n    if (t === POINTER_START) starts.push(i)\r\n    else if (t === POINTER_END) ends.push(i)\r\n  })\r\n  return { starts, ends }\r\n}",
+    "content_hash": "7eaf7ec04e10680dfe0c8cb0b637146da787db4f5fb00370ff23bdea2c676b46",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::writeBlock"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/scanMarkers.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::skillPath",
+    "kind": "function",
+    "name": "skillPath",
+    "qualified_name": "skillPath",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 69,
+    "end_line": 72,
+    "snippet": "function skillPath(agent, location) {\r\n  const dir = location === 'global' ? (agent.globalDir ?? agent.dir) : agent.dir\r\n  return path.join(resolveBase(location), dir)\r\n}",
+    "content_hash": "493e146f691d5093fcf47580ffff5fc1f4700a8f4a5cba1d38e299c871b77cca",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::detectAgents",
+      "function:temp/anti-slop/cli/lib/install.mjs::resolveTargets"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::resolveBase"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/skillPath.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::detectAgents",
+    "kind": "function",
+    "name": "detectAgents",
+    "qualified_name": "detectAgents",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 106,
+    "end_line": 108,
+    "snippet": "function detectAgents(location) {\r\n  return AGENTS.filter((a) => fs.existsSync(path.dirname(skillPath(a, location)))).map((a) => a.id)\r\n}",
+    "content_hash": "fefa4ce885bc9e63745adc90ab57c3184668e11cee4f6b7cf054168ca9e920d1",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::skillPath"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/detectAgents.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::resolveTargets",
+    "kind": "function",
+    "name": "resolveTargets",
+    "qualified_name": "resolveTargets",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 76,
+    "end_line": 85,
+    "snippet": "function resolveTargets(location, selected = AGENTS.map((a) => a.id)) {\r\n  const byPath = new Map()\r\n  for (const agent of AGENTS.filter((a) => selected.includes(a.id))) {\r\n    const target = skillPath(agent, location)\r\n    const found = byPath.get(target)\r\n    if (found) found.agents.push(agent)\r\n    else byPath.set(target, { agents: [agent], path: target, exists: fs.existsSync(target) })\r\n  }\r\n  return [...byPath.values()]\r\n}",
+    "content_hash": "af055c166e1bec392e633454a2eed97df4e54df17829314ea1aa907270caf2e6",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updateAll"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::skillPath"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/resolveTargets.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::skillSourceDir",
+    "kind": "function",
+    "name": "skillSourceDir",
+    "qualified_name": "skillSourceDir",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 56,
+    "end_line": 62,
+    "snippet": "function skillSourceDir() {\r\n  const bundled = path.join(__dirname, '..', 'skills')\r\n  if (fs.existsSync(bundled)) return bundled\r\n  const repo = path.join(__dirname, '..', '..', 'skills')\r\n  if (fs.existsSync(repo)) return repo\r\n  return null\r\n}",
+    "content_hash": "dabdb0be522b16ab0ae05f4fd1feeb2480247b881e00432ce12e28e195b43b4d",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::installSkills"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/skillSourceDir.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::installSkills",
+    "kind": "function",
+    "name": "installSkills",
+    "qualified_name": "installSkills",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 308,
+    "end_line": 324,
+    "snippet": "function installSkills({ skills, targets, overwrite = false }) {\r\n  const source = skillSourceDir()\r\n  // Fail with the real reason instead of a TypeError from path.join(null, skill).\r\n  if (!source) throw new Error('Could not find the antislop skills. Reinstall the antislop package.')\r\n  const written = []\r\n  for (const t of targets) {\r\n    for (const skill of skills) {\r\n      const src = path.join(source, skill)\r\n      if (!fs.existsSync(src)) continue\r\n      const dest = path.join(t.path, skill)\r\n      if (fs.existsSync(dest) && !overwrite) continue\r\n      copyDir(src, dest)\r\n      written.push({ skill, agents: t.agents.map((a) => a.id), path: dest })\r\n    }\r\n  }\r\n  return written\r\n}",
+    "content_hash": "972e29889377b9b358e4511b215a59c73ece3ebea7dd68e50912572cd44e3364",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updateAll"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::copyDir",
+      "function:temp/anti-slop/cli/lib/install.mjs::skillSourceDir"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/installSkills.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::writeBlock",
+    "kind": "function",
+    "name": "writeBlock",
+    "qualified_name": "writeBlock",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 392,
+    "end_line": 424,
+    "snippet": "function writeBlock(entry, block) {\r\n  const existing = fs.existsSync(entry) ? fs.readFileSync(entry, 'utf8') : ''\r\n  // Follow the file's dominant ending. Keying on \"contains any CRLF\" would flip a\r\n  // mostly-LF file, which is the damage this is here to avoid.\r\n  const crlf = (existing.match(/\\r\\n/g) || []).length\r\n  const eol = crlf > (existing.match(/\\n/g) || []).length - crlf ? '\\r\\n' : '\\n'\r\n  const lines = existing.split(/\\r?\\n/)\r\n  const { starts, ends } = scanMarkers(lines)\r\n  const start = starts.length ? starts[0] : -1\r\n  const end = start === -1 ? -1 : ends.find((i) => i > start) ?? -1\r\n  const paired = start !== -1 && end !== -1\r\n\r\n  // Only marker lines are ever removed. Reading a lone start as \"the block runs to EOF\"\r\n  // would delete everything the author wrote after a marker they mistyped.\r\n  const removed = new Set([...starts, ...ends])\r\n  if (paired) for (let i = start; i <= end; i++) removed.add(i)\r\n\r\n  const insertAt = paired ? start : lines.length\r\n  const head = lines.slice(0, insertAt).filter((_, i) => !removed.has(i))\r\n  const tail = lines.slice(insertAt).filter((_, i) => !removed.has(insertAt + i))\r\n\r\n  // Tidy the two seams only: a /\\n{3,}/g sweep over the whole document would also\r\n  // collapse blank lines the author wrote inside their code fences.\r\n  while (head.length && head[head.length - 1].trim() === '') head.pop()\r\n  while (tail.length && tail[0].trim() === '') tail.shift()\r\n\r\n  const body = [...head, '', ...block, ...(tail.length ? ['', ...tail] : [])]\r\n    .join(eol)\r\n    .replace(/^\\r?\\n+/, '')\r\n    .trimEnd()\r\n\r\n  fs.writeFileSync(entry, body + eol)\r\n}",
+    "content_hash": "01db126cd31945b8c643b8276531d392e35c4c398298d64ed8ba34d9730fae24",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updatePointers"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::scanMarkers"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/writeBlock.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::updatePointers",
+    "kind": "function",
+    "name": "updatePointers",
+    "qualified_name": "updatePointers",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 426,
+    "end_line": 450,
+    "snippet": "function updatePointers({ targets, skills }) {\r\n  const entries = new Map()\r\n  for (const t of targets) {\r\n    if (fs.existsSync(path.join(t.path, CORE))) {\r\n      for (const a of t.agents) {\r\n        if (!entries.has(a.entry)) entries.set(a.entry, new Map())\r\n        const skillPaths = entries.get(a.entry)\r\n        for (const skill of skills) {\r\n          const file = path.join(t.path, skill, 'SKILL.md')\r\n          if (!skillPaths.has(skill) && fs.existsSync(file)) {\r\n            skillPaths.set(skill, path.relative(process.cwd(), file).split(path.sep).join('/'))\r\n          }\r\n        }\r\n      }\r\n    }\r\n  }\r\n\r\n  const written = []\r\n  for (const [name, skillPaths] of entries) {\r\n    const entry = path.join(process.cwd(), name)\r\n    writeBlock(entry, pointerBlock(skills, skillPaths))\r\n    written.push(entry)\r\n  }\r\n  return written\r\n}",
+    "content_hash": "d072a7e14925f792ddc6effdf34a886631e2d4b65979457df611b196c9e2855f",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/install.mjs::updateAll"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::pointerBlock",
+      "function:temp/anti-slop/cli/lib/install.mjs::writeBlock"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/updatePointers.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/install.mjs::updateAll",
+    "kind": "function",
+    "name": "updateAll",
+    "qualified_name": "updateAll",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 455,
+    "end_line": 480,
+    "snippet": "function updateAll({ locations = ['project', 'global'] } = {}) {\r\n  const results = []\r\n  const projectTargets = []\r\n  const projectSkills = new Set()\r\n\r\n  for (const location of locations) {\r\n    for (const target of resolveTargets(location)) {\r\n      if (!fs.existsSync(path.join(target.path, CORE))) continue\r\n      const skills = SKILL_NAMES.filter((s) => fs.existsSync(path.join(target.path, s)))\r\n      if (skills.length === 0) continue\r\n      const from = installedVersion(target.path)\r\n      installSkills({ skills, targets: [target], overwrite: true })\r\n      results.push({ location, path: target.path, agents: target.agents.map((a) => a.id), skills, from, to: VERSION })\r\n      if (location === 'project') {\r\n        projectTargets.push(target)\r\n        for (const s of skills) projectSkills.add(s)\r\n      }\r\n    }\r\n  }\r\n\r\n  // One block per entry file, so the union of every project folder's skills is the list.\r\n  const pointers = projectTargets.length > 0\r\n    ? updatePointers({ targets: projectTargets, skills: [...projectSkills] })\r\n    : []\r\n  return { results, pointers }\r\n}",
+    "content_hash": "066e1adb4f7fc8670b82a95ddb08330f5f53586d79b143dbd61bab98b21e0a3f",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::installSkills",
+      "function:temp/anti-slop/cli/lib/install.mjs::installedVersion",
+      "function:temp/anti-slop/cli/lib/install.mjs::resolveTargets",
+      "function:temp/anti-slop/cli/lib/install.mjs::updatePointers"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/updateAll.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/settings.mjs::readSettings",
+    "kind": "function",
+    "name": "readSettings",
+    "qualified_name": "readSettings",
+    "file_path": "temp/anti-slop/cli/lib/settings.mjs",
+    "language": "javascript",
+    "start_line": 15,
+    "end_line": 27,
+    "snippet": "function readSettings(file = settingsPath) {\r\n  let settings\r\n  try {\r\n    settings = JSON.parse(fs.readFileSync(file, 'utf8'))\r\n  } catch (error) {\r\n    if (error.code === 'ENOENT') return {}\r\n    throw new Error(`Cannot read ${file}: ${error.message}`)\r\n  }\r\n  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {\r\n    throw new Error(`Expected a JSON object in ${file}`)\r\n  }\r\n  return settings\r\n}",
+    "content_hash": "b9f876d6eed6722b6ec4a082d66a55ffbb8b3b62e84172016a7be68be89ce320",
+    "parent_id": "file:temp/anti-slop/cli/lib/settings.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/lib/settings.mjs::configureMode"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/settings/readSettings.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/settings.mjs::configureMode",
+    "kind": "function",
+    "name": "configureMode",
+    "qualified_name": "configureMode",
+    "file_path": "temp/anti-slop/cli/lib/settings.mjs",
+    "language": "javascript",
+    "start_line": 29,
+    "end_line": 48,
+    "snippet": "function configureMode(args, file = settingsPath) {\r\n  if (args.length > 1 || (args.length === 1 && !modes.includes(args[0]))) {\r\n    throw new Error('Usage: antislop-ai --mode [during|after|ask]')\r\n  }\r\n  let settings\r\n  try {\r\n    settings = readSettings(file)\r\n  } catch (error) {\r\n    // A file we cannot parse is never overwritten, so the message is the only way out.\r\n    throw new Error(`${error.message} Fix or delete it to start over.`)\r\n  }\r\n  if (args.length) {\r\n    settings.mode = args[0]\r\n    fs.mkdirSync(path.dirname(file), { recursive: true })\r\n    fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\\n')\r\n  }\r\n  const mode = settings.mode === undefined ? 'ask' : settings.mode\r\n  if (!modes.includes(mode)) throw new Error(`Invalid mode in ${file}. Set --mode during, after, or ask.`)\r\n  return `antislop global mode: ${mode}${settings.mode === undefined ? ' (default)' : ''}\\n${file}`\r\n}",
+    "content_hash": "c85d3e0cc114d83b3fdd1eee8521b4a1c48183e153f8e8d61021d8ff60eb18db",
+    "parent_id": "file:temp/anti-slop/cli/lib/settings.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/settings.mjs::readSettings"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/settings/configureMode.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/lib/settings.mjs::resolveSettingsPath",
+    "kind": "function",
+    "name": "resolveSettingsPath",
+    "qualified_name": "resolveSettingsPath",
+    "file_path": "temp/anti-slop/cli/lib/settings.mjs",
+    "language": "javascript",
+    "start_line": 7,
+    "end_line": 11,
+    "snippet": "function resolveSettingsPath({ platform = process.platform, env = process.env, home = os.homedir() } = {}) {\r\n  const paths = platform === 'win32' ? path.win32 : path.posix\r\n  const base = platform === 'win32' && env.APPDATA ? env.APPDATA : paths.join(home, '.config')\r\n  return paths.join(base, 'antislop', 'settings.json')\r\n}",
+    "content_hash": "52cf75d7f7be1a685e64d55585a05e9e1018abfbf9f67ab4aabda971a473d735",
+    "parent_id": "file:temp/anti-slop/cli/lib/settings.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/settings/resolveSettingsPath.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/cli/scripts/smoke-test.mjs::tree",
+    "kind": "function",
+    "name": "tree",
+    "qualified_name": "tree",
+    "file_path": "temp/anti-slop/cli/scripts/smoke-test.mjs",
+    "language": "javascript",
+    "start_line": 11,
+    "end_line": 23,
+    "snippet": "function tree(dir, prefix = '') {\r\n  const out = []\r\n  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {\r\n    const p = path.join(dir, entry.name)\r\n    if (entry.isDirectory()) {\r\n      out.push(prefix + entry.name + '/')\r\n      out.push(...tree(p, prefix + '  '))\r\n    } else {\r\n      out.push(prefix + entry.name)\r\n    }\r\n  }\r\n  return out\r\n}",
+    "content_hash": "f65fa1bf69deabaeac49571394161886a30b7d85eea2289e1ed4dc279bd1a8da",
+    "parent_id": "file:temp/anti-slop/cli/scripts/smoke-test.mjs",
+    "callers": [
+      "function:temp/anti-slop/cli/scripts/smoke-test.mjs::tree"
+    ],
+    "callees": [
+      "function:temp/anti-slop/cli/scripts/smoke-test.mjs::tree"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/scripts/smoke-test/tree.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::anchorsIn",
+    "kind": "function",
+    "name": "anchorsIn",
+    "qualified_name": "anchorsIn",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 266,
+    "end_line": 278,
+    "snippet": "function anchorsIn(text) {\r\n  const taken = new Map()\r\n  const out = new Set()\r\n  for (const line of text.split(/\\r?\\n/)) {\r\n    const m = line.match(/^#{1,6}\\s+(.+?)\\s*#*\\s*$/)\r\n    if (!m) continue\r\n    const base = m[1].toLowerCase().replace(/[^\\p{L}\\p{N}\\s-]/gu, '').trim().replace(/\\s+/g, '-')\r\n    const seen = taken.get(base) ?? 0\r\n    taken.set(base, seen + 1)\r\n    out.add(seen === 0 ? base : `${base}-${seen}`)\r\n  }\r\n  return out\r\n}",
+    "content_hash": "7fd6c5dd52a1f690c45140ac6ad956a5081ca589413e230258c1b3297a338e7f",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [
+      "function:temp/anti-slop/scripts/check-repo.mjs::docLinks"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/anchorsIn.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::contrastTwins",
+    "kind": "function",
+    "name": "contrastTwins",
+    "qualified_name": "contrastTwins",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 322,
+    "end_line": 334,
+    "snippet": "function contrastTwins() {\r\n  const check = read('skills/antislop-human/contrast-check.py')\r\n  const mcp = read('skills/antislop-human/contrast-mcp.py')\r\n  const constants = ['0.03928', '12.92', '1.055', '0.2126', '0.7152', '0.0722', '0.05']\r\n\r\n  const bad = []\r\n  for (const c of constants) {\r\n    if (check.includes(c) !== mcp.includes(c)) {\r\n      bad.push(`the WCAG constant ${c} appears in only one of contrast-check.py and contrast-mcp.py`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "5b3c04598085ff7716b0a6483fea8eba7fed808f1876de52eba203356675da65",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/contrastTwins.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::docLinks",
+    "kind": "function",
+    "name": "docLinks",
+    "qualified_name": "docLinks",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 280,
+    "end_line": 304,
+    "snippet": "function docLinks() {\r\n  const bad = []\r\n  for (const file of ['README.md', 'GUIDE.md', 'ROADMAP.md', 'SECURITY.md', ...COMMUNITY]) {\r\n    // Markdown links, plus the raw HTML images and badges the README is built from.\r\n    for (const m of read(file).matchAll(/\\]\\(([^)\\s]+)\\)|(?:src|href)=\"([^\"]+)\"/g)) {\r\n      const [target, anchor] = (m[1] ?? m[2]).split('#')\r\n      if (/^(https?:|mailto:)/.test(target)) continue\r\n      // Every table of contents is a list of these, and a renamed heading breaks one silently.\r\n      if (!target) {\r\n        if (anchor && !anchorsIn(read(file)).has(anchor)) {\r\n          bad.push(`${file} links to #${anchor}, which is not a heading in it`)\r\n        }\r\n        continue\r\n      }\r\n      if (!existsExactly(target)) {\r\n        bad.push(`${file} links to ${target}, which does not exist`)\r\n        continue\r\n      }\r\n      if (anchor && target.endsWith('.md') && !anchorsIn(read(target)).has(anchor)) {\r\n        bad.push(`${file} links to ${target}#${anchor}, which is not a heading in it`)\r\n      }\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "8bcab1045f24cafb6d188f7c7134d9cb7fe9513c0f14cbfd385b69257656dc32",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/scripts/check-repo.mjs::anchorsIn"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/docLinks.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::emDashes",
+    "kind": "function",
+    "name": "emDashes",
+    "qualified_name": "emDashes",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 49,
+    "end_line": 85,
+    "snippet": "function emDashes() {\r\n  const bad = []\r\n  // The rules/ pointers ship to plugin users, so the ban covers them like any other doc.\r\n  const files = [\r\n    'antislop.md',\r\n    'README.md',\r\n    'GUIDE.md',\r\n    'ROADMAP.md',\r\n    'SECURITY.md',\r\n    'rules/antislop.md',\r\n    'rules/antislop.mdc',\r\n    ...COMMUNITY,\r\n    ...SKILLS,\r\n  ]\r\n\r\n  for (const file of files) {\r\n    let section = ''\r\n    lines(file).forEach((line, i) => {\r\n      const heading = line.match(/^#{2,4}\\s+(.*)$/)\r\n      if (heading) section = heading[1]\r\n      if (!/[\u2014\u2013]/.test(line)) return\r\n\r\n      const exempt =\r\n        // \"#### R-02 \u2014 Copywriting\" and \"### C-1 \u2014 Intentionality\"\r\n        /^#{2,4}\\s+(R-\\d{2}|C-\\d)\\s+\u2014\\s/.test(line) ||\r\n        // The rule that defines the ban, and the skill section that teaches it.\r\n        /^(R-02|Em Dashes)\\b/.test(section) ||\r\n        // The Part 1 table row that shows the pattern.\r\n        /^\\|\\s*\\*\\*Em Dash/.test(line) ||\r\n        // The Delivery Gate item that quotes the character it checks for.\r\n        (/^\\s*- \\[ \\]/.test(line) && /\\*\\(R-02\\)\\*/.test(line))\r\n\r\n      if (!exempt) bad.push(`${file}:${i + 1}: ${line.trim().slice(0, 90)}`)\r\n    })\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "043534a226b6c535c6000fbe931a63f0e50bd88af13dc7b6f20270691d1aa3fd",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/emDashes.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::frontmatter",
+    "kind": "function",
+    "name": "frontmatter",
+    "qualified_name": "frontmatter",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 168,
+    "end_line": 177,
+    "snippet": "function frontmatter() {\r\n  const bad = []\r\n  for (const file of SKILLS) {\r\n    const head = read(file).split('---')[1] ?? ''\r\n    // [ \\t] not \\s: \\s spans newlines, so an empty value would match the next key.\r\n    if (!/^name:[ \\t]*\\S/m.test(head)) bad.push(`${file} has no name in its frontmatter`)\r\n    if (!/^description:[ \\t]*\\S/m.test(head)) bad.push(`${file} has no description in its frontmatter`)\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "87dab5e0087005a09d9c34c8c510ad204ce2753ea0876796e35f444733dc2435",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/frontmatter.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::gateCoverage",
+    "kind": "function",
+    "name": "gateCoverage",
+    "qualified_name": "gateCoverage",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 88,
+    "end_line": 102,
+    "snippet": "function gateCoverage() {\r\n  const core = read('antislop.md')\r\n  const defined = new Set([...core.matchAll(/^#### (R-\\d{2}) \u2014/gm)].map((m) => m[1]))\r\n  const gate = core.split('## Delivery Gate (Mandatory)')[1] ?? ''\r\n  const cited = new Set([...gate.matchAll(/\\((R-\\d{2})\\)/g)].map((m) => m[1]))\r\n\r\n  const bad = []\r\n  for (const r of [...defined].sort()) {\r\n    if (!cited.has(r)) bad.push(`${r} is defined in Part 2 but no Delivery Gate item cites it`)\r\n  }\r\n  for (const r of [...cited].sort()) {\r\n    if (!defined.has(r)) bad.push(`${r} is cited in the Delivery Gate but Part 2 does not define it`)\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "4fe3ef430d9ebadb2767bcd36b4c2ecab289a221ab3ba59ca2f1e5bf6f6ccdf1",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/gateCoverage.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::manifestPaths",
+    "kind": "function",
+    "name": "manifestPaths",
+    "qualified_name": "manifestPaths",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 236,
+    "end_line": 255,
+    "snippet": "function manifestPaths() {\r\n  const bad = []\r\n  for (const file of MANIFESTS) {\r\n    let text\r\n    try {\r\n      text = read(file)\r\n    } catch {\r\n      continue\r\n    }\r\n    for (const m of text.matchAll(/\"(\\.\\/[^\"]+)\"/g)) {\r\n      const target = m[1].replace(/^\\.\\//, '')\r\n      if (!existsExactly(target)) bad.push(`${file} points at ${m[1]}, which does not exist`)\r\n    }\r\n    // A plugin-root path is absolute only once the agent expands it, so check the tail.\r\n    for (const m of text.matchAll(/\"\\$\\{CLAUDE_PLUGIN_ROOT\\}\\/([^\"]+)\"/g)) {\r\n      if (!existsExactly(m[1])) bad.push(`${file} points at \\${CLAUDE_PLUGIN_ROOT}/${m[1]}, which does not exist`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "83689442d9e23e1bf750b74c79d62f1b5444686361d22da345242db62ffa6dad",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/manifestPaths.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::manifests",
+    "kind": "function",
+    "name": "manifests",
+    "qualified_name": "manifests",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 155,
+    "end_line": 165,
+    "snippet": "function manifests() {\r\n  const bad = []\r\n  for (const file of MANIFESTS) {\r\n    try {\r\n      JSON.parse(read(file))\r\n    } catch (err) {\r\n      bad.push(`${file} is not valid JSON: ${err.message}`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "00f442ea19d88f4b93d13b05edfc2ee3f73fdc41338d8c1a23ba22eb46b49a4d",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/manifests.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::registration",
+    "kind": "function",
+    "name": "registration",
+    "qualified_name": "registration",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 180,
+    "end_line": 199,
+    "snippet": "function registration() {\r\n  const names = SKILLS.map((f) => f.split('/')[1])\r\n  const core = 'antislop'\r\n  const places = [\r\n    ['rules/antislop.md', read('rules/antislop.md')],\r\n    ['rules/antislop.mdc', read('rules/antislop.mdc')],\r\n    [\"cli/index.mjs (EXTRA_SKILLS)\", read('cli/index.mjs')],\r\n    ['cli/lib/install.mjs (SKILL_LINES)', read('cli/lib/install.mjs')],\r\n  ]\r\n\r\n  const bad = []\r\n  for (const name of names) {\r\n    for (const [label, text] of places) {\r\n      // The core is always on, so the picker's optional-extras menu never lists it.\r\n      if (name === core && label.startsWith('cli/index.mjs')) continue\r\n      if (!text.includes(name)) bad.push(`${name} is not registered in ${label}`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "c209927d385fbf6e27abea2ecb3a99fb5d97310adc93fd19b218aa3889a5385f",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/registration.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::repoUrls",
+    "kind": "function",
+    "name": "repoUrls",
+    "qualified_name": "repoUrls",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 307,
+    "end_line": 319,
+    "snippet": "function repoUrls() {\r\n  const bad = []\r\n  const prefix = 'https://github.com/miqdadbadjuber/anti-slop/blob/main/'\r\n  for (const file of COMMUNITY) {\r\n    for (const m of read(file).matchAll(/url:\\s*(\\S+)/g)) {\r\n      // A URL that leaves this repository is not this check's to resolve.\r\n      if (!m[1].startsWith(prefix)) continue\r\n      const target = m[1].slice(prefix.length)\r\n      if (!existsExactly(target)) bad.push(`${file} points at ${target}, which does not exist`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "12cee049b9a49d982a0f60d9e61881e1483ae918a605fefd132d3455e611e5b0",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/repoUrls.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::skillIndex",
+    "kind": "function",
+    "name": "skillIndex",
+    "qualified_name": "skillIndex",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 337,
+    "end_line": 354,
+    "snippet": "function skillIndex() {\r\n  const guide = read('GUIDE.md').replace(/\\r\\n/g, '\\n')\r\n  const from = guide.indexOf(START)\r\n  const to = guide.indexOf(END)\r\n  if (from === -1 || to === -1) return [`GUIDE.md has no ${START} ... ${END} pair`]\r\n\r\n  let generated\r\n  try {\r\n    generated = buildIndex()\r\n  } catch (e) {\r\n    return [e.message]\r\n  }\r\n  const shipped = guide.slice(from + START.length, to).replace(/^\\n+|\\n+$/g, '')\r\n  if (shipped !== generated.replace(/\\n+$/, '')) {\r\n    return ['the skill catalogue in GUIDE.md is stale: run node scripts/skill-index.mjs']\r\n  }\r\n  return []\r\n}",
+    "content_hash": "f52bd6369ce3256fdaf674b5c70f2144e6c8b8675949c5743c5f472cafa6450b",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/skillIndex.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::skillReferences",
+    "kind": "function",
+    "name": "skillReferences",
+    "qualified_name": "skillReferences",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 105,
+    "end_line": 114,
+    "snippet": "function skillReferences() {\r\n  const defined = new Set([...read('antislop.md').matchAll(/^#### (R-\\d{2}) \u2014/gm)].map((m) => m[1]))\r\n  const bad = []\r\n  for (const file of SKILLS) {\r\n    for (const r of new Set([...read(file).matchAll(/\\bR-\\d{2}\\b/g)].map((m) => m[0]))) {\r\n      if (!defined.has(r)) bad.push(`${file} cites ${r}, which antislop.md does not define`)\r\n    }\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "949fb1ce8993f919ed2ee0178338c051ac6234a083eb90721e9439baf2023ac5",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/skillReferences.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::tiers",
+    "kind": "function",
+    "name": "tiers",
+    "qualified_name": "tiers",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 202,
+    "end_line": 233,
+    "snippet": "function tiers() {\r\n  const core = read('antislop.md')\r\n  const part2 = core.split('## Part 2:')[1]?.split('## Part 3:')[0] ?? ''\r\n\r\n  const group = {}\r\n  let current = null\r\n  for (const line of part2.split('\\n')) {\r\n    const g = line.match(/^### Group \\d: ([^(]+)/)\r\n    if (g) current = g[1].trim()\r\n    const r = line.match(/^#### (R-\\d{2}) \u2014/)\r\n    if (r && current) group[r[1]] = current\r\n  }\r\n\r\n  const block = {}\r\n  let currentBlock = null\r\n  for (const line of (core.split('## Delivery Gate (Mandatory)')[1] ?? '').split('\\n')) {\r\n    const b = line.match(/^### (Block \\d):/)\r\n    if (b) currentBlock = b[1]\r\n    for (const m of line.matchAll(/\\((R-\\d{2})\\)/g)) {\r\n      if (!block[m[1]]) block[m[1]] = currentBlock\r\n    }\r\n  }\r\n\r\n  const wants = { 'Hard Gate': 'Block 1', 'Purpose-Gate': 'Block 2', 'Quality Locks': 'Block 4' }\r\n  const bad = []\r\n  for (const [rule, grp] of Object.entries(group).sort()) {\r\n    const want = wants[grp]\r\n    const got = block[rule]\r\n    if (want && got && want !== got) bad.push(`${rule} is a ${grp} rule but the gate cites it from ${got}`)\r\n  }\r\n  return bad\r\n}",
+    "content_hash": "b97d1c83640d98a2cbf79a72d53fbbcaefd8d4827726d7d78482dd66f59aa5e4",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/tiers.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/check-repo.mjs::versions",
+    "kind": "function",
+    "name": "versions",
+    "qualified_name": "versions",
+    "file_path": "temp/anti-slop/scripts/check-repo.mjs",
+    "language": "javascript",
+    "start_line": 117,
+    "end_line": 152,
+    "snippet": "function versions() {\r\n  // A malformed file is already reported by the manifest check; do not crash here.\r\n  const json = (p) => {\r\n    try {\r\n      return JSON.parse(read(p))\r\n    } catch {\r\n      return null\r\n    }\r\n  }\r\n  const want = json('cli/package.json')?.version\r\n  if (!want) return ['cli/package.json has no readable version']\r\n\r\n  const found = [\r\n    // The lock file carries the version twice, and npm ci will not correct a stale one.\r\n    ['cli/package-lock.json', json('cli/package-lock.json')?.version],\r\n    ['cli/package-lock.json (packages \"\")', json('cli/package-lock.json')?.packages?.['']?.version],\r\n    // The Cline plugin manifest and, from v3.2.17, the Pi package. Same release.\r\n    ['package.json', json('package.json')?.version],\r\n    ['.claude-plugin/plugin.json', json('.claude-plugin/plugin.json')?.version],\r\n    ['.claude-plugin/marketplace.json', json('.claude-plugin/marketplace.json')?.plugins?.[0]?.version],\r\n    ['.codex-plugin/plugin.json', json('.codex-plugin/plugin.json')?.version],\r\n    ['.cursor-plugin/plugin.json', json('.cursor-plugin/plugin.json')?.version],\r\n    ['.omp-plugin/marketplace.json', json('.omp-plugin/marketplace.json')?.plugins?.[0]?.version],\r\n    ['.kimi-plugin/plugin.json', json('.kimi-plugin/plugin.json')?.version],\r\n    // Stamped into every install, so a stale one makes the installer misreport what is on disk.\r\n    ['skills/antislop/VERSION', read('skills/antislop/VERSION').trim()],\r\n    ['cli/lib/banner.mjs', read('cli/lib/banner.mjs').match(/installer v(\\d+\\.\\d+\\.\\d+)/)?.[1]],\r\n    ['skills/antislop-human/contrast-mcp.py', read('skills/antislop-human/contrast-mcp.py').match(/SERVER_VERSION = \"(\\d+\\.\\d+\\.\\d+)\"/)?.[1]],\r\n    // The contributors image is cached per URL, so a changed version is what makes it redraw.\r\n    ['README.md (contributors image)', read('README.md').match(/contrib\\.rocks\\/image\\?repo=[^\"'&\\s]+&v=(\\d+\\.\\d+\\.\\d+)/)?.[1]],\r\n  ]\r\n\r\n  return found\r\n    .filter(([, got]) => got !== want)\r\n    .map(([file, got]) => `${file} says ${got ?? 'nothing'}, cli/package.json says ${want}`)\r\n}",
+    "content_hash": "5a20b44a0e53dc14b45a7c9c011bdc9c8fa54222898d564ed16d8e9ca2a45cb6",
+    "parent_id": "file:temp/anti-slop/scripts/check-repo.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/check-repo/versions.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/scripts/skill-index.mjs::buildIndex",
+    "kind": "function",
+    "name": "buildIndex",
+    "qualified_name": "buildIndex",
+    "file_path": "temp/anti-slop/scripts/skill-index.mjs",
+    "language": "javascript",
+    "start_line": 42,
+    "end_line": 68,
+    "snippet": "function buildIndex() {\r\n  const names = fs\r\n    .readdirSync(path.join(root, 'skills'), { withFileTypes: true })\r\n    .filter((e) => e.isDirectory())\r\n    .map((e) => e.name)\r\n\r\n  const unlisted = names.filter((n) => !NOTES[n])\r\n  if (unlisted.length) throw new Error(`scripts/skill-index.mjs has no intro for: ${unlisted.join(', ')}`)\r\n  const gone = Object.keys(NOTES).filter((n) => !names.includes(n))\r\n  if (gone.length) throw new Error(`scripts/skill-index.mjs describes a skill that is gone: ${gone.join(', ')}`)\r\n\r\n  const out = []\r\n  for (const name of Object.keys(NOTES)) {\r\n    const raw = fs.readFileSync(path.join(root, 'skills', name, 'SKILL.md'), 'utf8').replace(/\\r\\n/g, '\\n')\r\n    const rows = []\r\n    for (const section of blocksOf(unfenced(raw), '##')) {\r\n      const title = section.split('\\n')[0].trim()\r\n      const found = blocksOf(section, '###')\r\n        .filter((block) => ENTRY.test(block))\r\n        .map((block) => block.split('\\n')[0].trim())\r\n      if (found.length) rows.push(`| ${title} | ${found.join(', ')} |`)\r\n    }\r\n    out.push(`### ${name}`, '', NOTES[name], '')\r\n    if (rows.length) out.push(HEAD, ...rows, '')\r\n  }\r\n  return out.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trimEnd() + '\\n'\r\n}",
+    "content_hash": "37e8de7e4c4c1e43fefb7c8384b5cdfc5eb27a8ee80efade1817c8b9a17a7e01",
+    "parent_id": "file:temp/anti-slop/scripts/skill-index.mjs",
+    "callers": [],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/scripts/skill-index/buildIndex.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::linearize",
+    "kind": "function",
+    "name": "linearize",
+    "qualified_name": "linearize",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 52,
+    "end_line": 56,
+    "snippet": "def linearize(channel):\r\n    c = channel / 255.0\r\n    if c <= 0.03928:\r\n        return c / 12.92\r\n    return ((c + 0.055) / 1.055) ** 2.4",
+    "content_hash": "d276de08877340597ba4102867e9548c58a34f8a3cacae9566ca0415515e7845",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::luminance"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/linearize.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::luminance",
+    "kind": "function",
+    "name": "luminance",
+    "qualified_name": "luminance",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 59,
+    "end_line": 61,
+    "snippet": "def luminance(rgb):\r\n    r, g, b = (linearize(ch) for ch in rgb)\r\n    return 0.2126 * r + 0.7152 * g + 0.0722 * b",
+    "content_hash": "2c3dbcb657971ab8f78f35965ef637bb41aa7f58760478337ac36845f1a2ae61",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::contrast_ratio"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::linearize"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/luminance.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::contrast_ratio",
+    "kind": "function",
+    "name": "contrast_ratio",
+    "qualified_name": "contrast_ratio",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 64,
+    "end_line": 67,
+    "snippet": "def contrast_ratio(color_a, color_b):\r\n    lum_a, lum_b = luminance(color_a), luminance(color_b)\r\n    lighter, darker = sorted((lum_a, lum_b), reverse=True)\r\n    return (lighter + 0.05) / (darker + 0.05)",
+    "content_hash": "7eb024df33af94af324f7e5a629a803defefa0b9c3ed75579ab9e075ea39cdef",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::main",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::luminance"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/contrast_ratio.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_hex",
+    "kind": "function",
+    "name": "parse_hex",
+    "qualified_name": "parse_hex",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 26,
+    "end_line": 32,
+    "snippet": "def parse_hex(value):\r\n    value = value.strip().lstrip(\"#\")\r\n    if len(value) == 3:\r\n        value = \"\".join(ch * 2 for ch in value)\r\n    if not re.fullmatch(r\"[0-9A-Fa-f]{6}\", value):\r\n        raise ValueError(f\"expected a hex color like #FFFFFF, got {value!r}\")\r\n    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))",
+    "content_hash": "936f497ced7977a0832ff2feb5b568a92a94d8f0572ad65050e80cb36882ec42",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::main",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_pairing"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/parse_hex.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_pairing",
+    "kind": "function",
+    "name": "parse_pairing",
+    "qualified_name": "parse_pairing",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 35,
+    "end_line": 49,
+    "snippet": "def parse_pairing(pairing):\r\n    \"\"\"Turn 'White on #333333' or '#555555 on black' into two RGB tuples.\"\"\"\r\n    colors = []\r\n    for token in re.split(r\"\\s+on\\s+\", pairing):\r\n        token = token.strip()\r\n        match = re.search(r\"#[0-9A-Fa-f]{3,6}\", token)\r\n        if match:\r\n            colors.append(parse_hex(match.group(0)))\r\n        elif token.lower() in NAMED_COLORS:\r\n            colors.append(NAMED_COLORS[token.lower()])\r\n        else:\r\n            raise ValueError(f\"cannot parse {token!r} from pairing {pairing!r}\")\r\n    if len(colors) != 2:\r\n        raise ValueError(f\"expected two colors in pairing {pairing!r}\")\r\n    return tuple(colors)",
+    "content_hash": "9570c765b912e993c2e3767d6985a9cc2c0f6d62d234f8489052ceba757f184b",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_hex"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/parse_pairing.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_reference_rows",
+    "kind": "function",
+    "name": "parse_reference_rows",
+    "qualified_name": "parse_reference_rows",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 76,
+    "end_line": 105,
+    "snippet": "def parse_reference_rows(path):\r\n    \"\"\"Reference table rows from SKILL.md, with the ratio already a float.\r\n\r\n    A row that does not split into four cells is dropped silently, not raised.\r\n    \"\"\"\r\n    rows = []\r\n    with open(path, encoding=\"utf-8\") as handle:\r\n        in_table = False\r\n        for raw in handle:\r\n            line = raw.rstrip(\"\\n\")\r\n            if line.startswith(REFERENCE_HEADER):\r\n                in_table = True\r\n                continue\r\n            if not in_table:\r\n                continue\r\n            if not line.startswith(\"|\"):\r\n                break\r\n            if line.startswith(\"|---\"):\r\n                continue\r\n            cells = [cell.strip() for cell in line.strip().strip(\"|\").split(\"|\")]\r\n            if len(cells) != 4:\r\n                continue\r\n            pairing, ratio, normal, large = cells\r\n            rows.append({\r\n                \"pairing\": pairing,\r\n                \"ratio\": float(ratio),\r\n                \"normal\": normal,\r\n                \"large\": large,\r\n            })\r\n    return rows",
+    "content_hash": "ddb2edcce2f11e8fc9953723a7108addda3992b4d43bbde378a2f082d9549381",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/parse_reference_rows.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::reference_doc_path",
+    "kind": "function",
+    "name": "reference_doc_path",
+    "qualified_name": "reference_doc_path",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 70,
+    "end_line": 73,
+    "snippet": "def reference_doc_path():\r\n    here = os.path.dirname(os.path.abspath(__file__))\r\n    candidate = os.path.join(here, \"SKILL.md\")\r\n    return candidate if os.path.isfile(candidate) else None",
+    "content_hash": "d972827d4eaef3ce1bc1349f4bff85be1593e7c5e004a81f4e2192b1a114856a",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/reference_doc_path.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest",
+    "kind": "function",
+    "name": "selftest",
+    "qualified_name": "selftest",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 108,
+    "end_line": 144,
+    "snippet": "def selftest():\r\n    doc = reference_doc_path()\r\n    if doc is None:\r\n        print(\"selftest: SKILL.md not found next to the script; cannot check the table\")\r\n        return 2\r\n    try:\r\n        rows = parse_reference_rows(doc)\r\n    except (OSError, ValueError) as exc:\r\n        print(f\"selftest: could not read the table from SKILL.md: {exc}\")\r\n        return 1\r\n    if not rows:\r\n        print(\"selftest: no reference rows found in SKILL.md\")\r\n        return 1\r\n\r\n    failures = 0\r\n    for row in rows:\r\n        color_a, color_b = parse_pairing(row[\"pairing\"])\r\n        # The verdicts read the unrounded ratio, exactly as main() does. Rounding first\r\n        # turns a 4.498:1 pairing into a displayed 4.50 that would pass 4.5:1 on paper.\r\n        raw = contrast_ratio(color_a, color_b)\r\n        computed = round(raw, 2)\r\n        expected_normal = \"Pass\" if raw >= 4.5 else \"Fail\"\r\n        expected_large = \"Pass\" if raw >= 3.0 else \"Fail\"\r\n        if f\"{computed:.2f}\" != f\"{row['ratio']:.2f}\":\r\n            failures += 1\r\n            print(f\"selftest: {row['pairing']}: table says {row['ratio']}, the formula says {computed:.2f}\")\r\n        if row[\"normal\"] != expected_normal:\r\n            failures += 1\r\n            print(f\"selftest: {row['pairing']}: normal text marked {row['normal']}, should be {expected_normal}\")\r\n        if row[\"large\"] != expected_large:\r\n            failures += 1\r\n            print(f\"selftest: {row['pairing']}: large text marked {row['large']}, should be {expected_large}\")\r\n\r\n    if failures:\r\n        return 1\r\n    print(f\"selftest: {len(rows)} reference pairs OK\")\r\n    return 0",
+    "content_hash": "cc66068f50097ced9174eb3e1167ede2cd047237212b137af0038624241ddad8",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::main"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::contrast_ratio",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_pairing",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_reference_rows",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::reference_doc_path"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/selftest.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-check.py::main",
+    "kind": "function",
+    "name": "main",
+    "qualified_name": "main",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "language": "python",
+    "start_line": 147,
+    "end_line": 164,
+    "snippet": "def main(argv):\r\n    if len(argv) == 1 and argv[0] == \"--selftest\":\r\n        return selftest()\r\n    if len(argv) != 2:\r\n        print(\"usage: python3 contrast-check.py <hex1> <hex2> | --selftest\")\r\n        return 2\r\n    try:\r\n        ratio = contrast_ratio(parse_hex(argv[0]), parse_hex(argv[1]))\r\n    except ValueError as exc:\r\n        print(f\"error: {exc}\")\r\n        return 2\r\n\r\n    normal = ratio >= 4.5\r\n    large = ratio >= 3.0\r\n    print(f\"ratio: {ratio:.2f}:1\")\r\n    print(f\"normal text (4.5:1): {'PASS' if normal else 'FAIL'}\")\r\n    print(f\"large text  (3.0:1): {'PASS' if large else 'FAIL'}\")\r\n    return 0 if normal and large else 1",
+    "content_hash": "2ee42e165e9324195b21b1c7f4a6fdf3e63080b6182333bac6b83fe504aa34f2",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-check.py",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::contrast_ratio",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::parse_hex",
+      "function:temp/anti-slop/skills/antislop-human/contrast-check.py::selftest"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-check/main.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_channel",
+    "kind": "function",
+    "name": "_channel",
+    "qualified_name": "_channel",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 29,
+    "end_line": 31,
+    "snippet": "def _channel(c):\r\n    c = c / 255.0\r\n    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4",
+    "content_hash": "edfb28001edfaebab708c061cb7cfd96a742e586c55df46079e069193e5b954c",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::relative_luminance"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/channel.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_error",
+    "kind": "function",
+    "name": "_error",
+    "qualified_name": "_error",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 71,
+    "end_line": 72,
+    "snippet": "def _error(message):\r\n    return {\"content\": [{\"type\": \"text\", \"text\": message}], \"isError\": True}",
+    "content_hash": "7bc95571f47b14c19be2356601999d1ca82e757bff5cf203b2d812b7c46e16e6",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::main"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/error.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_send",
+    "kind": "function",
+    "name": "_send",
+    "qualified_name": "_send",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 62,
+    "end_line": 64,
+    "snippet": "def _send(msg):\r\n    sys.stdout.write(json.dumps(msg) + \"\\n\")\r\n    sys.stdout.flush()",
+    "content_hash": "f7b36f7c23b976c7ad1226ff0c2398a5759433562c455416718403ff3c86f4fd",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_reply"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/send.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_reply",
+    "kind": "function",
+    "name": "_reply",
+    "qualified_name": "_reply",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 75,
+    "end_line": 76,
+    "snippet": "def _reply(msg_id, result):\r\n    _send({\"jsonrpc\": \"2.0\", \"id\": msg_id, \"result\": result})",
+    "content_hash": "ce227de95e6002e6b011283da040355dd7ffa468a5abbf557e88caf1c8700972",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::main"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_send"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/reply.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_text",
+    "kind": "function",
+    "name": "_text",
+    "qualified_name": "_text",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 67,
+    "end_line": 68,
+    "snippet": "def _text(content):\r\n    return {\"content\": [{\"type\": \"text\", \"text\": content}], \"isError\": False}",
+    "content_hash": "66510d4db9e13e4d727f723eba045da88022a308bf0c5b16a40e46a31b82619c",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::main"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/text.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::relative_luminance",
+    "kind": "function",
+    "name": "relative_luminance",
+    "qualified_name": "relative_luminance",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 34,
+    "end_line": 39,
+    "snippet": "def relative_luminance(hex_color):\r\n    h = hex_color.strip().lstrip(\"#\")\r\n    if len(h) == 3:\r\n        h = \"\".join(ch * 2 for ch in h)\r\n    r, g, b = (int(h[i : i + 2], 16) for i in (0, 2, 4))\r\n    return 0.2126 * _channel(r) + 0.7152 * _channel(g) + 0.0722 * _channel(b)",
+    "content_hash": "864db0adab6dbf9896db00841c93dc1ee0ddd852af07c2e79295f170d5144945",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::contrast_ratio"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_channel"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/relative_luminance.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::contrast_ratio",
+    "kind": "function",
+    "name": "contrast_ratio",
+    "qualified_name": "contrast_ratio",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 42,
+    "end_line": 46,
+    "snippet": "def contrast_ratio(fg, bg):\r\n    \"\"\"The unrounded WCAG ratio. Callers decide what to print, never what to compare.\"\"\"\r\n    l1, l2 = relative_luminance(fg), relative_luminance(bg)\r\n    lighter, darker = max(l1, l2), min(l1, l2)\r\n    return (lighter + 0.05) / (darker + 0.05)",
+    "content_hash": "016290a2be9bd9a8eca9ea920eafc2cdb803321081fb82f1fd8a5a34ad3bbc10",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::check_contrast"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::relative_luminance"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/contrast_ratio.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::check_contrast",
+    "kind": "function",
+    "name": "check_contrast",
+    "qualified_name": "check_contrast",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 49,
+    "end_line": 59,
+    "snippet": "def check_contrast(fg, bg):\r\n    # The threshold is read from the raw ratio: 4.498:1 fails 4.5:1 even though it\r\n    # displays as 4.50 once rounded, and a rounded verdict would report the opposite.\r\n    ratio = contrast_ratio(fg, bg)\r\n    return {\r\n        \"foreground\": fg,\r\n        \"background\": bg,\r\n        \"ratio\": round(ratio, 2),\r\n        \"normal_text\": {\"threshold\": 4.5, \"pass\": ratio >= 4.5},\r\n        \"large_text\": {\"threshold\": 3.0, \"pass\": ratio >= 3.0},\r\n    }",
+    "content_hash": "d006e093987c69f128ef3e6727f85f611b44b96ae6818a3881a4b98339266a8c",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::main"
+    ],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::contrast_ratio"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/check_contrast.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::main",
+    "kind": "function",
+    "name": "main",
+    "qualified_name": "main",
+    "file_path": "temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "language": "python",
+    "start_line": 79,
+    "end_line": 117,
+    "snippet": "def main():\r\n    for line in sys.stdin:\r\n        line = line.strip()\r\n        if not line:\r\n            continue\r\n        try:\r\n            msg = json.loads(line)\r\n        except json.JSONDecodeError:\r\n            continue\r\n\r\n        msg_id = msg.get(\"id\")\r\n        method = msg.get(\"method\")\r\n\r\n        if method == \"initialize\":\r\n            _reply(msg_id, {\r\n                \"protocolVersion\": PROTOCOL_VERSION,\r\n                \"capabilities\": {\"tools\": {}},\r\n                \"serverInfo\": {\"name\": SERVER_NAME, \"version\": SERVER_VERSION},\r\n            })\r\n        elif method == \"notifications/initialized\":\r\n            pass\r\n        elif method == \"ping\":\r\n            _reply(msg_id, {})\r\n        elif method == \"tools/list\":\r\n            _reply(msg_id, {\"tools\": TOOLS})\r\n        elif method == \"tools/call\":\r\n            params = msg.get(\"params\") or {}\r\n            name = params.get(\"name\")\r\n            args = params.get(\"arguments\") or {}\r\n            if name == \"check_contrast\":\r\n                try:\r\n                    result = check_contrast(args[\"foreground\"], args[\"background\"])\r\n                    _reply(msg_id, _text(json.dumps(result)))\r\n                except Exception as exc:\r\n                    _reply(msg_id, _error(\"check_contrast failed: \" + str(exc)))\r\n            else:\r\n                _reply(msg_id, _error(\"Unknown tool: \" + str(name)))\r\n        elif msg_id is not None:\r\n            _reply(msg_id, {})",
+    "content_hash": "7044395f80bbffa72dd546ddc07666654d4c08908afed76b581d7fdf00fd5689",
+    "parent_id": "file:temp/anti-slop/skills/antislop-human/contrast-mcp.py",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_error",
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_reply",
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::_text",
+      "function:temp/anti-slop/skills/antislop-human/contrast-mcp.py::check_contrast"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/skills/antislop-human/contrast-mcp/main.md",
+    "needs_generation": true
+  },
+  {
     "node_id": "function:tests/test_ast_pruner.py::test_extract_map_python",
     "kind": "function",
     "name": "test_extract_map_python",
@@ -7310,6 +8594,44 @@
       "method:temp/.specify/scripts/python/common.py::resolve_template_content.compose_from_base"
     ],
     "doc_path": ".buddhi/docs/temp/.specify/scripts/python/common/resolve_template_content.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "method:temp/anti-slop/cli/lib/install.mjs::find",
+    "kind": "method",
+    "name": "find",
+    "qualified_name": "find",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 216,
+    "end_line": 219,
+    "snippet": "find() {\r\n      const entry = readJSON(claudePlugins())?.plugins?.['antislop@anti-slop']?.[0]\r\n      return entry ? { path: entry.installPath ?? claudePlugins(), version: entry.version ?? null } : null\r\n    }",
+    "content_hash": "0cb7c6a06e30cbdf23517c8900ede627e77edbd320db34c6168c5b8515cf8f3f",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::readJSON"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/find.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "method:temp/anti-slop/cli/lib/install.mjs::find:L231",
+    "kind": "method",
+    "name": "find",
+    "qualified_name": "find",
+    "file_path": "temp/anti-slop/cli/lib/install.mjs",
+    "language": "javascript",
+    "start_line": 231,
+    "end_line": 235,
+    "snippet": "find() {\r\n      const cache = path.join(os.homedir(), '.codex', 'plugins', 'cache', 'anti-slop', CORE)\r\n      const versions = listDirs(cache).sort()\r\n      return versions.length ? { path: cache, version: versions[versions.length - 1] } : null\r\n    }",
+    "content_hash": "ea4b789b7d8a8e9d58d81bda6dc5a8c4bfd1bd6a054d144f703c2c44f7ec26ff",
+    "parent_id": "file:temp/anti-slop/cli/lib/install.mjs",
+    "callers": [],
+    "callees": [
+      "function:temp/anti-slop/cli/lib/install.mjs::listDirs"
+    ],
+    "doc_path": ".buddhi/docs/temp/anti-slop/cli/lib/install/find.md",
     "needs_generation": true
   }
 ]

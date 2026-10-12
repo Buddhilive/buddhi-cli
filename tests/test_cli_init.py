@@ -9,7 +9,9 @@ runner = CliRunner()
 
 
 def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) -> None:
-    (tmp_path / "main.py").write_text("def helper():\n    pass\n\ndef run():\n    helper()\n")
+    (tmp_path / "main.py").write_text(
+        "def helper():\n    pass\n\ndef run():\n    helper()\n"
+    )
 
     result = runner.invoke(app, ["init", str(tmp_path)])
 
@@ -42,6 +44,12 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
         "ask",
         "remember",
         "status",
+        "antislop",
+        "antislop-ui",
+        "antislop-copywriting",
+        "antislop-human",
+        "antislop-layoutmobile",
+        "antislop-code",
     )
     for skill_name in expected_skills:
         assert (agents_dir / "skills" / skill_name / "SKILL.md").exists()
@@ -50,6 +58,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     assert not (agents_dir / "workflows").exists()
     assert (agents_dir / "rules" / "okf-docs.md").exists()
     assert (agents_dir / "rules" / "harness-core.md").exists()
+    assert (agents_dir / "rules" / "antislop.md").exists()
     assert (agents_dir / "templates" / "spec-template.md").exists()
     assert (agents_dir / "templates" / "plan-template.md").exists()
     assert (agents_dir / "templates" / "tasks-template.md").exists()
@@ -65,7 +74,10 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
     mcp_cfg = json.loads((agents_dir / "mcp_config.json").read_text(encoding="utf-8"))
     assert "mcpServers" in mcp_cfg
     assert mcp_cfg["mcpServers"]["buddhi"]["command"] == "buddhi-mcp"
-    assert mcp_cfg["mcpServers"]["buddhi"]["args"] == ["--root", str(tmp_path.resolve())]
+    assert mcp_cfg["mcpServers"]["buddhi"]["args"] == [
+        "--root",
+        str(tmp_path.resolve()),
+    ]
     for specialist in (
         "frontend-specialist",
         "backend-specialist",
@@ -77,6 +89,9 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
         "terminal-runner",
     ):
         assert (agents_dir / "agents" / f"{specialist}.md").exists()
+    assert "antislop" in (agents_dir / "agents" / "frontend-specialist.md").read_text(
+        encoding="utf-8"
+    )
 
     assert not (agents_dir / "__init__.py").exists()
     assert not any(agents_dir.rglob("__pycache__"))
@@ -107,10 +122,17 @@ def test_init_migrates_and_removes_legacy_workflows(tmp_path: Path) -> None:
     # Simulate an existing project with legacy workflows
     workflows_dir = tmp_path / ".agents" / "workflows"
     workflows_dir.mkdir(parents=True)
-    (workflows_dir / "plan.md").write_text("---\nname: plan\n---\n# Legacy Plan\n", encoding="utf-8")
-    (workflows_dir / "custom-flow.md").write_text("# Custom User Flow\nDo step A and B.\n", encoding="utf-8")
+    (workflows_dir / "plan.md").write_text(
+        "---\nname: plan\n---\n# Legacy Plan\n", encoding="utf-8"
+    )
+    (workflows_dir / "custom-flow.md").write_text(
+        "# Custom User Flow\nDo step A and B.\n", encoding="utf-8"
+    )
     manifest = tmp_path / ".agents" / "workflows.json"
-    manifest.write_text(json.dumps([{"name": "custom-flow", "path": "workflows/custom-flow.md"}]), encoding="utf-8")
+    manifest.write_text(
+        json.dumps([{"name": "custom-flow", "path": "workflows/custom-flow.md"}]),
+        encoding="utf-8",
+    )
 
     result = runner.invoke(app, ["init", str(tmp_path)])
     assert result.exit_code == 0, result.output
@@ -171,7 +193,9 @@ def test_init_clean_directory_scaffolds_spec_plan_and_not_plan(tmp_path: Path) -
     assert "/quick-plan" in agents_md
     assert "/plan " not in agents_md and "`/plan`" not in agents_md
 
-    harness_core = (agents_dir / "rules" / "harness-core.md").read_text(encoding="utf-8")
+    harness_core = (agents_dir / "rules" / "harness-core.md").read_text(
+        encoding="utf-8"
+    )
     assert "/spec-plan" in harness_core
     assert "`/plan`" not in harness_core
 
@@ -227,4 +251,3 @@ def test_init_migrates_existing_project_with_legacy_plan_skill(tmp_path: Path) -
     updated_harness = (rules_dir / "harness-core.md").read_text(encoding="utf-8")
     assert "`/spec-plan`" in updated_harness
     assert "`/plan`" not in updated_harness
-

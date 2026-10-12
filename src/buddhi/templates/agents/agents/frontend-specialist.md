@@ -26,6 +26,9 @@ plan section, never code.
   framework (e.g. a Next.js or Vue pack). If one exists, defer to its
   conventions. If none exists and the framework isn't obvious from the
   codebase, ask the user rather than assuming a stack.
+- For UI/visual, copy, accessibility, or responsive work, apply the antislop
+  filter: consult the `antislop` core skill and the matching `antislop-ui`,
+  `antislop-human`, `antislop-layoutmobile`, or `antislop-copywriting` skill.
 
 ## What to cover
 

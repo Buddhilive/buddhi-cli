@@ -109,6 +109,23 @@ def buddhi_read(
         return f"Error executing read: {e}"
 
 
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def check_contrast(
+    color_a: Annotated[
+        str,
+        "First color as hex (#FFFFFF or FFFFFF) or named color ('black', 'white')",
+    ],
+    color_b: Annotated[
+        str,
+        "Second color as hex (#FFFFFF or FFFFFF) or named color ('black', 'white')",
+    ],
+) -> str:
+    """Check WCAG 2.x contrast ratio between two colors."""
+    from buddhi.mcp.tools.contrast import execute_check_contrast
+
+    return execute_check_contrast(color_a=color_a, color_b=color_b)
+
+
 def main() -> None:
     """CLI entrypoint for running the MCP server."""
     parser = argparse.ArgumentParser(description="Buddhi MCP Server (StdIO)")

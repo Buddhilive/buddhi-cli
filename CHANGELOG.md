@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Anti-Slop Filter Integration**:
+  - Integrated the `anti-slop` filter suite adapted from `miqdadbadjuber/anti-slop` into the default Google Antigravity agent harness created by `buddhi init`.
+  - Added 6 specialized agent skills under `.agents/skills/`:
+    - `antislop`: Core filter and two usage modes (`during`, `after`, `ask`).
+    - `antislop-ui`: UI & visual design filter for layout, color, components, and motion.
+    - `antislop-copywriting`: Copy & text filter against generic AI prose and synthetic marketing phrasing.
+    - `antislop-human`: Human accessibility filter covering WCAG AA color contrast, focus rings, keyboard navigation, and touch targets.
+    - `antislop-layoutmobile`: Responsive and mobile layout filter for viewport reflow, fluid scaling, and thumb tap targets.
+    - `antislop-code`: Code comment hygiene filter eliminating redundant or narrating AI comments while preserving domain rationale.
+  - Added always-on rule `.agents/rules/antislop.md` directing agents to load matching anti-slop skills during interface, copy, and code tasks.
+  - Added `buddhi scripts` CLI command group:
+    - `buddhi scripts contrast <color_a> <color_b>`: Standalone WCAG 2.x color contrast checker with pass/fail exit codes for normal (4.5:1) and large (3:1) text.
+    - `buddhi scripts contrast --selftest`: Validates the bundled reference contrast table against the mathematical WCAG luminance formulas.
+    - `buddhi scripts antislop-mode [during|after|ask]`: Inspects or configures the global anti-slop usage mode in the platform configuration file.
+  - Added `check_contrast` tool to the Buddhi MCP server (`buddhi-mcp`), allowing agents to calculate WCAG color contrast directly during UI planning and review.
+  - Added `ACKNOWLEDGMENTS.md` at project root providing attribution and full MIT license text for `miqdadbadjuber/anti-slop`.
 - **Workflows to Skills Migration**:
   - Migrated all agent workflows (`.agents/workflows/*.md`) into native Google Antigravity Agent Skills under `.agents/skills/<name>/SKILL.md`.
   - Added standard YAML frontmatter (`name`, `description`) to all skills for autonomous agent discovery and slash-command invocation.
