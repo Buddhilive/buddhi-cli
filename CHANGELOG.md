@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Software Factory Skills & Scripts Adaptation (`dzhng/skills`)**:
+  - Integrated 23 SDD-complementary agent skills adapted from `dzhng/skills` into the default Google Antigravity harness scaffolded by `buddhi init`:
+    - *Discovery & Research*: `explore-unknowns` (4-quadrant unknown mapping with 6 stage reference guides), `auto-research` (progressive hypothesis testing & parameter-effect maps in `.buddhi/specs/<branch>/research.md`).
+    - *Implementation, Refactoring & Testing*: `refactor-clean` (clean structural refactoring without legacy shims), `write-tests` (tracer-bullet behavioral test authoring), `audit-tests` (contract boundary mapping), `audit-performance` (bounded-work runtime efficiency checks), `ratchet-files` (source file size ceiling enforcement), `write-docs` (principles and pointers markdown documentation), `marketing-pages` (marketing site architecture and audits).
+    - *Review, Decision Audit & Spec Closeout*: `code-review` (26-point diff review checklist), `review` (sequenced closeout: shape -> diff -> docs), `audit-choices` (triages unprompted agent choices into `.buddhi/specs/<branch>/choices.md` as sound, unsound, needs-user), `handoff-spec` (mid-implementation state capture), `close-spec` (post-verification archival into `.buddhi/specs/done/<branch>/` as durable architectural rationale), `eli5` (plain-language walkthrough of any spec or diff), `retro` (session retrospective emphasizing automated checks over prose rules).
+    - *Visual Review*: `design-with-images` (visual concept generation via Antigravity `image-generator`), `compare-screenshots` (telemetry and reference-vs-candidate parity diffing), `screenshot-critique` (unprimed subagent visual checks), `preview-shots` (cross-platform image viewing).
+    - *Authoring*: `write-skills` (skill authoring rulebook), `eval-skills` (subagent skill evaluation), `audit-agents` (AGENTS.md longevity and iteration speed audit).
+  - Enhanced the 5 existing SDD lifecycle skills (`/specify`, `/spec-plan`, `/tasks`, `/implement`, `/verify`) with software-factory practices (fog-of-war slicing, multi-angle slice checks, maintenance checkpoints, `/review`, `/audit-choices`, visual verification gates, `/close-spec` spec archiving) without replacing or altering the core SDD workflow.
+  - Added pure-Python CLI scripts under `buddhi scripts`:
+    - `buddhi scripts check-file-size`: Git-tracked source file token ratchet (default 8,000 tokens / 32 KB) supporting `--all`, staged pre-commit ratcheting against `HEAD`, and `@ratchet-files-ignore` headers.
+    - `buddhi scripts visual-parity-diff`: Pure Python PNG codec (types 0-6, filters 0-4), solo scene-metrics telemetry, and pair diffing with 8 diagnostic PNG artifacts.
+    - `buddhi scripts receipts`: Deterministic critique report verifier checking execution receipt blocks against prose measurement claims and SHA-256 artifact hashes.
+    - Added `--selftest` flags to all 3 scripts.
+  - Added custom graphics skills to `buddhi skills`:
+    - Added individual installation flags (`--renderer`, `--launch-video`, `--cinematic-shot`, `--isometric-motion`, `--xiaohei-illustrations`) and the `--graphics` bundle flag.
+  - Updated `ACKNOWLEDGMENTS.md` to credit `https://github.com/dzhng/skills` (David Zhang, MIT License) and upstream contributors (Matt Pocock, Thariq, wheresryan22, helloianneo).
 - **Anti-Slop Filter Integration**:
   - Integrated the `anti-slop` filter suite adapted from `miqdadbadjuber/anti-slop` into the default Google Antigravity agent harness created by `buddhi init`.
   - Added 6 specialized agent skills under `.agents/skills/`:

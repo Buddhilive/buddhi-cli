@@ -149,6 +149,8 @@ buddhi skills [options]
 Inspect and install custom Antigravity agent skills into `.agents/skills/`:
 - `buddhi skills` — Display an inventory table of available custom skills.
 - `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
+- `buddhi skills --graphics` — Install all 5 specialized graphics skills (`renderer`, `launch-video`, `cinematic-shot`, `isometric-motion`, `xiaohei-illustrations`).
+- `buddhi skills [--renderer|--launch-video|--cinematic-shot|--isometric-motion|--xiaohei-illustrations]` — Install individual graphics skills.
 - `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
 - `--force` / `-f` — Overwrite existing skill files if already present.
 
@@ -162,6 +164,9 @@ Run standalone developer utilities:
 - `buddhi scripts contrast <color_a> <color_b>` — Check WCAG 2.x contrast ratio between two colors (hex codes or `black`/`white`). Exits with code 0 only when both normal (4.5:1) and large (3:1) text pass.
 - `buddhi scripts contrast --selftest` — Recompute and verify the reference contrast table against the WCAG formula.
 - `buddhi scripts antislop-mode [during|after|ask]` — View or set the global anti-slop usage mode in the platform configuration file (`%APPDATA%\antislop\settings.json` on Windows, `~/.config/antislop/settings.json` on macOS/Linux).
+- `buddhi scripts check-file-size --all [--max-tokens N]` — Check and ratchet source file sizes against token budget (default 8,000 tokens / 32 KB).
+- `buddhi scripts visual-parity-diff [--candidate-dir DIR] [--reference-dir DIR] [--out-dir DIR]` — Compute solo scene metrics or reference-vs-candidate parity diffing with 8 diagnostic PNG artifacts.
+- `buddhi scripts receipts [--json|--label] [--window N] <report.md>...` — Verify execution receipt blocks against prose measurement claims and SHA-256 artifact hashes.
 
 ## The Antigravity agent harness
 
@@ -188,6 +193,12 @@ Run standalone developer utilities:
   - **`antislop-human`** — Accessibility and human factors filter: WCAG contrast compliance, keyboard nav, focus indicators, touch targets.
   - **`antislop-layoutmobile`** — Mobile & responsive layout filter: reflow, fluid grids, tap targets, zoom resilience.
   - **`antislop-code`** — Code comment hygiene filter: eliminates redundant or noisy AI-generated comments.
+  - **Software Factory Skills Suite** (adapted from `dzhng/skills`):
+    - *Discovery & Research*: **`/explore-unknowns`** (4-quadrant unknown walk), **`/auto-research`** (progressive hypothesis testing).
+    - *Implementation, Refactoring & Testing*: **`refactor-clean`** (clean structural refactoring), **`write-tests`** (behavioral tests), **`audit-tests`** (test boundary mapping), **`audit-performance`** (bounded-work runtime checks), **`ratchet-files`** (file size budget), **`write-docs`** (principles and pointers), **`marketing-pages`** (marketing site architecture).
+    - *Review, Decision Audit & Spec Lifecycle*: **`code-review`** (26-point checklist), **`review`** (sequenced closeout), **`audit-choices`** (choices ledger in `.buddhi/specs/<branch>/choices.md`), **`handoff-spec`** (session handoffs), **`close-spec`** (archive spec to `.buddhi/specs/done/<branch>/`), **`eli5`** (plain-language spec/diff explanation), **`retro`** (coding session retrospective).
+    - *Visual Review*: **`design-with-images`** (visual concept exploration), **`compare-screenshots`** (telemetry and diffing), **`screenshot-critique`** (unprimed visual review), **`preview-shots`** (cross-platform image viewing).
+    - *Authoring*: **`write-skills`** (skill authoring rulebook), **`eval-skills`** (subagent skill evaluation), **`audit-agents`** (AGENTS.md audit).
 - **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
 - **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
 - **`agents/`** — Read-only specialist subagents (`backend-specialist`,
@@ -277,4 +288,8 @@ file, and the `pypi` environment.
 
 ## Acknowledgments
 
-The `anti-slop` filter suite and contrast-checking scripts are adapted from [anti-slop](https://github.com/miqdadbadjuber/anti-slop) by Miqdad Badjuber (MIT License). See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.
+The `anti-slop` filter suite and contrast-checking scripts are adapted from [anti-slop](https://github.com/miqdadbadjuber/anti-slop) by Miqdad Badjuber (MIT License).
+
+The software factory agent skills, visual diffing, and critique verification scripts are adapted from [dzhng/skills](https://github.com/dzhng/skills) by David Zhang (MIT License), with sub-attributions to Matt Pocock, Thariq, wheresryan22, and helloianneo.
+
+See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.

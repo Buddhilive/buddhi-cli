@@ -1,9 +1,10 @@
 ---
 name: implement
 description: Execute the tasks defined in tasks.md sequentially by user story, respecting dependencies and parallelism markers, updating task progress, and grounding changes in codebase OKF docs. Use when implementing tasks with /implement.
-version: 1.0.0
+version: 1.1.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context
+optional_skills: refactor-clean, code-review, audit-choices, handoff-spec
 artifact_outputs: implementation
 ---
 
@@ -38,9 +39,14 @@ onwards and keeping `tasks.md` progress up to date.
      - Dispatch domain specialists (backend, frontend, database, etc.) for complex domain work.
      - For tasks marked `[P]`, parallel implementation across distinct files is permitted.
      - *Checkpoint*: After finishing each story, test it independently to confirm working state.
+     - *Maintenance & Choices Checkpoint*:
+       * Run `/refactor-clean` to ensure no temporary shims or dead wrappers linger.
+       * If decisions were made where the spec was silent, record them in `.buddhi/specs/<branch>/choices.md`
+         (following the `/audit-choices` format: `sound`, `unsound`, `needs-user`).
    - **Phase N: Polish**: Documentation, linting, formatting, cleanup.
+   - *Handoff Support*: If the implementation must pause or move to another agent/session mid-flight,
+     run `/handoff-spec` to record active context directly into the spec folder.
 4. **Update task progress**:
    After completing each task, edit `tasks.md` to mark the task completed (`- [x] TXXX`).
 5. **Next step**: Once all tasks in `tasks.md` are completed, inform the user and suggest
    running `/verify` to execute full acceptance verification against the specification.
-

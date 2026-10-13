@@ -12,6 +12,9 @@ def test_scripts_no_args_shows_help() -> None:
     assert result.exit_code == 0 or result.exit_code == 2
     assert "contrast" in result.output
     assert "antislop-mode" in result.output
+    assert "check-file-size" in result.output
+    assert "visual-parity-diff" in result.output
+    assert "receipts" in result.output
 
 
 def test_contrast_pass() -> None:

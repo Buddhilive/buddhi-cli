@@ -46,7 +46,9 @@ class SkillRegistryEntry:
     def execute_runner(self, *args: Any, **kwargs: Any) -> Any:
         """Invoke runner callable if registered."""
         if self.runner is None:
-            raise NotImplementedError(f"No execution runner configured for skill '{self.name}'.")
+            raise NotImplementedError(
+                f"No execution runner configured for skill '{self.name}'."
+            )
         return self.runner(*args, **kwargs)
 
 
@@ -68,9 +70,69 @@ _SKILL_REGISTRY: dict[str, SkillRegistryEntry] = {
         template_pkg="buddhi.templates.custom_skills.repo_to_skill",
         target_dir_name="repo-to-skill",
         runner=_run_repo_to_skill_wrapper,
-    )
+    ),
+    "renderer": SkillRegistryEntry(
+        name="renderer",
+        flag="--renderer",
+        title="TypeGPU / WebGPU Renderer Architecture",
+        description=(
+            "Architecture rules for GPU rendering with TypeGPU/WebGPU: "
+            "fixed-view cost, single contract owners, and pixel-level A/B verification."
+        ),
+        template_pkg="buddhi.templates.custom_skills.renderer",
+        target_dir_name="renderer",
+    ),
+    "launch-video": SkillRegistryEntry(
+        name="launch-video",
+        flag="--launch-video",
+        title="Launch Video Direction & Motion Graphics",
+        description=(
+            "Produce showreel-grade launch videos with beat-synced visuals and synthesized audio."
+        ),
+        template_pkg="buddhi.templates.custom_skills.launch_video",
+        target_dir_name="launch-video",
+    ),
+    "cinematic-shot": SkillRegistryEntry(
+        name="cinematic-shot",
+        flag="--cinematic-shot",
+        title="Cinematic Software UI Filming",
+        description=(
+            "Direct steep, oblique, shallow-DOF macro hero shots of software UI floating in black."
+        ),
+        template_pkg="buddhi.templates.custom_skills.cinematic_shot",
+        target_dir_name="cinematic-shot",
+    ),
+    "isometric-motion": SkillRegistryEntry(
+        name="isometric-motion",
+        flag="--isometric-motion",
+        title="Isometric Motion & Interactive Anatomy Visuals",
+        description=(
+            "Build animations and interactive elements in crafted isometric Anatomy style "
+            "with live state readout and WebGL/SVG shaders."
+        ),
+        template_pkg="buddhi.templates.custom_skills.isometric_motion",
+        target_dir_name="isometric-motion",
+    ),
+    "xiaohei-illustrations": SkillRegistryEntry(
+        name="xiaohei-illustrations",
+        flag="--xiaohei-illustrations",
+        title="Xiaohei Conceptual Illustrations",
+        description=(
+            "Generate Ian-style monochrome conceptual illustrations starring Xiaohei "
+            "for articles, docs, and processes."
+        ),
+        template_pkg="buddhi.templates.custom_skills.xiaohei_illustrations",
+        target_dir_name="xiaohei-illustrations",
+    ),
 }
 
+GRAPHICS_SKILLS: list[str] = [
+    "renderer",
+    "launch-video",
+    "cinematic-shot",
+    "isometric-motion",
+    "xiaohei-illustrations",
+]
 
 
 def get_skill(name: str) -> SkillRegistryEntry | None:

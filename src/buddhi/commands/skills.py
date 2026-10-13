@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from buddhi.skills.installer import install_skill
-from buddhi.skills.registry import get_skill, list_skills
+from buddhi.skills.registry import GRAPHICS_SKILLS, get_skill, list_skills
 from buddhi.util.fsutil import BuddhiFsError
 
 console = Console()
@@ -40,7 +40,8 @@ def _render_skills_table() -> None:
     console.print(table)
     console.print(
         "\n[dim]To install a skill, run: [bold]buddhi skills <flag>[/bold] "
-        "(e.g., [bold cyan]buddhi skills --repo-to-skill[/bold cyan])[/dim]"
+        "(e.g., [bold cyan]buddhi skills --repo-to-skill[/bold cyan])\n"
+        "To install all 5 graphics skills at once, run: [bold cyan]buddhi skills --graphics[/bold cyan][/dim]"
     )
 
 
@@ -52,13 +53,42 @@ def skills_main(
         "--repo-to-skill",
         help="Add the Antigravity-optimized repo-to-skill agent skill.",
     ),
+    renderer: bool = typer.Option(
+        False,
+        "--renderer",
+        help="Add TypeGPU/WebGPU renderer architecture skill.",
+    ),
+    launch_video: bool = typer.Option(
+        False,
+        "--launch-video",
+        help="Add launch video direction and motion graphics skill.",
+    ),
+    cinematic_shot: bool = typer.Option(
+        False,
+        "--cinematic-shot",
+        help="Add cinematic software UI filming skill.",
+    ),
+    isometric_motion: bool = typer.Option(
+        False,
+        "--isometric-motion",
+        help="Add isometric motion and interactive anatomy visuals skill.",
+    ),
+    xiaohei_illustrations: bool = typer.Option(
+        False,
+        "--xiaohei-illustrations",
+        help="Add Xiaohei conceptual illustrations skill.",
+    ),
+    graphics: bool = typer.Option(
+        False,
+        "--graphics",
+        help="Add all 5 graphics skills bundle.",
+    ),
     path: Path = typer.Option(  # noqa: B008
         Path("."),
         "-p",
         "--path",
         help="Target project root directory.",
     ),
-
     force: bool = typer.Option(
         False,
         "-f",
@@ -74,6 +104,20 @@ def skills_main(
     install_targets: list[str] = []
     if repo_to_skill:
         install_targets.append("repo-to-skill")
+    if renderer:
+        install_targets.append("renderer")
+    if launch_video:
+        install_targets.append("launch-video")
+    if cinematic_shot:
+        install_targets.append("cinematic-shot")
+    if isometric_motion:
+        install_targets.append("isometric-motion")
+    if xiaohei_illustrations:
+        install_targets.append("xiaohei-illustrations")
+    if graphics:
+        for s in GRAPHICS_SKILLS:
+            if s not in install_targets:
+                install_targets.append(s)
 
     # If no flags passed, list all available custom skills
     if not install_targets:
@@ -110,9 +154,13 @@ def skills_main(
 
 @skills_app.command(name="run", help="Run a registered skill script.")
 def run_skill(
-    skill_name: str = typer.Argument(..., help="Name of the skill (e.g. 'repo-to-skill')."),
+    skill_name: str = typer.Argument(
+        ..., help="Name of the skill (e.g. 'repo-to-skill')."
+    ),
     target: str = typer.Argument(..., help="Target repository path or URL."),
-    json_mode: bool = typer.Option(False, "--json", help="Emit structured output in JSON format."),
+    json_mode: bool = typer.Option(
+        False, "--json", help="Emit structured output in JSON format."
+    ),
 ) -> None:
     """Execute helper scripts associated with a custom agent skill."""
     entry = get_skill(skill_name)
@@ -125,5 +173,7 @@ def run_skill(
         if exit_code != 0:
             raise typer.Exit(code=exit_code)
     except Exception as exc:
-        err_console.print(f"[red]error:[/red] execution failed for skill '{skill_name}': {exc}")
+        err_console.print(
+            f"[red]error:[/red] execution failed for skill '{skill_name}': {exc}"
+        )
         raise typer.Exit(code=1) from exc
