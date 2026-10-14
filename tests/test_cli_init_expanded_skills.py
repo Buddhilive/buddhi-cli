@@ -35,11 +35,6 @@ NEW_SKILLS_23 = [
 
 CUSTOM_SKILLS_NOT_IN_INIT = [
     "repo-to-skill",
-    "renderer",
-    "launch-video",
-    "cinematic-shot",
-    "isometric-motion",
-    "xiaohei-illustrations",
 ]
 
 

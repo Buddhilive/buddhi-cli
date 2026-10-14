@@ -21,9 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `buddhi scripts visual-parity-diff`: Pure Python PNG codec (types 0-6, filters 0-4), solo scene-metrics telemetry, and pair diffing with 8 diagnostic PNG artifacts.
     - `buddhi scripts receipts`: Deterministic critique report verifier checking execution receipt blocks against prose measurement claims and SHA-256 artifact hashes.
     - Added `--selftest` flags to all 3 scripts.
-  - Added custom graphics skills to `buddhi skills`:
-    - Added individual installation flags (`--renderer`, `--launch-video`, `--cinematic-shot`, `--isometric-motion`, `--xiaohei-illustrations`) and the `--graphics` bundle flag.
-  - Updated `ACKNOWLEDGMENTS.md` to credit `https://github.com/dzhng/skills` (David Zhang, MIT License) and upstream contributors (Matt Pocock, Thariq, wheresryan22, helloianneo).
+  - Updated `ACKNOWLEDGMENTS.md` to credit `https://github.com/dzhng/skills` (David Zhang, MIT License) and upstream contributors (Matt Pocock, Thariq).
 - **Anti-Slop Filter Integration**:
   - Integrated the `anti-slop` filter suite adapted from `miqdadbadjuber/anti-slop` into the default Google Antigravity agent harness created by `buddhi init`.
   - Added 6 specialized agent skills under `.agents/skills/`:

@@ -63,7 +63,6 @@ The `dzhng/skills` project provides reusable agent skills for AI coding agents f
   - *Review, Decision Audit & Spec Lifecycle*: `code-review` (26-point engineering review), `review` (sequenced closeout pass), `audit-choices` (recording unprompted agent architectural choices into `.buddhi/specs/<branch>/choices.md`), `handoff-spec` (in-flight session handoffs), `close-spec` (spec archiving into `.buddhi/specs/done/<branch>/`), `eli5` (plain-language spec/diff explanations), `retro` (session retrospectives).
   - *Visual Review*: `design-with-images` (visual concept generation via Antigravity `image-generator`), `compare-screenshots` (objective pixel/edge/scene diffing), `screenshot-critique` (unprimed subagent visual checks), `preview-shots` (cross-platform image viewing).
   - *Authoring*: `write-skills` (skill authoring rulebook), `eval-skills` (subagent skill evaluation), `audit-agents` (AGENTS.md longevity audit).
-- **Custom Graphics Skills**: 5 specialized graphics skills available on demand via `buddhi skills`: `renderer`, `launch-video`, `cinematic-shot`, `isometric-motion`, `xiaohei-illustrations` (or installed all at once with `--graphics`).
 - **CLI Scripts**: Pure Python 3.10+ stdlib utilities integrated under `buddhi scripts`:
   - `buddhi scripts check-file-size`: Git-tracked source file token ratchet (default 8,000 tokens / 32 KB).
   - `buddhi scripts visual-parity-diff`: Pure Python PNG codec, solo scene metrics, and pair diffing.
@@ -74,8 +73,6 @@ The `dzhng/skills` project provides reusable agent skills for AI coding agents f
 We express our gratitude to David Zhang and upstream contributors:
 - **Matt Pocock**: For the `retro` skill (MIT License, Copyright (c) 2026 Matt Pocock) and the "fog of war" / "discovering the map" concepts.
 - **Thariq**: For the "fog of war" and "discovering the map" concepts that helped shape iterative agent specification and slicing.
-- **wheresryan22**: For the `Anatomy` skill, adapted as `isometric-motion`.
-- **helloianneo**: For the `ian-xiaohei-illustrations` skill, adapted as `xiaohei-illustrations`.
 
 ---
 
