@@ -1,9 +1,10 @@
 ---
 name: specify
 description: Initialize and refine a feature specification in the Spec-Driven Development (SDD) lifecycle by creating a feature branch, scaffolding spec.md from the template, grounding requirements in codebase OKF docs, and defining prioritized, independently testable user stories. Use when starting a new feature specification with /specify.
-version: 1.0.0
+version: 1.1.0
 requires_agents: terminal-runner
 requires_skills: okf-context
+optional_skills: explore-unknowns, auto-research
 artifact_outputs: feature-spec
 ---
 
@@ -17,6 +18,9 @@ prioritized, independently testable user stories. No code writing in this skill.
 
 ## Steps
 
+0. **Pre-spec discovery (when needed)**:
+   - If the task has major unknowns or design ambiguity, suggest running `/explore-unknowns` to complete a 4-quadrant unknown walk (known knowns, known unknowns, unknown knowns, unknown unknowns) before codifying the spec.
+   - If the feature depends on empirical heuristics, rankings, or algorithm tuning, suggest running `/auto-research` to produce a parameter-effect map and verified incumbent in `.buddhi/specs/<branch>/research.md`.
 1. **Update code graph**: Run `buddhi generate` via the `terminal-runner` agent to ensure
    the code graph (`.buddhi/graphs/tree-graph.db` and `tree-graph.json`) is up to date before
    inspecting or scaffolding.
@@ -45,4 +49,3 @@ prioritized, independently testable user stories. No code writing in this skill.
 7. **Write specification**: Write the refined specification to the `SPEC_FILE` path (`.buddhi/specs/<branch>/spec.md`).
 8. **Next step**: Present the completed `spec.md` summary to the user and prompt them to run
    `/spec-plan` to proceed to the architecture and implementation planning phase.
-

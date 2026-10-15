@@ -1,7 +1,7 @@
 ---
 name: tasks
 description: Break down an SDD implementation plan and specification into actionable, prioritized, and independently testable tasks organized by user story into tasks.md. Use when creating task lists with /tasks.
-version: 1.0.0
+version: 1.1.0
 requires_agents: terminal-runner
 requires_skills: okf-context
 artifact_outputs: tasks-list
@@ -26,19 +26,22 @@ and `plan.md` into an actionable, user-story-oriented task checklist in
    - Read `plan.md` to extract the architecture decisions, concrete file paths, and project structure.
    - Read any available supplementary documents listed in `AVAILABLE_DOCS` (`research.md`,
      `data-model.md`, `contracts/`, `quickstart.md`).
-3. **Structure tasks by phase and user story**:
+3. **Structure tasks by phase and user story (Fog-of-War Slicing)**:
    Generate tasks using the standard SDD task format: `[ID] [P?] [Story] Description`
    - **Phase 1: Setup**: Project initialization, directory structure, tooling, dependencies.
    - **Phase 2: Foundational (Blocking)**: Core models, database schema, base routing, error handling
      that MUST be in place before any user story can begin.
-   - **Phase 3+: User Story N (P1 🎯 MVP, P2, P3...)**: Grouped by story so each story can be
-     developed and tested independently. Include tests (if specified) followed by implementation.
-   - **Phase N: Polish & Cross-Cutting**: Documentation, cleanup, performance, hardening.
+   - **Phase 3+: User Story N (P1 🎯 MVP, P2, P3...)**: Grouped by story so each story forms an
+     independently verifiable slice. For each story, structure tasks:
+     1. Test specification / verification task (matching acceptance criteria).
+     2. Core entities/services implementation.
+     3. Integration checkpoint proving the slice works in isolation.
+   - **Phase N: Polish & Cross-Cutting**: Documentation updates, cleanup, performance, hardening.
 4. **Enforce task rules**:
    - Tag tasks that have no dependencies and touch different files with `[P]` for parallel execution.
    - Tag each user story task with its story identifier (e.g. `[US1]`, `[US2]`).
-   - Include exact file paths in task descriptions (no placeholders).
+   - Include exact file paths in task descriptions (no placeholders or ambiguous references).
+   - Ensure every slice is small enough to be reviewed and verified without cognitive overload.
 5. **Write tasks file**: Write the generated task list to `.buddhi/specs/<branch>/tasks.md`.
 6. **Next step**: Present the task breakdown and phase order to the user, and prompt them to
    run `/implement` to start executing the tasks.
-
