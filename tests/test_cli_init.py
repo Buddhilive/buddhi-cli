@@ -36,7 +36,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
         "document-codebase",
         "spec-plan",
         "specify",
-        "tasks",
+        "spec-tasks",
         "implement",
         "quick-plan",
         "verify",
@@ -55,6 +55,7 @@ def test_init_end_to_end_scaffolds_graph_docs_plan_and_agents(tmp_path: Path) ->
         assert (agents_dir / "skills" / skill_name / "SKILL.md").exists()
 
     assert not (agents_dir / "skills" / "plan").exists()
+    assert not (agents_dir / "skills" / "tasks").exists()
     assert not (agents_dir / "workflows").exists()
     assert (agents_dir / "rules" / "okf-docs.md").exists()
     assert (agents_dir / "rules" / "harness-core.md").exists()
@@ -141,6 +142,7 @@ def test_init_migrates_and_removes_legacy_workflows(tmp_path: Path) -> None:
     # Bundled spec-plan skill was scaffolded
     assert (agents_dir / "skills" / "spec-plan" / "SKILL.md").exists()
     assert not (agents_dir / "skills" / "plan").exists()
+    assert not (agents_dir / "skills" / "tasks").exists()
     # Custom flow was migrated to a skill with generated frontmatter
     custom_skill = agents_dir / "skills" / "custom-flow" / "SKILL.md"
     assert custom_skill.exists()
@@ -236,6 +238,7 @@ def test_init_migrates_existing_project_with_legacy_plan_skill(tmp_path: Path) -
 
     agents_dir = tmp_path / ".agents"
     assert not (agents_dir / "skills" / "plan").exists()
+    assert not (agents_dir / "skills" / "tasks").exists()
 
     migrated_skill = agents_dir / "skills" / "spec-plan" / "SKILL.md"
     assert migrated_skill.exists()
@@ -251,3 +254,66 @@ def test_init_migrates_existing_project_with_legacy_plan_skill(tmp_path: Path) -
     updated_harness = (rules_dir / "harness-core.md").read_text(encoding="utf-8")
     assert "`/spec-plan`" in updated_harness
     assert "`/plan`" not in updated_harness
+
+
+def test_init_clean_directory_scaffolds_spec_tasks_and_not_tasks(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "main.py").write_text("def run():\n    pass\n")
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    agents_dir = tmp_path / ".agents"
+    spec_tasks_skill = agents_dir / "skills" / "spec-tasks" / "SKILL.md"
+    legacy_tasks_skill = agents_dir / "skills" / "tasks"
+
+    assert spec_tasks_skill.exists()
+    assert "name: spec-tasks" in spec_tasks_skill.read_text(encoding="utf-8")
+    assert not legacy_tasks_skill.exists()
+
+    agents_md = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "/spec-tasks" in agents_md
+    assert "/tasks " not in agents_md and "`/tasks`" not in agents_md
+
+
+def test_init_migrates_existing_project_with_legacy_tasks_skill(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("def run():\n    pass\n")
+
+    # Simulate existing project with legacy tasks skill and user customization
+    legacy_skill_dir = tmp_path / ".agents" / "skills" / "tasks"
+    legacy_skill_dir.mkdir(parents=True)
+    custom_content = (
+        "---\n"
+        "name: tasks\n"
+        "description: User custom tasks skill description with /tasks\n"
+        "---\n"
+        "# /tasks\n"
+        "Custom rule: Always tag tests first.\n"
+    )
+    (legacy_skill_dir / "SKILL.md").write_text(custom_content, encoding="utf-8")
+
+    # Simulate existing AGENTS.md with /tasks references
+    (tmp_path / "AGENTS.md").write_text(
+        "1. `/specify` — feature branch\n"
+        "2. `/spec-plan` — synthesize technical architecture\n"
+        "3. `/tasks` — break down tasks by user story in `tasks.md`\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+
+    agents_dir = tmp_path / ".agents"
+    assert not (agents_dir / "skills" / "tasks").exists()
+
+    migrated_skill = agents_dir / "skills" / "spec-tasks" / "SKILL.md"
+    assert migrated_skill.exists()
+    migrated_text = migrated_skill.read_text(encoding="utf-8")
+    assert "name: spec-tasks" in migrated_text
+    assert "# /spec-tasks" in migrated_text
+    assert "Custom rule: Always tag tests first." in migrated_text
+
+    updated_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
+    assert "`/spec-tasks`" in updated_agents
+    assert "`/tasks`" not in updated_agents

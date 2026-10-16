@@ -2,7 +2,7 @@
 
 This directory holds Google Antigravity skills (`.agents/skills/<name>/SKILL.md`).
 Antigravity automatically discovers every `SKILL.md` in this directory:
-- **Slash Commands**: You can explicitly invoke any skill by typing `/<skill-name>` in the chat prompt (e.g. `/specify`, `/spec-plan`, `/tasks`, `/implement`, `/verify`, `/ask`, `/quick-plan`, `/document-codebase`, `/debug`, `/remember`, `/status`).
+- **Slash Commands**: You can explicitly invoke any skill by typing `/<skill-name>` in the chat prompt (e.g. `/specify`, `/spec-plan`, `/spec-tasks`, `/implement`, `/verify`, `/ask`, `/quick-plan`, `/document-codebase`, `/debug`, `/remember`, `/status`).
 - **Autonomous Discovery**: The agent evaluates the YAML frontmatter `description` of each skill against the active conversation and activates it when relevant.
 
 ## Core Buddhi Skills
@@ -10,7 +10,7 @@ Antigravity automatically discovers every `SKILL.md` in this directory:
 1. **Spec-Driven Development (SDD)**:
    - `specify`: Feature specification scaffolding and refinement (`/specify`).
    - `spec-plan`: Multi-specialist architectural planning (`/spec-plan`).
-   - `tasks`: Actionable user-story task breakdown (`/tasks`).
+   - `tasks`: Actionable user-story task breakdown (`/spec-tasks`).
    - `implement`: Step-by-step task execution with checkpoints (`/implement`).
    - `verify`: Real test execution and SDD acceptance convergence (`/verify`).
 2. **Architecture & Exploration**:

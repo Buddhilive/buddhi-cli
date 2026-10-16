@@ -574,6 +574,65 @@
     "needs_generation": true
   },
   {
+    "node_id": "function:.agents/hooks/guard_destructive.py::extract_command",
+    "kind": "function",
+    "name": "extract_command",
+    "qualified_name": "extract_command",
+    "file_path": ".agents/hooks/guard_destructive.py",
+    "language": "python",
+    "start_line": 88,
+    "end_line": 121,
+    "snippet": "def extract_command(payload):\r\n    \"\"\"Pull the shell command string out of a tool-call payload, if any.\r\n\r\n    The field holding the command text varies by tool/hook shape, so check\r\n    a few known locations in order. This hook only ever backstops\r\n    shell/terminal-command-shaped tool calls (run_command, git-specialist\r\n    shells out, etc.) \u2014 if none of those fields are present (or the payload\r\n    isn't a dict), this is not a command invocation at all (e.g. a Write/Edit\r\n    of file content), and there is nothing to safely pattern-match against:\r\n    return None rather than stringifying the whole payload, which would\r\n    otherwise deny file writes whose *content* merely mentions a destructive\r\n    command (including this harness's own rule docs).\r\n    \"\"\"\r\n    if isinstance(payload, dict):\r\n        for key in (\"command\", \"cmd\"):\r\n            value = payload.get(key)\r\n            if isinstance(value, str):\r\n                return value\r\n\r\n        for outer_key, inner_key in (\r\n            (\"input\", \"command\"),\r\n            (\"tool_input\", \"command\"),\r\n            (\"parameters\", \"command\"),\r\n            (\"input\", \"cmd\"),\r\n            (\"tool_input\", \"cmd\"),\r\n            (\"parameters\", \"cmd\"),\r\n        ):\r\n            outer = payload.get(outer_key)\r\n            if isinstance(outer, dict):\r\n                inner = outer.get(inner_key)\r\n                if isinstance(inner, str):\r\n                    return inner\r\n\r\n    return None",
+    "content_hash": "f1b2308567322b32d1e298622c0be23e5974ef9953ad745f768912e6d0781477",
+    "parent_id": "file:.agents/hooks/guard_destructive.py",
+    "callers": [
+      "function:.agents/hooks/guard_destructive.py::decide"
+    ],
+    "callees": [],
+    "doc_path": ".buddhi/docs/.agents/hooks/guard_destructive/extract_command.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:.agents/hooks/guard_destructive.py::decide",
+    "kind": "function",
+    "name": "decide",
+    "qualified_name": "decide",
+    "file_path": ".agents/hooks/guard_destructive.py",
+    "language": "python",
+    "start_line": 124,
+    "end_line": 138,
+    "snippet": "def decide(payload):\r\n    command = extract_command(payload)\r\n    if command is None:\r\n        # Not a shell/terminal-command-shaped tool call \u2014 nothing to check,\r\n        # so fail open rather than scanning unrelated payloads (file content,\r\n        # etc.) against command deny-patterns.\r\n        return {\"decision\": \"allow\"}\r\n\r\n    for pattern, reason, confirmable in DENY_RULES:\r\n        if pattern.search(command):\r\n            if confirmable and CONFIRMED_MARKER in command:\r\n                continue\r\n            return {\"decision\": \"deny\", \"reason\": reason}\r\n\r\n    return {\"decision\": \"allow\"}",
+    "content_hash": "576d5331f9fa9bca111e028f1da3cd6a626832b03b681c89254506129b36c998",
+    "parent_id": "file:.agents/hooks/guard_destructive.py",
+    "callers": [
+      "function:.agents/hooks/guard_destructive.py::main"
+    ],
+    "callees": [
+      "function:.agents/hooks/guard_destructive.py::extract_command"
+    ],
+    "doc_path": ".buddhi/docs/.agents/hooks/guard_destructive/decide.md",
+    "needs_generation": true
+  },
+  {
+    "node_id": "function:.agents/hooks/guard_destructive.py::main",
+    "kind": "function",
+    "name": "main",
+    "qualified_name": "main",
+    "file_path": ".agents/hooks/guard_destructive.py",
+    "language": "python",
+    "start_line": 141,
+    "end_line": 151,
+    "snippet": "def main():\r\n    try:\r\n        raw = sys.stdin.read()\r\n        payload = json.loads(raw)\r\n        result = decide(payload)\r\n    except Exception:  # noqa: BLE001 - must never block tool use on this hook's own bugs\r\n        # Never block tool use because this hook itself is broken or the\r\n        # input was malformed/non-JSON.\r\n        result = {\"decision\": \"allow\"}\r\n\r\n    print(json.dumps(result))",
+    "content_hash": "4b173a5854e146a34f055195da3f12ebc3af3669b16babe9e92c27dfd6570ebd",
+    "parent_id": "file:.agents/hooks/guard_destructive.py",
+    "callers": [],
+    "callees": [
+      "function:.agents/hooks/guard_destructive.py::decide"
+    ],
+    "doc_path": ".buddhi/docs/.agents/hooks/guard_destructive/main.md",
+    "needs_generation": true
+  },
+  {
     "node_id": "function:src/buddhi/cli.py::_root_callback",
     "kind": "function",
     "name": "_root_callback",

@@ -44,5 +44,5 @@ No code writing in this skill — only plan generation.
      storage choice, sync vs async, new pattern), apply the `system-design` skill to evaluate
      alternatives before finalizing that section.
 7. **Write plan**: Write the completed plan to `IMPL_PLAN` (`.buddhi/specs/<branch>/plan.md`).
-8. **Next step**: Present the plan to the user and prompt them to run `/tasks` to break down the
+8. **Next step**: Present the plan to the user and prompt them to run `/spec-tasks` to break down the
    plan into actionable, testable tasks.

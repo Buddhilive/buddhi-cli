@@ -1,13 +1,13 @@
 ---
-name: tasks
-description: Break down an SDD implementation plan and specification into actionable, prioritized, and independently testable tasks organized by user story into tasks.md. Use when creating task lists with /tasks.
+name: spec-tasks
+description: Break down an SDD implementation plan and specification into actionable, prioritized, and independently testable tasks organized by user story into tasks.md. Use when creating task lists with /spec-tasks.
 version: 1.1.0
 requires_agents: terminal-runner
 requires_skills: okf-context
 artifact_outputs: tasks-list
 ---
 
-# /tasks
+# /spec-tasks
 
 $ARGUMENTS
 

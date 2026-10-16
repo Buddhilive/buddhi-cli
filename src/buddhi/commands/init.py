@@ -17,6 +17,7 @@ from buddhi.util.fsutil import (
     ensure_buddhi_dirs,
     ensure_docs_dir,
     migrate_legacy_plan_skill,
+    migrate_legacy_tasks_skill,
     migrate_legacy_workflows,
     sync_template_tree,
 )
@@ -32,7 +33,9 @@ def init(
     max_file_size: int = typer.Option(
         2_000_000, "--max-file-size", help="Skip files larger than this, in bytes."
     ),
-    verbose: bool = typer.Option(False, "-v", "--verbose", help="Print per-file warnings."),
+    verbose: bool = typer.Option(
+        False, "-v", "--verbose", help="Print per-file warnings."
+    ),
 ) -> None:
     """Build the code graph, plan docs, and scaffold a Google Antigravity agent harness.
 
@@ -54,7 +57,9 @@ def init(
     result = run_pipeline(root, max_file_size=max_file_size)
     if verbose:
         for lang, err in result.language_warnings.items():
-            err_console.print(f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}")
+            err_console.print(
+                f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}"
+            )
         for warning in result.build_ctx.warnings:
             err_console.print(f"[yellow]warning:[/yellow] {warning}")
 
@@ -80,13 +85,20 @@ def init(
     plan_entries = build_docs_plan(result.build_ctx.graph, root)
     plan_path = root / ".buddhi" / "docs-plan.json"
     try:
-        plan_path.write_text(json.dumps(plan_to_json(plan_entries), indent=2), encoding="utf-8")
+        plan_path.write_text(
+            json.dumps(plan_to_json(plan_entries), indent=2), encoding="utf-8"
+        )
     except OSError as exc:
         err_console.print(f"[red]error:[/red] failed writing {plan_path}: {exc}")
         raise typer.Exit(code=1) from exc
 
     try:
-        plan_migration_report = migrate_legacy_plan_skill(root / ".agents", project_root=root)
+        plan_migration_report = migrate_legacy_plan_skill(
+            root / ".agents", project_root=root
+        )
+        tasks_migration_report = migrate_legacy_tasks_skill(
+            root / ".agents", project_root=root
+        )
         template_root = resources.files(_AGENTS_TEMPLATE_PACKAGE)
         with resources.as_file(template_root) as template_dir:
             sync_report = sync_template_tree(template_dir, root / ".agents")
@@ -111,18 +123,28 @@ def init(
                     buddhi_server["args"] = current_args
                 else:
                     buddhi_server["args"] = ["--root", str(root.resolve())]
-                mcp_config_path.write_text(json.dumps(mcp_data, indent=2) + "\n", encoding="utf-8")
+                mcp_config_path.write_text(
+                    json.dumps(mcp_data, indent=2) + "\n", encoding="utf-8"
+                )
         except (json.JSONDecodeError, OSError) as exc:
             if verbose:
-                err_console.print(f"[yellow]warning:[/yellow] could not configure .agents/mcp_config.json: {exc}")
+                err_console.print(
+                    f"[yellow]warning:[/yellow] could not configure .agents/mcp_config.json: {exc}"
+                )
 
     agents_md_path = root / "AGENTS.md"
     agents_md_created = False
     if not agents_md_path.exists():
         try:
-            agents_template_file = resources.files(_AGENTS_TEMPLATE_PACKAGE) / "templates" / "agents-template.md"
+            agents_template_file = (
+                resources.files(_AGENTS_TEMPLATE_PACKAGE)
+                / "templates"
+                / "agents-template.md"
+            )
             if agents_template_file.is_file():
-                content = agents_template_file.read_text(encoding="utf-8").replace("[PROJECT_NAME]", root.name)
+                content = agents_template_file.read_text(encoding="utf-8").replace(
+                    "[PROJECT_NAME]", root.name
+                )
                 agents_md_path.write_text(content, encoding="utf-8")
                 agents_md_created = True
         except (OSError, UnicodeError, AttributeError, ModuleNotFoundError, TypeError):
@@ -134,11 +156,23 @@ def init(
         f"  graph: {len(result.build_ctx.graph.nodes)} nodes, "
         f"{len(result.build_ctx.graph.edges)} edges, {result.community_count} communities"
     )
-    console.print(f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation")
-    console.print(f"  .agents/: {len(sync_report.created)} file(s) added, "
-                  f"{len(sync_report.kept_existing)} already present (left untouched)")
-    if plan_migration_report.migrated_skill or plan_migration_report.removed_legacy_skill:
+    console.print(
+        f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation"
+    )
+    console.print(
+        f"  .agents/: {len(sync_report.created)} file(s) added, "
+        f"{len(sync_report.kept_existing)} already present (left untouched)"
+    )
+    if (
+        plan_migration_report.migrated_skill
+        or plan_migration_report.removed_legacy_skill
+    ):
         console.print("  migrated legacy plan skill to spec-plan")
+    if (
+        tasks_migration_report.migrated_skill
+        or tasks_migration_report.removed_legacy_skill
+    ):
+        console.print("  migrated legacy tasks skill to spec-tasks")
     if migration_report.migrated or migration_report.removed:
         console.print(
             f"  migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "
