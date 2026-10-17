@@ -23,7 +23,9 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - A workspace **MCP Server** (`buddhi-mcp`) exposing:
   - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
   - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
+  - `buddhi_memory` — Query, read, remember, and validate OKF v0.2 + Claude Code memory concepts with path-scoped glob filtering and 5-hop `@path` import recursion.
   - `check_contrast` — WCAG 2.x color contrast ratio checker for AI UI generation.
+- An **OKF v0.2 & Claude Code Memory Layer** providing structured, budget-bounded per-project memory (`buddhi memory`), automatic legacy migration, and SDD integration.
 - An **Anti-Slop Filter Suite** (`antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-code`) preventing generic AI slop in UI, text, and code comments.
 - A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
@@ -151,6 +153,23 @@ Inspect and install custom Antigravity agent skills into `.agents/skills/`:
 - `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
 - `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
 - `--force` / `-f` — Overwrite existing skill files if already present.
+
+### `buddhi memory` — OKF v0.2 & Claude Code memory management
+
+```sh
+buddhi memory [subcommand] [options]
+```
+
+Manage the project's OKF v0.2 concept notes and Claude Code-inspired memory hierarchy:
+- `buddhi memory status [--scope project|local|user] [--json]` — Display `MEMORY.md` line/byte budget utilization (200-line / 25KB cap), count of concepts by kind, and staleness telemetry.
+- `buddhi memory add --kind <kind> --title <title> --summary <summary> [--body <body>] [--path-glob <glob>] [--source <file#L1-L20>]` — Create an atomic concept node with automated SHA-256 source hashing.
+- `buddhi memory search <query> [--kind <kind>] [--active-file <file>] [--json]` — Search memory concepts with active file path glob filtering.
+- `buddhi memory read <node_id> [--expand-imports]` — Read a concept node with recursive `@path` inline expansion up to 5 hops.
+- `buddhi memory validate [--scope <scope>]` — Validate bundle frontmatter compliance, budget limits, and detect stale sources.
+- `buddhi memory sync [--scope <scope>]` — Reconcile topic `index.md` files and root `MEMORY.md`.
+- `buddhi memory compact [--scope <scope>]` — Demote superseded/deprecated pointers to `<topic>/index.md` to keep `MEMORY.md` within budget.
+- `buddhi memory migrate` — Non-destructively convert legacy flat memory files into OKF concept nodes.
+- `buddhi memory sdd-promote [--branch <branch>]` — Extract durable decisions from `plan.md` and verified choices from `choices.md` into OKF memory.
 
 ### `buddhi scripts` — utility scripts and tools
 

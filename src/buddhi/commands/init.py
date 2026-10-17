@@ -9,11 +9,13 @@ from rich.console import Console
 
 from buddhi.docgen.planner import build_docs_plan, plan_to_json
 from buddhi.graph.pipeline import run_pipeline
+from buddhi.memory.migrate import migrate_legacy_memory
 from buddhi.persist.html_writer import write_html
 from buddhi.persist.json_writer import write_json
 from buddhi.persist.sqlite_writer import write_sqlite
 from buddhi.util.fsutil import (
     BuddhiFsError,
+    ensure_agents_gitignore,
     ensure_buddhi_dirs,
     ensure_docs_dir,
     migrate_legacy_plan_skill,
@@ -99,6 +101,8 @@ def init(
         tasks_migration_report = migrate_legacy_tasks_skill(
             root / ".agents", project_root=root
         )
+        memory_migration_report = migrate_legacy_memory(root)
+        ensure_agents_gitignore(root / ".agents")
         template_root = resources.files(_AGENTS_TEMPLATE_PACKAGE)
         with resources.as_file(template_root) as template_dir:
             sync_report = sync_template_tree(template_dir, root / ".agents")
@@ -173,6 +177,10 @@ def init(
         or tasks_migration_report.removed_legacy_skill
     ):
         console.print("  migrated legacy tasks skill to spec-tasks")
+    if memory_migration_report.migrated_count > 0:
+        console.print(
+            f"  migrated legacy memory: {memory_migration_report.migrated_count} entry(ies) converted to OKF concepts"
+        )
     if migration_report.migrated or migration_report.removed:
         console.print(
             f"  migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "

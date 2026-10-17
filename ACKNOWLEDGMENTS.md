@@ -1,6 +1,40 @@
 # Acknowledgments
 
-`buddhi-cli` incorporates concepts, skills, rules, and contrast-checking logic adapted from the following open-source projects:
+`buddhi-cli` incorporates concepts, skills, rules, specifications, and contrast-checking logic adapted from the following open-source projects and architectural standards:
+
+## Claude Code Memory
+
+- **Documentation**: [https://code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory)
+- **Author**: Anthropic
+
+### Description & Adapted Components
+
+Claude Code provides architectural standards for hierarchical, budget-bounded agent memory. `buddhi-cli` adapts these memory patterns into the Google Antigravity harness:
+- **Index Budget Enforcement**: Capping the primary memory entrypoint (`MEMORY.md`) to 200 lines / 25 KB with compaction and demotion into topic indexes to prevent LLM context saturation.
+- **Hierarchical Scopes**: Distinguishing project-shared (`.agents/memory/`), local gitignored (`.agents/memory.local/`), cross-project user preferences (`~/.buddhi/memory/`), and subagent memory (`.agents/agent-memory/<agent>/`).
+- **Path-Scoped Activation & Import Expansion**: Using glob patterns (`paths: [...]`) to match memories against active files and expanding inline `@path` references up to 5 hops with cycle detection and directory sandboxing.
+- **Agent Memory Frontmatter**: Equipping specialist subagents with persistent domain memory.
+
+We express our gratitude to Anthropic and the Claude Code team for publishing their memory architecture standards.
+
+---
+
+## Google Open Knowledge Format (OKF)
+
+- **Repository**: [https://github.com/GoogleCloudPlatform/open-knowledge-format](https://github.com/GoogleCloudPlatform/open-knowledge-format)
+- **Author**: Google Cloud Platform
+- **License**: Apache License 2.0
+
+### Description & Adapted Components
+
+The Open Knowledge Format (OKF v0.2) specifies portable, machine-readable knowledge bundles of Markdown files with structured YAML frontmatter. `buddhi-cli` adapts OKF v0.2 for project memory concepts:
+- **Concept Frontmatter Schema**: Standardized YAML frontmatter (`id`, `kind`, `title`, `summary`, `status`, `confidence`, `paths`, `tags`, `sources`, `relations`).
+- **Source Code Provenance & Staleness**: Anchoring memories to source code line ranges (`resource#L10-L40`) and tracking staleness via SHA-256 `content_hash` comparison.
+- **Bundle Topology**: Directory structures with topic `index.md` files, a chronological mutation `log.md`, and an entrypoint `MEMORY.md` declaring `okf_version: "0.2"`.
+
+We express our gratitude to the Google Cloud Platform team and contributors for the Open Knowledge Format specification.
+
+---
 
 ## anti-slop
 

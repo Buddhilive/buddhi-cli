@@ -31,12 +31,11 @@ trigger: always_on
   the `terminal-runner` subagent instead of running it inline: it reports back a
   condensed, no-bluff summary instead of raw output, keeping the main agent's
   context lean for reasoning.
-- `.agents/memory/MEMORY.md` is an index into topic files under
-  `.agents/memory/` — `user-preferences.md`, `project-conventions.md`,
-  `tech-decisions.md`, `feedback-history.md`. Read the index at session start
-  for durable project conventions and prior decisions. When `/spec-plan` or other
-  harness work surfaces a convention or decision worth keeping across
-  sessions, append it to the matching topic file and add a pointer to the
-  index, rather than letting it live only in this conversation. Use the
+- `.agents/memory/MEMORY.md` is an entrypoint index into OKF v0.2 concept notes
+  under `.agents/memory/` — `decisions/`, `conventions/`, `preferences/`, `feedback/`, and `sdd/`.
+  Read the index at session start for durable project conventions and prior decisions, or use
+  `buddhi_memory(action="search", active_files=...)` for path-scoped retrieval. When `/spec-plan` or other
+  harness work surfaces a convention or decision worth keeping across sessions, persist it as an OKF node
+  via `/remember` or `buddhi memory add`, updating the index rather than letting it live only in this conversation. Use the
   `/remember` skill for the same thing when the user explicitly asks to
   capture something.

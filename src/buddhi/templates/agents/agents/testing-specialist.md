@@ -7,6 +7,7 @@ tools:
   - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
+memory: project
 mainAgent: false
 version: 1.1.0
 ---
@@ -18,6 +19,7 @@ plan section, never code.
 
 ## Before planning
 
+- Consult `.agents/memory/` and `.agents/agent-memory/` for project conventions and domain decisions.
 - Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
   via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db` for the existing test suite's
   structure and conventions (test runner, fixture patterns, mocking vs real dependencies) —

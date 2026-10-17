@@ -27,7 +27,11 @@ def _get_db_path(cwd: str | None = None) -> Path:
     if OVERRIDE_DB_PATH is not None:
         return OVERRIDE_DB_PATH
 
-    start_dir = Path(cwd).resolve() if cwd else (OVERRIDE_ROOT if OVERRIDE_ROOT is not None else Path.cwd().resolve())
+    start_dir = (
+        Path(cwd).resolve()
+        if cwd
+        else (OVERRIDE_ROOT if OVERRIDE_ROOT is not None else Path.cwd().resolve())
+    )
     for parent in [start_dir] + list(start_dir.parents):
         for rel in [
             Path(".buddhi") / "graphs" / "tree-graph.db",
@@ -53,9 +57,14 @@ def buddhi_search(
         str,
         "Output mode: 'full' (complete source), 'signatures' (declarations only), or 'map' (one-liner index)",
     ] = "full",
-    include_bridges: Annotated[bool, "Include 1-hop bridge nodes from neighboring communities"] = True,
+    include_bridges: Annotated[
+        bool, "Include 1-hop bridge nodes from neighboring communities"
+    ] = True,
     budget: Annotated[int, "Max character count for output. 0 = unbounded"] = 8000,
-    cwd: Annotated[str | None, "Working directory override. Defaults to CWD of the MCP server process."] = None,
+    cwd: Annotated[
+        str | None,
+        "Working directory override. Defaults to CWD of the MCP server process.",
+    ] = None,
 ) -> str:
     """Search the codebase using Buddhi's topology-driven retrieval pipeline.
 
@@ -84,11 +93,22 @@ def buddhi_search(
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def buddhi_read(
     filepath: Annotated[str | None, "The workspace path to the file to read"] = None,
-    query: Annotated[str | None, "Glob pattern or identifier to find files/symbols in the workspace"] = None,
-    mode: Annotated[str, "Compression profile: 'auto', 'full', 'signatures', 'map', or 'entropy'"] = "auto",
-    task_intent: Annotated[str | None, "Natural language goals (e.g. 'Fix the bug') to auto-resolve mode"] = None,
-    budget: Annotated[int, "Max token count budget. Fallbacks to map if exceeded"] = 4000,
-    cwd: Annotated[str | None, "Working directory override. Defaults to CWD of the MCP server process."] = None,
+    query: Annotated[
+        str | None, "Glob pattern or identifier to find files/symbols in the workspace"
+    ] = None,
+    mode: Annotated[
+        str, "Compression profile: 'auto', 'full', 'signatures', 'map', or 'entropy'"
+    ] = "auto",
+    task_intent: Annotated[
+        str | None, "Natural language goals (e.g. 'Fix the bug') to auto-resolve mode"
+    ] = None,
+    budget: Annotated[
+        int, "Max token count budget. Fallbacks to map if exceeded"
+    ] = 4000,
+    cwd: Annotated[
+        str | None,
+        "Working directory override. Defaults to CWD of the MCP server process.",
+    ] = None,
 ) -> str:
     """Read a file using dynamic compression, AST pruning, and bounce prevention logic, or search for files/symbols in the workspace."""
     from buddhi.mcp.tools.read import execute_buddhi_read
@@ -124,6 +144,75 @@ def check_contrast(
     from buddhi.mcp.tools.contrast import execute_check_contrast
 
     return execute_check_contrast(color_a=color_a, color_b=color_b)
+
+
+@mcp.tool()
+def buddhi_memory(
+    action: Annotated[
+        str, "Memory operation: 'search', 'read', 'remember', or 'status'"
+    ],
+    query: Annotated[str | None, "Search query (keywords, concept title, tags)"] = None,
+    kind: Annotated[
+        str | None,
+        "Filter or set concept kind: decision, convention, preference, feedback, sdd-rationale",
+    ] = None,
+    scope: Annotated[
+        str, "Memory scope: 'project', 'local', 'user', or 'agent:<name>'"
+    ] = "project",
+    active_files: Annotated[
+        list[str] | None,
+        "List of currently active file paths for path-scoped glob matching",
+    ] = None,
+    node_id: Annotated[
+        str | None,
+        "Exact memory concept ID to read or update (e.g. 'mem-decision-sqlite-wal')",
+    ] = None,
+    title: Annotated[str | None, "Concept title (required for 'remember')"] = None,
+    summary: Annotated[
+        str | None, "One-sentence concept summary (required for 'remember')"
+    ] = None,
+    body: Annotated[
+        str | None, "Markdown body detailing context, rationale, and invariants"
+    ] = None,
+    path_globs: Annotated[
+        list[str] | None,
+        "Glob patterns when this memory activates (e.g. ['src/api/**/*.py'])",
+    ] = None,
+    sources: Annotated[
+        list[str] | None,
+        "Code provenance anchors to hash and track staleness (e.g. ['src/api/auth.py#L10-L40'])",
+    ] = None,
+    tags: Annotated[list[str] | None, "Classification tags"] = None,
+    expand_imports: Annotated[
+        bool, "Expand @path imports inline (up to 5 hops)"
+    ] = True,
+    cwd: Annotated[
+        str | None, "Working directory override. Defaults to CWD or --root."
+    ] = None,
+) -> str:
+    """Query, read, and curate durable OKF v0.2 + Claude Code memory concepts for this project."""
+    from buddhi.mcp.tools.memory import execute_buddhi_memory
+
+    root_dir = Path(cwd).resolve() if cwd else OVERRIDE_ROOT
+    try:
+        return execute_buddhi_memory(
+            action=action,
+            query=query,
+            kind=kind,
+            scope=scope,
+            active_files=active_files,
+            node_id=node_id,
+            title=title,
+            summary=summary,
+            body=body,
+            path_globs=path_globs,
+            sources=sources,
+            tags=tags,
+            expand_imports=expand_imports,
+            root_path=root_dir,
+        )
+    except Exception as e:
+        return f"Error executing memory operation: {e}"
 
 
 def main() -> None:

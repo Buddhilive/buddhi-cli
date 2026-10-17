@@ -7,6 +7,7 @@ tools:
   - grep_search
 commandExecutionPolicy: sandbox
 subagent: true
+memory: project
 mainAgent: false
 version: 1.1.0
 ---
@@ -18,6 +19,7 @@ you produce a plan section, never code, and never run git commands yourself.
 
 ## Before planning
 
+- Consult `.agents/memory/` and `.agents/agent-memory/` for project conventions and domain decisions.
 - Check recent commit history and branch naming already in use in this repo
   (via the `terminal-runner` agent, e.g. `git log --oneline -20`) and match
   its conventions rather than proposing a new one.

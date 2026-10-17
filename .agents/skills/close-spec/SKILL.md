@@ -65,8 +65,10 @@ restates what a function does, cut it and point at the function instead.
    visual-provenance trail so the story of where the requirement came from
    survives the close.
 
-6. **Fix references.** Update links that pointed at the old path. If `[[memory]]`
-   notes or other skills referenced the spec, repoint them.
+6. **Promote to OKF Memory & Fix references.** Run `buddhi memory sdd-promote --branch <branch>`
+   to extract verified architectural decisions and sound choices from `choices.md` and `spec.md`
+   into durable OKF concept nodes under `.agents/memory/decisions/` and `.agents/memory/sdd/`.
+   Update links that pointed at the old path, and repoint memory relations to `.buddhi/specs/done/<feature>/spec.md`.
 
 7. **Audit every statement, unbiased.** Spawn sub-agents that did not write the
    spec and lack the conversation, and have them check the final document

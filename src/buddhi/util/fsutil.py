@@ -13,6 +13,11 @@ GRAPHS_DIR_NAME = "graphs"
 DOCS_DIR_NAME = "docs"
 GITIGNORE_CONTENT = "graphs/\n"
 
+AGENTS_GITIGNORE_RULES = [
+    "memory.local/",
+    "agent-memory-local/",
+]
+
 
 class BuddhiFsError(Exception):
     pass
@@ -454,3 +459,22 @@ def migrate_legacy_tasks_skill(
                 ) from exc
 
     return report
+
+
+def ensure_agents_gitignore(agents_dir: Path) -> Path:
+    """Ensure .agents/.gitignore exists and ignores local memory dirs."""
+    agents_dir.mkdir(parents=True, exist_ok=True)
+    gitignore_path = agents_dir / ".gitignore"
+    try:
+        existing = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
+        lines = [line.strip() for line in existing.splitlines()]
+        added = []
+        for rule in AGENTS_GITIGNORE_RULES:
+            if rule not in lines:
+                added.append(rule)
+        if added:
+            content = (existing.rstrip() + "\n" + "\n".join(added) + "\n").lstrip()
+            gitignore_path.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        raise BuddhiFsError(f"could not prepare {gitignore_path}: {exc}") from exc
+    return gitignore_path

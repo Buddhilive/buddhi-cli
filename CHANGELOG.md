@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **OKF v0.2 & Claude Code Memory Layer**:
+  - Implemented a deterministic project-level memory architecture combining **Google Open Knowledge Format (OKF v0.2)** concept schemas and **Claude Code Memory** standards into the Google Antigravity agent harness scaffolded by `buddhi init`.
+  - **Memory Bundle Storage Engine (`src/buddhi/memory/`)**:
+    - Atomic concept nodes with strict YAML frontmatter (`id`, `kind`, `title`, `summary`, `status`, `confidence`, `scope`, `paths`, `tags`, `sources`, `relations`).
+    - Multi-scope memory hierarchy: `project` (`.agents/memory/`), `local` (`.agents/memory.local/`), `user` (`~/.buddhi/memory/`), and specialist subagent memory (`.agents/agent-memory/<agent>/`).
+    - Strict context budget enforcement: root `MEMORY.md` capped at `<= 200 lines` and `<= 25,600 bytes` (25 KB) with `<= 150 char` pointer lines, backed by compaction demotion into `<topic>/index.md`.
+    - Provenance hashing and staleness detection: SHA-256 computation over full files or `#L<start>-L<end>` line ranges with CRLF->LF cross-platform normalization.
+    - Path-scoped activation: glob matching (`paths: [...]`) using `pathspec` gitignore rules against active session files.
+    - Recursive `@path` imports: sandboxed inline expansion up to a maximum depth of 5 hops with cycle detection and workspace boundary validation.
+    - Security invariants: directory traversal guards, secret and token leakage scanners, slug sanitization, and safe YAML parsing.
+    - SDD Promotion engine: automatic extraction of durable decisions and verified sound choices from `.buddhi/specs/<branch>/` into OKF concept nodes.
+    - Non-destructive legacy migration: automatically migrates legacy unformatted topic files (`user-preferences.md`, etc.) to OKF concept files and backs up originals as `.md.bak`.
+  - **`buddhi memory` CLI Command Group**:
+    - `buddhi memory status`: Real-time budget utilization, stale concept reporting, and broken relation telemetry.
+    - `buddhi memory add`: Deterministic concept node creation with automated SHA-256 source hashing.
+    - `buddhi memory search`: Query search across scopes with active file path glob filtering.
+    - `buddhi memory read`: Reads memory concept nodes with optional recursive `@path` expansion.
+    - `buddhi memory validate`: Bundle conformance, line/byte cap, and source hash verification.
+    - `buddhi memory sync`: Reconciles topic `index.md` files and root `MEMORY.md`.
+    - `buddhi memory compact`: Prunes and demotes lower-priority entries to keep `MEMORY.md` within the 200-line budget.
+    - `buddhi memory migrate`: Converts legacy flat files to OKF concept nodes.
+    - `buddhi memory sdd-promote`: Extracts spec choices into OKF decisions.
+  - **`buddhi_memory` MCP Tool**:
+    - Registered on the `buddhi-mcp` FastMCP server, allowing AI coding agents to search, read, remember, and check memory status over StdIO.
+  - **Antigravity Harness & SDD Integration**:
+    - Added `/memory` skill for interactive inspection, staleness auditing, and compaction.
+    - Upgraded `/remember` and `/status` skills to leverage OKF concept schemas and `buddhi memory`.
+    - Integrated memory discovery and staleness checks into `/spec-plan`, `/specify`, and `/close-spec`.
+    - Updated specialist agent definitions (`backend-specialist`, `frontend-specialist`, `database-specialist`, etc.) with `memory: project` frontmatter.
+  - Updated `ACKNOWLEDGMENTS.md` to credit Claude Code Memory documentation and Google Open Knowledge Format (OKF).
 - **Software Factory Skills & Scripts Adaptation (`dzhng/skills`)**:
   - Integrated 23 SDD-complementary agent skills adapted from `dzhng/skills` into the default Google Antigravity harness scaffolded by `buddhi init`:
     - *Discovery & Research*: `explore-unknowns` (4-quadrant unknown mapping with 6 stage reference guides), `auto-research` (progressive hypothesis testing & parameter-effect maps in `.buddhi/specs/<branch>/research.md`).
