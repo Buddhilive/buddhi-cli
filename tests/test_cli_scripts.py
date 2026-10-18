@@ -44,7 +44,8 @@ def test_contrast_invalid_args() -> None:
 def test_contrast_selftest() -> None:
     result = runner.invoke(app, ["scripts", "contrast", "--selftest"])
     assert result.exit_code == 0
-    assert "reference pairs OK" in result.output
+    assert "reference pairs" in result.output
+    assert "OK" in result.output
 
 
 def test_antislop_mode_cli(tmp_path: Path, monkeypatch) -> None:

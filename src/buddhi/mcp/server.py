@@ -86,7 +86,7 @@ def buddhi_search(
             budget=budget,
             root_path=root_dir,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001
         return f"Error executing search: {e}"
 
 
@@ -125,25 +125,88 @@ def buddhi_read(
             query=query,
             root_path=root_dir,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001
         return f"Error executing read: {e}"
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def check_contrast(
     color_a: Annotated[
-        str,
+        str | None,
         "First color as hex (#FFFFFF or FFFFFF) or named color ('black', 'white')",
-    ],
+    ] = None,
     color_b: Annotated[
-        str,
+        str | None,
         "Second color as hex (#FFFFFF or FFFFFF) or named color ('black', 'white')",
-    ],
+    ] = None,
+    bg: Annotated[
+        str | None,
+        "Background color token for multi-pair contrast checking",
+    ] = None,
+    fg: Annotated[
+        list[str] | str | None,
+        "Foreground color token(s) tested against the background",
+    ] = None,
+    profile: Annotated[
+        str,
+        "Strictness profile ('standard', 'shield', or 'launchpad')",
+    ] = "standard",
+    css_path: Annotated[
+        str | None,
+        "Path to CSS file for stylesheet triage analysis",
+    ] = None,
+    page_bg: Annotated[
+        str,
+        "Page background color token for CSS triage (default: #ffffff)",
+    ] = "#ffffff",
 ) -> str:
-    """Check WCAG 2.x contrast ratio between two colors."""
+    """Check WCAG 2.x contrast ratio between two colors, multi-pair tokens, or across a stylesheet."""
     from buddhi.mcp.tools.contrast import execute_check_contrast
 
-    return execute_check_contrast(color_a=color_a, color_b=color_b)
+    return execute_check_contrast(
+        color_a=color_a,
+        color_b=color_b,
+        bg=bg,
+        fg=fg,
+        profile=profile,
+        css_path=css_path,
+        page_bg=page_bg,
+    )
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def verify_a11y(
+    project_dir: Annotated[
+        str,
+        "Project root directory (default: current directory)",
+    ] = ".",
+    src: Annotated[
+        str | None,
+        "Subdirectory holding the interface source code to scan",
+    ] = None,
+    report_dir: Annotated[
+        str | None,
+        "Directory containing A11Y governance artifacts (REPORT.md, etc.)",
+    ] = None,
+    warn_only: Annotated[
+        bool,
+        "Report findings without failing exit status",
+    ] = False,
+    as_json: Annotated[
+        bool,
+        "Return structured JSON with findings, errors, and warnings",
+    ] = False,
+) -> str:
+    """Run the A11Y.md static gate to verify artifacts, freshness, contrast math, and source anti-patterns."""
+    from buddhi.mcp.tools.a11y import execute_verify_a11y
+
+    return execute_verify_a11y(
+        project_dir=project_dir,
+        src=src,
+        report_dir=report_dir,
+        warn_only=warn_only,
+        as_json=as_json,
+    )
 
 
 @mcp.tool()
@@ -211,7 +274,7 @@ def buddhi_memory(
             expand_imports=expand_imports,
             root_path=root_dir,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return f"Error executing memory operation: {e}"
 
 

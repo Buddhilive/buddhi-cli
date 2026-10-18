@@ -1,10 +1,10 @@
 ---
 name: specify
 description: Initialize and refine a feature specification in the Spec-Driven Development (SDD) lifecycle by creating a feature branch, scaffolding spec.md from the template, grounding requirements in codebase OKF docs, and defining prioritized, independently testable user stories. Use when starting a new feature specification with /specify.
-version: 1.1.0
+version: 1.2.0
 requires_agents: terminal-runner
 requires_skills: okf-context
-optional_skills: explore-unknowns, auto-research
+optional_skills: explore-unknowns, auto-research, a11y
 artifact_outputs: feature-spec
 ---
 
@@ -44,6 +44,7 @@ prioritized, independently testable user stories. No code writing in this skill.
 6. **Detail requirements & success criteria**:
    - List functional requirements (`FR-001`, `FR-002`...). Mark any ambiguities with `[NEEDS CLARIFICATION]`.
    - List key entities if data/state is involved.
+   - If the feature involves UI, web surfaces, or interactive frontend components, include an explicit Accessibility (A11Y) requirement (WCAG 2.2 AA / EN 301 549, keyboard operability, contrast compliance, and screen-reader semantics) referencing the `a11y` skill.
    - Define measurable, technology-agnostic success criteria (`SC-001`...).
    - Capture edge cases and boundary conditions.
 7. **Write specification**: Write the refined specification to the `SPEC_FILE` path (`.buddhi/specs/<branch>/spec.md`).

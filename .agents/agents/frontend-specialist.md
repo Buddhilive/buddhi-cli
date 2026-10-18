@@ -9,7 +9,7 @@ commandExecutionPolicy: sandbox
 subagent: true
 memory: project
 mainAgent: false
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Frontend specialist
@@ -31,14 +31,19 @@ plan section, never code.
 - For UI/visual, copy, accessibility, or responsive work, apply the antislop
   filter: consult the `antislop` core skill and the matching `antislop-ui`,
   `antislop-human`, `antislop-layoutmobile`, or `antislop-copywriting` skill.
+- Consult the A11Y.md system: read `.agents/skills/a11y/SKILL.md`, check `A11Y-DECISIONS.md`
+  for recorded pattern memory, and enforce WCAG 2.2 AA standards.
 
 ## What to cover
 
 - Component boundaries and where new/changed components fit into the existing
   structure (name real files, not placeholders).
-- Accessibility (keyboard nav, semantic markup, ARIA where needed) and
-  responsive behavior — call these out explicitly, don't assume they're
-  someone else's problem.
+- Accessibility contract: consult matching `.agents/skills/a11y/references/guide-*.md`
+  rules for touched patterns (buttons, forms, dialogs, navigation, etc.). Mandate
+  semantic HTML, keyboard operability, and focus restoration. Verify contrast
+  with `buddhi scripts contrast` or MCP `check_contrast`, and identify whether
+  pattern choices belong in `A11Y-DECISIONS.md` or `REPORT.md`.
+- Responsive behavior and layout across breakpoints.
 - State management: where new state lives, and why that layer over another.
 - Any command that needs to run (install, build, dev server) — delegate to
   the `terminal-runner` agent rather than describing it as prose the user has

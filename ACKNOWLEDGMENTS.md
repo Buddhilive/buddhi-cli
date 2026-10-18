@@ -82,6 +82,55 @@ SOFTWARE.
 
 ---
 
+## A11Y.md
+
+- **Repository**: [https://github.com/fecarrico/A11Y.md](https://github.com/fecarrico/A11Y.md)
+- **Author**: Felipe A. Carriço (`fecarrico`)
+- **License**: MIT License
+
+### Description & Adapted Components
+
+`A11Y.md` is an accessibility framework and instruction standard for AI coding assistants, treating accessibility as an invariant rather than a post-hoc audit. `buddhi-cli` adapts the `A11Y.md` system into the Google Antigravity harness and Spec-Driven Development (SDD) workflow:
+- **`a11y` Skill & Pattern Guides**: Specialized Antigravity skill (`.agents/skills/a11y/`) packaging 31 modular pattern guides (`guide-*.md`) covering interactive elements, forms, dialogs, media, navigation, and touch targets with lazy-loading index to maintain token economy.
+- **Always-on Rule**: `.agents/rules/a11y.md` enforcing WCAG 2.2 AA / EN 301 549 standards, semantic HTML over ARIA recreation, and pattern memory lookups.
+- **Governance Artifacts & Templates**: Scaffolding templates for release evidence (`REPORT.md`), unresolvable technical exceptions (`EXCEPTIONS.md`), cross-turn pattern memory (`A11Y-DECISIONS.md`), and public accessibility statements (`ACCESSIBILITY.md`).
+- **Deterministic Static Gate**: Pure Python 3.10+ stdlib modular package (`src/buddhi/scripts/verify_a11y/`) and CLI command (`buddhi scripts verify-a11y`) auditing 11 source anti-patterns, release evidence completeness, contrast evidence math, and verification independence.
+- **Enhanced Contrast Engine**: Extended `buddhi scripts contrast` supporting multi-pair evaluation (`--bg`, `--fg`), strictness profiles (`standard`, `shield`, `launchpad`), alpha compositing over page background, and CSS stylesheet triage (`--css`).
+- **FastMCP Tools**: Registered `verify_a11y` and enhanced `check_contrast` tools on the Buddhi MCP server for agent invocation.
+- **SDD Memory Promotion**: Automatic extraction of `A11Y-DECISIONS.md` pattern choices into durable OKF concept nodes (`mem-decision-a11y-*`) during `/close-spec` and `buddhi memory sdd-promote`.
+
+We express our gratitude to Felipe A. Carriço and contributors for authoring and sharing the `A11Y.md` specification and tools.
+
+---
+
+### Upstream MIT License (`A11Y.md`)
+
+```text
+MIT License
+
+Copyright (c) 2026 fecarrico
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
 ## skills (`dzhng/skills`)
 
 - **Repository**: [https://github.com/dzhng/skills](https://github.com/dzhng/skills)

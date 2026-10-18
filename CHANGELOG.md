@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A11Y.md Accessibility Framework Integration**:
+  - Adapted the `A11Y.md` framework ([https://github.com/fecarrico/A11Y.md](https://github.com/fecarrico/A11Y.md), Felipe A. Carriço) into the Google Antigravity harness and Spec-Driven Development (SDD) workflow initialized via `buddhi init`.
+  - **`a11y` Skill & Modular Guides (`.agents/skills/a11y/`)**:
+    - Created the `a11y` skill packaging all 31 specialized pattern reference guides (`guide-*.md`) covering buttons, forms, modal dialogs, media, navigation, and touch targets with a token-efficient index and lazy-loading protocol.
+    - Added templates for release evidence (`REPORT.md`), unresolvable technical exceptions (`EXCEPTIONS.md`), cross-turn pattern memory (`A11Y-DECISIONS.md`), and public accessibility statements (`ACCESSIBILITY.md`).
+  - **Always-on Rule (`.agents/rules/a11y.md`)**:
+    - Installed always-on routing rule enforcing WCAG 2.2 AA / EN 301 549 standards, mandatory semantic HTML over ARIA recreation, and cross-turn pattern memory lookups.
+  - **Deterministic Static Gate (`buddhi scripts verify-a11y`)**:
+    - Created pure Python 3.10+ stdlib modular verification package (`src/buddhi/scripts/verify_a11y/`) keeping all files within the 8,000-token ratchet budget.
+    - Audits 11 source anti-patterns: `clickable-div`, `placeholder-label`, `half-climbed-aria`, `aria-soup`, `nullified-alt`, `orphaned-aria`, `overlay`, `positive-tabindex`, `outline-none`, `redundant-alert`, and `media-autoplay`.
+    - Verifies release evidence freshness, completeness, contrast table math recomputation, and verification independence (`cross-agent`, `fresh-context`, `self-reported`).
+    - Added `--warn-only` and fixture self-test (`--selftest`) passing 31 test scenarios.
+  - **Enhanced Contrast Engine (`buddhi scripts contrast`)**:
+    - Extended the contrast CLI to support multi-pair evaluation (`--bg`, `--fg`), strictness profiles (`standard`, `shield`, `launchpad`), alpha compositing over page background, and CSS stylesheet triage (`--css`, `--page-bg`).
+  - **FastMCP Tools**:
+    - Registered `verify_a11y` on the Buddhi MCP server with structured JSON output option (`as_json=True`).
+    - Enhanced `check_contrast` to accept background/foreground tokens, strictness profiles, and CSS file triage paths.
+  - **SDD Integration & Memory Promotion**:
+    - Integrated A11Y checkpoints and guidance into `frontend-specialist`, `/specify`, `/spec-plan`, `/spec-tasks`, `/implement`, `/verify`, and `/close-spec`.
+    - Added automatic extraction of `A11Y-DECISIONS.md` pattern memory into durable OKF concept nodes (`mem-decision-a11y-*`) via `buddhi memory sdd-promote`.
+  - Updated `ACKNOWLEDGMENTS.md` with complete attribution and MIT license text for `A11Y.md`.
 - **OKF v0.2 & Claude Code Memory Layer**:
   - Implemented a deterministic project-level memory architecture combining **Google Open Knowledge Format (OKF v0.2)** concept schemas and **Claude Code Memory** standards into the Google Antigravity agent harness scaffolded by `buddhi init`.
   - **Memory Bundle Storage Engine (`src/buddhi/memory/`)**:

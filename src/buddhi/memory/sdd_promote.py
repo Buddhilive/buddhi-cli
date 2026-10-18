@@ -73,6 +73,32 @@ def extract_choices(choices_path: Path) -> list[tuple[str, str, str]]:
     return entries
 
 
+def extract_a11y_decisions(a11y_decisions_path: Path) -> list[tuple[str, str, str]]:
+    """Extracts (title, rationale, date) from A11Y-DECISIONS.md entries."""
+    if not a11y_decisions_path.is_file():
+        return []
+
+    text = a11y_decisions_path.read_text(encoding="utf-8")
+    entries: list[tuple[str, str, str]] = []
+
+    pattern = re.compile(
+        r"^[ \t]*[-*]\s*\*\*(.+?)\*\*\s*(?:[—–\->:]+)?\s*(.+?)(?:\s*\(([^)]+)\))?$",
+        re.MULTILINE,
+    )
+    for m in pattern.finditer(text):
+        title = m.group(1).strip()
+        body = m.group(2).strip()
+        date_str = (m.group(3) or "").strip()
+        if (
+            not title
+            or "example — replace with your project's first real decision" in body
+        ):
+            continue
+        entries.append((title, body, date_str))
+
+    return entries
+
+
 def promote_sdd_artifacts(
     workspace_root: Path, branch: str | None = None
 ) -> PromotionResult:
@@ -151,6 +177,51 @@ def promote_sdd_artifacts(
         )
         store.save_node(node, "project")
         promoted.append(node)
+
+    # 3. Promote decisions from A11Y-DECISIONS.md
+    a11y_candidates = [
+        spec_dir / "A11Y-DECISIONS.md",
+        workspace_root / "A11Y-DECISIONS.md",
+        workspace_root / ".buddhi" / "a11y" / "A11Y-DECISIONS.md",
+    ]
+    seen_a11y_titles: set[str] = set()
+    for a11y_file in a11y_candidates:
+        if not a11y_file.is_file():
+            continue
+        try:
+            rel_target = str(a11y_file.relative_to(workspace_root))
+        except ValueError:
+            rel_target = str(a11y_file)
+
+        for title, body, date_str in extract_a11y_decisions(a11y_file):
+            if title in seen_a11y_titles:
+                continue
+            seen_a11y_titles.add(title)
+            slug = sanitize_slug(title)
+            node_id = f"mem-decision-a11y-{slug}"
+            node = MemoryNode(
+                frontmatter=MemoryFrontmatter(
+                    id=node_id,
+                    kind=MemoryKind.DECISION,
+                    title=f"A11Y: {title}",
+                    summary=body.splitlines()[0][:140] if body else title,
+                    status=MemoryStatus.STABLE,
+                    confidence=MemoryConfidence.VERIFIED,
+                    scope="project",
+                    tags=["a11y", "a11y-decision", branch_name],
+                    generated=MemoryGenerated(by=f"buddhi-a11y/{branch_name}"),
+                    relations=[
+                        MemoryRelation(
+                            kind=RelationKind.DERIVED_FROM_SPEC,
+                            target=rel_target,
+                        )
+                    ],
+                ),
+                body=f"# Summary\n\n{title}\n\n# Context & Rationale\n\n{body}\n"
+                + (f"\n# Recorded Date\n{date_str}\n" if date_str else ""),
+            )
+            store.save_node(node, "project")
+            promoted.append(node)
 
     if promoted:
         store.log_mutation(

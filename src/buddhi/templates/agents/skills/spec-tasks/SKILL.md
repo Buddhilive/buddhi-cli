@@ -1,9 +1,10 @@
 ---
 name: spec-tasks
 description: Break down an SDD implementation plan and specification into actionable, prioritized, and independently testable tasks organized by user story into tasks.md. Use when creating task lists with /spec-tasks.
-version: 1.1.0
+version: 1.2.0
 requires_agents: terminal-runner
 requires_skills: okf-context
+optional_skills: a11y
 artifact_outputs: tasks-list
 ---
 
@@ -36,7 +37,8 @@ and `plan.md` into an actionable, user-story-oriented task checklist in
      1. Test specification / verification task (matching acceptance criteria).
      2. Core entities/services implementation.
      3. Integration checkpoint proving the slice works in isolation.
-   - **Phase N: Polish & Cross-Cutting**: Documentation updates, cleanup, performance, hardening.
+     4. For UI stories: keyboard navigation, contrast check (`buddhi scripts contrast`), and A11Y static gate (`buddhi scripts verify-a11y`).
+   - **Phase N: Polish & Cross-Cutting**: Documentation updates, cleanup, performance, hardening, and A11Y governance verification (`REPORT.md` / `A11Y-DECISIONS.md`).
 4. **Enforce task rules**:
    - Tag tasks that have no dependencies and touch different files with `[P]` for parallel execution.
    - Tag each user story task with its story identifier (e.g. `[US1]`, `[US2]`).

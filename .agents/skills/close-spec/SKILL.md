@@ -66,9 +66,11 @@ restates what a function does, cut it and point at the function instead.
    survives the close.
 
 6. **Promote to OKF Memory & Fix references.** Run `buddhi memory sdd-promote --branch <branch>`
-   to extract verified architectural decisions and sound choices from `choices.md` and `spec.md`
-   into durable OKF concept nodes under `.agents/memory/decisions/` and `.agents/memory/sdd/`.
-   Update links that pointed at the old path, and repoint memory relations to `.buddhi/specs/done/<feature>/spec.md`.
+   to extract verified architectural decisions and sound choices from `choices.md`, `spec.md`, and
+   `A11Y-DECISIONS.md` into durable OKF concept nodes under `.agents/memory/decisions/` and `.agents/memory/sdd/`.
+   If the feature touched UI, ensure `A11Y-DECISIONS.md` and `REPORT.md` are preserved alongside the closed
+   spec in `.buddhi/specs/done/<feature>/`. Update links that pointed at the old path, and repoint
+   memory relations to `.buddhi/specs/done/<feature>/spec.md`.
 
 7. **Audit every statement, unbiased.** Spawn sub-agents that did not write the
    spec and lack the conversation, and have them check the final document

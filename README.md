@@ -24,8 +24,10 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
   - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
   - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
   - `buddhi_memory` — Query, read, remember, and validate OKF v0.2 + Claude Code memory concepts with path-scoped glob filtering and 5-hop `@path` import recursion.
-  - `check_contrast` — WCAG 2.x color contrast ratio checker for AI UI generation.
+  - `check_contrast` — WCAG 2.x color contrast ratio checker for AI UI generation (supporting multi-pair tokens, strictness profiles, and CSS triage).
+  - `verify_a11y` — Deterministic A11Y.md static gate auditing source anti-patterns, release evidence completeness, and verification independence.
 - An **OKF v0.2 & Claude Code Memory Layer** providing structured, budget-bounded per-project memory (`buddhi memory`), automatic legacy migration, and SDD integration.
+- An **A11Y.md Accessibility System** providing an always-on rule (`a11y.md`), 31 component pattern guides (`guide-*.md`), governance templates (`REPORT.md`, `EXCEPTIONS.md`, `A11Y-DECISIONS.md`), static gate auditing (`buddhi scripts verify-a11y`), and SDD memory promotion.
 - An **Anti-Slop Filter Suite** (`antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-code`) preventing generic AI slop in UI, text, and code comments.
 - A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
@@ -178,8 +180,9 @@ buddhi scripts [subcommand]
 ```
 
 Run standalone developer utilities:
-- `buddhi scripts contrast <color_a> <color_b>` — Check WCAG 2.x contrast ratio between two colors (hex codes or `black`/`white`). Exits with code 0 only when both normal (4.5:1) and large (3:1) text pass.
+- `buddhi scripts contrast <color_a> <color_b>` — Check WCAG 2.x contrast ratio between two colors (hex codes or `black`/`white`). Exits with code 0 only when both normal (4.5:1) and large (3:1) text pass. Also supports `--bg <bg> --fg <fg>...` for multi-pair checking, `--css <file>` for stylesheet triage, and strictness profiles (`--profile standard|shield|launchpad`).
 - `buddhi scripts contrast --selftest` — Recompute and verify the reference contrast table against the WCAG formula.
+- `buddhi scripts verify-a11y [project_dir] [--src <dir>] [--report-dir <dir>] [--warn-only] [--selftest]` — Run the A11Y.md static gate to verify artifacts, freshness, contrast math, and 11 source anti-patterns.
 - `buddhi scripts antislop-mode [during|after|ask]` — View or set the global anti-slop usage mode in the platform configuration file (`%APPDATA%\antislop\settings.json` on Windows, `~/.config/antislop/settings.json` on macOS/Linux).
 - `buddhi scripts check-file-size --all [--max-tokens N]` — Check and ratchet source file sizes against token budget (default 8,000 tokens / 32 KB).
 - `buddhi scripts visual-parity-diff [--candidate-dir DIR] [--reference-dir DIR] [--out-dir DIR]` — Compute solo scene metrics or reference-vs-candidate parity diffing with 8 diagnostic PNG artifacts.
@@ -204,6 +207,7 @@ Run standalone developer utilities:
   - **`okf-context`** — Context skill guiding agents to consult `.buddhi/docs/` and use Buddhi MCP code graph tools (`buddhi_search` and `buddhi_read`) before reading raw source files.
   - **`repoagent-doc-generation`** — Topological per-symbol documentation engine for generating OKF docs.
   - **`system-design`** — Architecture and trade-off decision framework used during planning.
+  - **`a11y`** — Accessibility framework packaging 31 modular pattern guides (`guide-*.md`) covering interactive elements, forms, media, and navigation with lazy-loading indexing.
   - **`antislop`** — Core always-on filter stopping generic AI slop across UI, text, and code comments.
   - **`antislop-ui`** — UI & visual design filter: color, layout, component choices, motion, and anti-AI-aesthetic patterns.
   - **`antislop-copywriting`** — Copywriting filter: anti-AI prose, headlines, tone, and authentic messaging.
@@ -225,7 +229,7 @@ Run standalone developer utilities:
   execution.
 - **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and Buddhi MCP code graph
   tools before raw source (`okf-docs.md`), require confirmation before destructive commands
-  and preserve conventions (`harness-core.md`), and enforce the anti-slop design filter (`antislop.md`).
+  and preserve conventions (`harness-core.md`), enforce accessibility invariants (`a11y.md`), and enforce the anti-slop design filter (`antislop.md`).
 - **`hooks.json`** / **`hooks/guard_destructive.py`** — A `PreToolUse`
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a

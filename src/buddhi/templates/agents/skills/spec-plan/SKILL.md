@@ -1,9 +1,10 @@
 ---
 name: spec-plan
 description: Orchestrate an architectural implementation plan in the Spec-Driven Development (SDD) lifecycle by setting up plan.md, grounding design in OKF codebase docs and graph, dispatching specialist agents in parallel, and synthesizing a comprehensive technical plan. Use when creating an SDD technical plan with /spec-plan.
-version: 2.1.0
+version: 2.2.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context, system-design
+optional_skills: a11y
 artifact_outputs: implementation-plan
 ---
 
@@ -32,6 +33,7 @@ No code writing in this skill — only plan generation.
 5. **Dispatch specialist agents & evaluate multi-angle perspectives**:
    - Classify which domains the feature touches (frontend, backend, database, testing, security, deployment, git).
    - Dispatch **only** the relevant specialist agents in parallel with concrete context (file paths, relevant OKF docs, graph nodes).
+   - When the feature touches UI/frontend, instruct `frontend-specialist` to review accessibility implications: check `A11Y-DECISIONS.md`, consult `.agents/skills/a11y/references/guide-*.md` for component patterns involved, and define static gate / contrast requirements in the plan.
    - Evaluate trade-offs across three distinct architectural lenses:
      * *Fewest-slices*: What is the minimal change that delivers end-to-end value?
      * *Risk-first*: What are the most volatile technical risks (e.g. data consistency, perf, security) that must be de-risked early?
@@ -39,6 +41,7 @@ No code writing in this skill — only plan generation.
 6. **Synthesize implementation plan**:
    - Fill in each section of `plan.md`: **Summary**, **Technical Context**, **Constitution Check**,
      **Project Structure** (source tree layout with concrete paths), and **Complexity Tracking**.
+   - For UI features, include an Accessibility Strategy section detailing keyboard operability, contrast floors (using `buddhi scripts contrast`), and governance artifact maintenance (`REPORT.md`, `A11Y-DECISIONS.md`).
    - If the request involves a nontrivial architecture/trade-off decision (new service boundary,
      storage choice, sync vs async, new pattern), apply the `system-design` skill to evaluate
      alternatives before finalizing that section.

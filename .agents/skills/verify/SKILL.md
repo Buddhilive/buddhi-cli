@@ -1,10 +1,10 @@
 ---
 name: verify
 description: Prove that changes work and satisfy acceptance criteria by running real build, lint, and test commands via the terminal-runner agent, mapping evidence to SDD user stories when available, and reporting genuine pass/fail evidence. Use when validating changes with /verify.
-version: 2.1.0
+version: 2.2.0
 requires_agents: terminal-runner
 requires_skills: okf-context
-optional_skills: compare-screenshots, screenshot-critique, review, close-spec
+optional_skills: compare-screenshots, screenshot-critique, review, close-spec, a11y
 artifact_outputs: verification-report, convergence-report
 ---
 
@@ -34,8 +34,10 @@ against acceptance criteria, rather than claiming success from static reading.
 4. **Execute verification via terminal-runner**:
    Execute every verification command exclusively through the `terminal-runner` agent. Never execute
    verification commands directly in the main agent's context.
-5. **Visual verification gates (for UI/Visual changes)**:
-   - When the feature touches UI or visual styling:
+5. **Visual & Accessibility verification gates (for UI/Visual changes)**:
+   - When the feature touches UI, visual styling, or frontend templates:
+     * Run `buddhi scripts verify-a11y` (or MCP `verify_a11y`) via the `terminal-runner` agent to run the static gate (anti-patterns, contrast evidence, freshness, and artifact integrity). Verify that `REPORT.md` contains fresh execution records and passes the gate.
+     * Run `buddhi scripts contrast` or MCP `check_contrast` to verify all measured pairs against WCAG floors.
      * Run `/compare-screenshots` (using `buddhi scripts visual-parity-diff`) to check objective pixel, edge, and scene metrics against the reference design.
      * Run `/screenshot-critique` using a fresh, unprimed subagent to inspect the UI, and verify the report with `buddhi scripts receipts`.
 6. **Code closeout verification**:

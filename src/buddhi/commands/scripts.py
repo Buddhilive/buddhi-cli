@@ -16,13 +16,23 @@ from buddhi.scripts.check_file_size import (
 from buddhi.scripts.check_file_size import (
     selftest as check_file_size_selftest,
 )
-from buddhi.scripts.contrast import run_contrast_check
+from buddhi.scripts.contrast import (
+    run_contrast_check,
+    run_css_mode,
+    run_pair_mode,
+)
 from buddhi.scripts.contrast import selftest as contrast_selftest
 from buddhi.scripts.receipts import (
     check_report,
 )
 from buddhi.scripts.receipts import (
     selftest as receipts_selftest,
+)
+from buddhi.scripts.verify_a11y import (
+    run_checks as run_verify_a11y_checks,
+)
+from buddhi.scripts.verify_a11y import (
+    self_test as verify_a11y_selftest,
 )
 from buddhi.scripts.visual_parity_diff import (
     run_visual_parity_diff,
@@ -50,12 +60,30 @@ def contrast(
     color_b: str | None = typer.Argument(
         None, help="Second color as hex or named color (black/white)."
     ),
+    bg: str | None = typer.Option(None, "--bg", help="Background color for pair mode."),
+    fg: list[str] = typer.Option(  # noqa: B008
+        [], "--fg", help="Foreground color(s) for pair mode."
+    ),
+    profile: str = typer.Option(
+        "standard",
+        "--profile",
+        help="Compliance profile: 'standard' (AA) or 'shield' (AAA).",
+    ),
+    css: str | None = typer.Option(
+        None, "--css", help="CSS file path to triage color literals."
+    ),
+    page_bg: str = typer.Option(
+        "#ffffff", "--page-bg", help="Page background for CSS alpha compositing."
+    ),
     selftest: bool = typer.Option(
         False, "--selftest", help="Run self-test against the reference table."
     ),
+    self_test_flag: bool = typer.Option(
+        False, "--self-test", help="Run self-test (alias)."
+    ),
 ) -> None:
-    """Check WCAG 2.x contrast ratio between two colors."""
-    if selftest:
+    """Check WCAG 2.x contrast ratio between colors, in pairs, or triage CSS."""
+    if selftest or self_test_flag:
         code, msg = contrast_selftest()
         if code == 0:
             console.print(msg)
@@ -63,17 +91,97 @@ def contrast(
             err_console.print(msg)
         raise typer.Exit(code=code)
 
+    if css:
+        try:
+            code, msg = run_css_mode(
+                Path(css).resolve(), page_bg_tok=page_bg, profile=profile
+            )
+            console.print(msg)
+            raise typer.Exit(code=code)
+        except ValueError as exc:
+            err_console.print(f"error: {exc}")
+            raise typer.Exit(code=2)
+
+    if bg:
+        fg_list = list(fg)
+        if color_a:
+            fg_list.insert(0, color_a)
+        if color_b:
+            fg_list.append(color_b)
+        if not fg_list:
+            err_console.print(
+                "error: pair mode needs at least one foreground color (--fg)"
+            )
+            raise typer.Exit(code=2)
+        try:
+            code, msg = run_pair_mode(bg, fg_list, profile=profile)
+            console.print(msg)
+            raise typer.Exit(code=code)
+        except ValueError as exc:
+            err_console.print(f"error: {exc}")
+            raise typer.Exit(code=2)
+
     if color_a is None or color_b is None:
-        err_console.print("usage: buddhi scripts contrast <hex1> <hex2> | --selftest")
+        err_console.print(
+            "usage: buddhi scripts contrast <hex1> <hex2> | --bg <bg> --fg <fg>... | --css <file> | --selftest"
+        )
         raise typer.Exit(code=2)
 
     try:
-        result = run_contrast_check(color_a, color_b)
+        result = run_contrast_check(color_a, color_b, profile=profile)
     except ValueError as exc:
         err_console.print(f"error: {exc}")
         raise typer.Exit(code=2)
 
     console.print(result.formatted_text)
+    raise typer.Exit(code=result.exit_code)
+
+
+@scripts_app.command(name="verify-a11y")
+def verify_a11y_cmd(
+    project_dir: str = typer.Argument(
+        ".", help="Project root directory (default: current directory)."
+    ),
+    src: str | None = typer.Option(
+        None, "--src", help="Subdirectory holding the interface source."
+    ),
+    report_dir: str | None = typer.Option(
+        None, "--report-dir", help="Directory containing A11Y governance artifacts."
+    ),
+    warn_only: bool = typer.Option(
+        False, "--warn-only", help="Report findings without failing exit code."
+    ),
+    selftest: bool = typer.Option(
+        False, "--selftest", help="Run built-in fixture test cases."
+    ),
+    self_test_flag: bool = typer.Option(
+        False, "--self-test", help="Run built-in fixture test cases (alias)."
+    ),
+) -> None:
+    """Run the A11Y.md static gate to verify artifacts, freshness, contrast math, and source anti-patterns."""
+    if selftest or self_test_flag:
+        code, msg = verify_a11y_selftest()
+        if code == 0:
+            console.print(msg, markup=False)
+        else:
+            err_console.print(msg, markup=False)
+        raise typer.Exit(code=code)
+
+    proj_root = Path(project_dir).resolve()
+    if not proj_root.is_dir():
+        err_console.print(f"error: {proj_root} is not a directory")
+        raise typer.Exit(code=2)
+
+    src_path = (proj_root / src).resolve() if src else proj_root
+    rep_path = Path(report_dir).resolve() if report_dir else None
+
+    result = run_verify_a11y_checks(
+        root=proj_root,
+        src=src_path,
+        report_dir=rep_path,
+        warn_only=warn_only,
+    )
+    console.print(result.output_text, markup=False)
     raise typer.Exit(code=result.exit_code)
 
 
