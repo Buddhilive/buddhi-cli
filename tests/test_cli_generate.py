@@ -8,7 +8,9 @@ runner = CliRunner()
 
 
 def test_generate_end_to_end(tmp_path: Path) -> None:
-    (tmp_path / "main.py").write_text("def helper():\n    pass\n\ndef run():\n    helper()\n")
+    (tmp_path / "main.py").write_text(
+        "def helper():\n    pass\n\ndef run():\n    helper()\n"
+    )
 
     result = runner.invoke(app, ["generate", "--tree", str(tmp_path)])
 
@@ -17,7 +19,9 @@ def test_generate_end_to_end(tmp_path: Path) -> None:
     assert (graphs_dir / "tree-graph.json").exists()
     assert (graphs_dir / "tree-graph.db").exists()
     assert (graphs_dir / "tree-graph.html").exists()
-    assert (tmp_path / ".buddhi" / ".gitignore").read_text(encoding="utf-8") == "graphs/\n"
+    assert (tmp_path / ".buddhi" / ".gitignore").read_text(
+        encoding="utf-8"
+    ) == "graphs/\n"
 
 
 def test_generate_bad_path_errors_cleanly(tmp_path: Path) -> None:

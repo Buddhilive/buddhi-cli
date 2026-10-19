@@ -26,7 +26,9 @@ def generate(
     max_file_size: int = typer.Option(
         2_000_000, "--max-file-size", help="Skip files larger than this, in bytes."
     ),
-    verbose: bool = typer.Option(False, "-v", "--verbose", help="Print per-file warnings."),
+    verbose: bool = typer.Option(
+        False, "-v", "--verbose", help="Print per-file warnings."
+    ),
 ) -> None:
     """Scan PATH, build a code graph, and write it to .buddhi/graphs/."""
     root = path.resolve()
@@ -44,10 +46,14 @@ def generate(
 
     if verbose:
         for lang, err in result.language_warnings.items():
-            err_console.print(f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}")
+            err_console.print(
+                f"[yellow]warning:[/yellow] language '{lang}' unavailable: {err}"
+            )
 
     if not walk_result.files:
-        console.print("[yellow]warning:[/yellow] no supported source files found under this path.")
+        console.print(
+            "[yellow]warning:[/yellow] no supported source files found under this path."
+        )
 
     if verbose:
         for warning in build_ctx.warnings:
@@ -65,7 +71,12 @@ def generate(
 
     try:
         write_json(build_ctx.graph, json_path)
-        write_sqlite(build_ctx.graph, db_path, root_path=str(root))
+        write_sqlite(
+            build_ctx.graph,
+            db_path,
+            root_path=str(root),
+            extract_cache_entries=build_ctx.extract_cache_entries,
+        )
         write_html(build_ctx.graph, html_path, root_label=root.name or str(root))
     except OSError as exc:
         err_console.print(f"[red]error:[/red] failed writing artifacts: {exc}")
@@ -73,12 +84,15 @@ def generate(
 
     languages_seen = sorted({f.language for f in walk_result.files})
     console.print(f"[bold green]done[/bold green] scanned {root}")
+    cache_hits = build_ctx.stats.get("cache_hits", 0)
     console.print(
-        f"  files: {build_ctx.stats.get('files_parsed', 0)} parsed, "
+        f"  files: {build_ctx.stats.get('files_parsed', 0)} parsed ({cache_hits} cached), "
         f"{build_ctx.stats.get('files_failed', 0)} failed, "
         f"{len(walk_result.skipped_too_large)} skipped (too large)"
     )
-    console.print(f"  languages: {', '.join(languages_seen) if languages_seen else '(none)'}")
+    console.print(
+        f"  languages: {', '.join(languages_seen) if languages_seen else '(none)'}"
+    )
     console.print(
         f"  graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges, "
         f"{result.community_count} communities"

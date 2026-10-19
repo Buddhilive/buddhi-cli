@@ -22,7 +22,9 @@ def plan(
     max_file_size: int = typer.Option(
         2_000_000, "--max-file-size", help="Skip files larger than this, in bytes."
     ),
-    verbose: bool = typer.Option(False, "-v", "--verbose", help="Print per-file warnings."),
+    verbose: bool = typer.Option(
+        False, "-v", "--verbose", help="Print per-file warnings."
+    ),
 ) -> None:
     """Compute a bottom-up, staleness-aware doc-generation plan and write docs-plan.json."""
     root = path.resolve()
@@ -49,7 +51,9 @@ def plan(
     entries = build_docs_plan(result.build_ctx.graph, root)
     plan_path = root / ".buddhi" / "docs-plan.json"
     try:
-        plan_path.write_text(json.dumps(plan_to_json(entries), indent=2), encoding="utf-8")
+        plan_path.write_text(
+            json.dumps(plan_to_json(entries), indent=2), encoding="utf-8"
+        )
     except OSError as exc:
         err_console.print(f"[red]error:[/red] failed writing {plan_path}: {exc}")
         raise typer.Exit(code=1) from exc

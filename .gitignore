@@ -35,5 +35,9 @@ coverage.xml
 *.swp
 *.swo
 
+# Temporary / scratch
+temp/
+/temp/
+
 # MacOS
 .DS_Store

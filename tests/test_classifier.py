@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 from buddhi.mcp.compression.classifier import resolve_mode
 
 
@@ -18,8 +19,13 @@ def test_classifier_intent_mapping():
 
 
 def test_classifier_intent_read_only():
-    assert resolve_mode("file.py", "Find references and understand the call flow") == "signatures"
-    assert resolve_mode("file.py", "Give me an overview of the interface") == "signatures"
+    assert (
+        resolve_mode("file.py", "Find references and understand the call flow")
+        == "signatures"
+    )
+    assert (
+        resolve_mode("file.py", "Give me an overview of the interface") == "signatures"
+    )
     assert resolve_mode("file.py", "Trace how this function works") == "signatures"
 
 

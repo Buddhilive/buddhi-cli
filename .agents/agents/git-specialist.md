@@ -5,6 +5,10 @@ model: inherit
 tools:
   - view_file
   - grep_search
+  - buddhi_search
+  - buddhi_read
+  - buddhi_graph
+  - buddhi_memory
 commandExecutionPolicy: sandbox
 subagent: true
 memory: project

@@ -1,3 +1,5 @@
+from typing import Any
+
 """Tests for the guard_destructive.py PreToolUse safety hook template.
 
 Drives the actual template script via subprocess (as Antigravity would),
@@ -33,7 +35,8 @@ def run_hook(stdin_text: str) -> dict:
     return json.loads(result.stdout)
 
 
-def run_command_payload(command: str, shape: str = "command") -> dict:
+def run_command_payload(command: str, shape: str = "command") -> dict[str, Any]:
+    payload: dict[str, Any]
     if shape == "command":
         payload = {"command": command}
     elif shape == "input.command":
@@ -151,4 +154,7 @@ def test_write_payload_mentioning_destructive_command_in_content_allows() -> Non
 
 def test_alternate_command_field_shapes_are_checked() -> None:
     assert run_command_payload("rm -rf /", shape="input.command")["decision"] == "deny"
-    assert run_command_payload("rm -rf /", shape="tool_input.command")["decision"] == "deny"
+    assert (
+        run_command_payload("rm -rf /", shape="tool_input.command")["decision"]
+        == "deny"
+    )

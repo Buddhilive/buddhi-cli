@@ -44,9 +44,13 @@ except ImportError:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Analyze a repository for agent skill generation.")
+    parser = argparse.ArgumentParser(
+        description="Analyze a repository for agent skill generation."
+    )
     parser.add_argument("target", help="Local directory path or git clone URL")
-    parser.add_argument("--json", action="store_true", help="Output analysis in JSON format")
+    parser.add_argument(
+        "--json", action="store_true", help="Output analysis in JSON format"
+    )
     args = parser.parse_args()
 
     exit_code = run_repo_to_skill(args.target, json_mode=args.json)

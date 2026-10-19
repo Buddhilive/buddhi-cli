@@ -1,5 +1,8 @@
 # Memory Mutation Log
 
+## 2026-10-27 05:51:26Z - [SAVED] `mem-decision-single-sqlite-schema-v2-for-graph-intelligence-ast-cache-and`: Single SQLite Schema v2 for Graph Intelligence, AST Cache, and Blast Radius
+Kind: decision, Summary: Store communities, SHA-256 extract_cache, and edge confidence/context in .buddhi/graphs/tree-graph.db and expose via buddhi_graph MCP and <50ms stdlib hooks
+
 ## 2026-10-26 13:48:19Z - [SDD-PROMOTE] `sdd-005-okf-claude-memory-layer`: Promoted 1 SDD concept(s) from branch 005-okf-claude-memory-layer
 
 ## 2026-10-26 13:48:19Z - [SAVED] `mem-sdd-okf-claude-code-memory-layer-for-antigravity-harness`: SDD: OKF & Claude Code Memory Layer for Antigravity Harness

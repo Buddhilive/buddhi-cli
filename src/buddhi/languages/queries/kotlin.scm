@@ -1,5 +1,10 @@
 (class_declaration
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  (delegation_specifiers
+    (delegation_specifier [
+      (constructor_invocation (user_type (identifier) @inherit.base))
+      (user_type (identifier) @inherit.base)
+    ]))?) @definition.class
 
 (function_declaration
   (user_type) @receiver.type

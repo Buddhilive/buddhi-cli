@@ -78,7 +78,12 @@ def init(
 
     try:
         write_json(result.build_ctx.graph, json_path)
-        write_sqlite(result.build_ctx.graph, db_path, root_path=str(root))
+        write_sqlite(
+            result.build_ctx.graph,
+            db_path,
+            root_path=str(root),
+            extract_cache_entries=result.build_ctx.extract_cache_entries,
+        )
         write_html(result.build_ctx.graph, html_path, root_label=root.name or str(root))
     except OSError as exc:
         err_console.print(f"[red]error:[/red] failed writing graph artifacts: {exc}")

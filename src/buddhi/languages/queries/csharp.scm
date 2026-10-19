@@ -1,5 +1,10 @@
 (class_declaration
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  (base_list [(identifier) (generic_name)] @inherit.base)?) @definition.class
+
+(interface_declaration
+  name: (identifier) @name
+  (base_list [(identifier) (generic_name)] @inherit.base)?) @definition.class
 
 (method_declaration
   name: (identifier) @name) @definition.method

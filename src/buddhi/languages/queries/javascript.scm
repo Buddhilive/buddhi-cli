@@ -1,11 +1,19 @@
 (class_declaration
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  (class_heritage
+    (extends_clause value: [(identifier) (member_expression)] @inherit.base))?
+) @definition.class
 
 (function_declaration
   name: (identifier) @name) @definition.function
 
 (method_definition
   name: (property_identifier) @name) @definition.method
+
+(import_statement
+  (import_clause (named_imports (import_specifier name: (identifier) @import.symbol)))?
+  source: (string) @import.path
+) @import
 
 (import_statement
   source: (string) @import.path) @import

@@ -78,7 +78,9 @@ def test_sdd_full_lifecycle(tmp_path: Path, monkeypatch) -> None:
     assert "Feature Specification" in spec_path.read_text(encoding="utf-8")
 
     # 3. SDD setup-plan
-    plan_res = runner.invoke(app, ["sdd", "setup-plan", "--json"], catch_exceptions=False)
+    plan_res = runner.invoke(
+        app, ["sdd", "setup-plan", "--json"], catch_exceptions=False
+    )
     assert plan_res.exit_code == 0, plan_res.output
     plan_data = json.loads(plan_res.output)
     plan_path = Path(plan_data["IMPL_PLAN"])
@@ -86,7 +88,9 @@ def test_sdd_full_lifecycle(tmp_path: Path, monkeypatch) -> None:
     assert "Implementation Plan" in plan_path.read_text(encoding="utf-8")
 
     # 4. SDD setup-tasks
-    tasks_res = runner.invoke(app, ["sdd", "setup-tasks", "--json"], catch_exceptions=False)
+    tasks_res = runner.invoke(
+        app, ["sdd", "setup-tasks", "--json"], catch_exceptions=False
+    )
     assert tasks_res.exit_code == 0, tasks_res.output
     tasks_data = json.loads(tasks_res.output)
     assert "TASKS_TEMPLATE_CONTENT" in tasks_data

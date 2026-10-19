@@ -48,6 +48,6 @@ def count_tokens(text: str) -> int:
 
         encoder = tiktoken.get_encoding("cl100k_base")
         return len(encoder.encode(text))
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Standard heuristic: ~4 characters per token
         return max(1, len(text) // 4)

@@ -119,7 +119,9 @@ def test_sync_template_tree_skips_init_py_and_pycache(tmp_path: Path) -> None:
     (src_dir / "__init__.py").write_text("", encoding="utf-8")
     (src_dir / "hooks").mkdir()
     (src_dir / "hooks" / "__init__.py").write_text("", encoding="utf-8")
-    (src_dir / "hooks" / "guard_destructive.py").write_text("print('ok')", encoding="utf-8")
+    (src_dir / "hooks" / "guard_destructive.py").write_text(
+        "print('ok')", encoding="utf-8"
+    )
     pycache_dir = src_dir / "__pycache__"
     pycache_dir.mkdir()
     (pycache_dir / "foo.pyc").write_bytes(b"\x00\x01")
@@ -139,21 +141,29 @@ def test_migrate_legacy_workflows_converts_and_removes(tmp_path: Path) -> None:
     workflows_dir.mkdir(parents=True)
 
     # 1. Plain markdown without frontmatter
-    (workflows_dir / "plain.md").write_text("# Plain Flow\nRun these steps.\n", encoding="utf-8")
+    (workflows_dir / "plain.md").write_text(
+        "# Plain Flow\nRun these steps.\n", encoding="utf-8"
+    )
 
     # 2. Markdown with frontmatter lacking description
-    (workflows_dir / "no-desc.md").write_text("---\nversion: 1.0\n---\n# No Desc\nBody.\n", encoding="utf-8")
+    (workflows_dir / "no-desc.md").write_text(
+        "---\nversion: 1.0\n---\n# No Desc\nBody.\n", encoding="utf-8"
+    )
 
     # 3. Existing skill that should NOT be overwritten
     skills_dir = agents_dir / "skills" / "already-exists"
     skills_dir.mkdir(parents=True)
     existing_skill = skills_dir / "SKILL.md"
     existing_skill.write_text("# Existing Skill Kept\n", encoding="utf-8")
-    (workflows_dir / "already-exists.md").write_text("# Old Workflow\n", encoding="utf-8")
+    (workflows_dir / "already-exists.md").write_text(
+        "# Old Workflow\n", encoding="utf-8"
+    )
 
     # 4. workflows.json manifest with one item to keep and one to remove
     manifest = agents_dir / "workflows.json"
-    manifest.write_text(json.dumps([{"name": "plain"}, {"name": "keep-me"}]), encoding="utf-8")
+    manifest.write_text(
+        json.dumps([{"name": "plain"}, {"name": "keep-me"}]), encoding="utf-8"
+    )
 
     report = migrate_legacy_workflows(agents_dir)
 
@@ -207,7 +217,9 @@ def test_migrate_legacy_workflows_noop_if_no_dir(tmp_path: Path) -> None:
     assert len(report.removed) == 0
 
 
-def test_migrate_legacy_plan_skill_renames_dir_and_updates_frontmatter(tmp_path: Path) -> None:
+def test_migrate_legacy_plan_skill_renames_dir_and_updates_frontmatter(
+    tmp_path: Path,
+) -> None:
     agents_dir = tmp_path / ".agents"
     legacy_dir = agents_dir / "skills" / "plan"
     legacy_dir.mkdir(parents=True)
@@ -228,7 +240,9 @@ def test_migrate_legacy_plan_skill_renames_dir_and_updates_frontmatter(tmp_path:
     assert report.migrated_skill is True
 
 
-def test_migrate_legacy_plan_skill_preserves_user_customizations(tmp_path: Path) -> None:
+def test_migrate_legacy_plan_skill_preserves_user_customizations(
+    tmp_path: Path,
+) -> None:
     agents_dir = tmp_path / ".agents"
     legacy_dir = agents_dir / "skills" / "plan"
     legacy_dir.mkdir(parents=True)
@@ -248,12 +262,16 @@ def test_migrate_legacy_plan_skill_preserves_user_customizations(tmp_path: Path)
     assert not legacy_dir.exists()
 
 
-def test_migrate_legacy_plan_skill_updates_references_without_breaking_quick_plan(tmp_path: Path) -> None:
+def test_migrate_legacy_plan_skill_updates_references_without_breaking_quick_plan(
+    tmp_path: Path,
+) -> None:
     agents_dir = tmp_path / ".agents"
     rules_dir = agents_dir / "rules"
     rules_dir.mkdir(parents=True)
     (agents_dir / "skills" / "plan").mkdir(parents=True)
-    (agents_dir / "skills" / "plan" / "SKILL.md").write_text("---\nname: plan\n---\n# /plan\n", encoding="utf-8")
+    (agents_dir / "skills" / "plan" / "SKILL.md").write_text(
+        "---\nname: plan\n---\n# /plan\n", encoding="utf-8"
+    )
 
     agents_md = tmp_path / "AGENTS.md"
     agents_md.write_text(
@@ -293,18 +311,23 @@ def test_migrate_legacy_plan_skill_noop_when_no_legacy_plan(tmp_path: Path) -> N
     assert not (agents_dir / "skills" / "plan").exists()
 
 
-def test_migrate_legacy_plan_skill_removes_legacy_if_target_already_exists(tmp_path: Path) -> None:
+def test_migrate_legacy_plan_skill_removes_legacy_if_target_already_exists(
+    tmp_path: Path,
+) -> None:
     agents_dir = tmp_path / ".agents"
     legacy_dir = agents_dir / "skills" / "plan"
     legacy_dir.mkdir(parents=True)
-    (legacy_dir / "SKILL.md").write_text("---\nname: plan\n---\n# /plan\n", encoding="utf-8")
+    (legacy_dir / "SKILL.md").write_text(
+        "---\nname: plan\n---\n# /plan\n", encoding="utf-8"
+    )
 
     spec_plan_dir = agents_dir / "skills" / "spec-plan"
     spec_plan_dir.mkdir(parents=True)
-    (spec_plan_dir / "SKILL.md").write_text("---\nname: spec-plan\n---\n# /spec-plan\n", encoding="utf-8")
+    (spec_plan_dir / "SKILL.md").write_text(
+        "---\nname: spec-plan\n---\n# /spec-plan\n", encoding="utf-8"
+    )
 
     report = migrate_legacy_plan_skill(agents_dir, project_root=tmp_path)
     assert report.removed_legacy_skill is True
     assert not legacy_dir.exists()
     assert spec_plan_dir.exists()
-

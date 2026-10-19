@@ -28,6 +28,8 @@ EXTENSION_TO_LANGUAGE: dict[str, str] = {
 DEFAULT_EXCLUDED_DIRS = {
     ".git",
     ".buddhi",
+    ".agents",
+    "temp",
     "node_modules",
     "__pycache__",
     ".venv",
@@ -66,7 +68,9 @@ def _load_gitignore_spec(root: Path) -> pathspec.PathSpec | None:
     if not gitignore_path.is_file():
         return None
     try:
-        lines = gitignore_path.read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = gitignore_path.read_text(
+            encoding="utf-8", errors="replace"
+        ).splitlines()
     except OSError:
         return None
     return pathspec.PathSpec.from_lines("gitignore", lines)
@@ -130,7 +134,9 @@ def walk(
                 skipped_too_large.append(rel_path)
                 continue
 
-            files.append(DiscoveredFile(abs_path=abs_path, rel_path=rel_path, language=language))
+            files.append(
+                DiscoveredFile(abs_path=abs_path, rel_path=rel_path, language=language)
+            )
             parent = Path(rel_path).parent.as_posix()
             while parent and parent != ".":
                 directories.add(parent)

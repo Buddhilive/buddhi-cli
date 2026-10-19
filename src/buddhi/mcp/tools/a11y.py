@@ -67,4 +67,3 @@ def execute_verify_a11y(
         return result.output_text
     except Exception as exc:  # noqa: BLE001
         return f"Error verifying accessibility: {exc}"
-

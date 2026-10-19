@@ -73,4 +73,3 @@ class ResolvedArtifacts:
     report_path: Path | None
     exceptions_path: Path | None
     decisions_path: Path | None
-

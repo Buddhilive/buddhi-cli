@@ -12,6 +12,7 @@ from buddhi.sdd.common import (
     get_feature_paths,
     resolve_template_content,
 )
+from buddhi.sdd.impact import compute_sdd_topology_context
 
 
 def _json_line(payload: object) -> str:
@@ -50,7 +51,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Plan already exists at {paths.impl_plan}, skipping template copy")
     else:
         try:
-            template_content = resolve_template_content("plan-template", paths.repo_root)
+            template_content = resolve_template_content(
+                "plan-template", paths.repo_root
+            )
         except TemplateResolutionError as exc:
             print(f"Error: {exc}", file=sys.stderr)
             return 1
@@ -64,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
             paths.impl_plan.touch()
 
     if json_mode:
+        topo_ctx = compute_sdd_topology_context(paths.repo_root)
         sys.stdout.write(
             _json_line(
                 {
@@ -71,6 +75,9 @@ def main(argv: list[str] | None = None) -> int:
                     "IMPL_PLAN": str(paths.impl_plan),
                     "SPECS_DIR": str(paths.feature_dir),
                     "BRANCH": paths.current_branch,
+                    "GRAPH_CONTEXT": topo_ctx
+                    if topo_ctx.get("status") == "ready"
+                    else {},
                 }
             )
         )

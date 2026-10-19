@@ -184,3 +184,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Graphify
+
+- **Repository**: [https://github.com/Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify)
+- **Author**: Safi Shamsi
+- **License**: Apache License 2.0 (with portions under MIT License)
+
+### Description & Adapted Components
+
+`Graphify` converts complex software repositories into queryable knowledge graphs with topological analysis, Leiden community clustering, and agent tools. `buddhi-cli` adapts the following architectural concepts natively on its SQLite (`tree-graph.db`) + `igraph` + FastMCP stack:
+- **Project-Wide Symbol Resolution & Confidence Tiers**: Categorizing edge provenance into discrete confidence tiers (`EXTRACTED`, `INFERRED`, `AMBIGUOUS`) with relationship contexts (`call`, `import`, `inherit`, `type_ref`).
+- **Topological Analysis & Diagnostics**: Algorithmic ranking of architectural `god_nodes`, `surprising_connections`, diagnostic review questions, import cycle detection, and shortest relational paths with candidate symbol disambiguation.
+- **Blast Radius Analysis**: Evaluating transitive callers, affected communities, and impacted hubs across working trees and git diff revisions.
+- **Token-Efficient Retrieval**: Hub-blocked traversal (preventing high-degree utility hubs from exploding neighborhood bounds) and IDF-weighted multi-field anchor scoring.
+- **Hook-Based Context Injection**: Sub-50ms non-blocking context injection for agent file-reads and session staleness checks.
+
+We express our gratitude to Safi Shamsi and the Graphify contributors for sharing their knowledge-graph architecture.
+
+---

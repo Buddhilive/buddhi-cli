@@ -466,7 +466,11 @@ def ensure_agents_gitignore(agents_dir: Path) -> Path:
     agents_dir.mkdir(parents=True, exist_ok=True)
     gitignore_path = agents_dir / ".gitignore"
     try:
-        existing = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
+        existing = (
+            gitignore_path.read_text(encoding="utf-8")
+            if gitignore_path.exists()
+            else ""
+        )
         lines = [line.strip() for line in existing.splitlines()]
         added = []
         for rule in AGENTS_GITIGNORE_RULES:

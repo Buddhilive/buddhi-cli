@@ -86,7 +86,10 @@ def _build_vis_data(graph: CodeGraph) -> dict:
                 "color": {
                     "background": color["background"],
                     "border": color["border"],
-                    "highlight": {"background": color["background"], "border": "#f8fafc"},
+                    "highlight": {
+                        "background": color["background"],
+                        "border": "#f8fafc",
+                    },
                     "hover": {"background": color["background"], "border": "#f8fafc"},
                 },
             }
@@ -101,7 +104,10 @@ def _build_vis_data(graph: CodeGraph) -> dict:
                 "from": edge.source,
                 "to": edge.target,
                 "kind": edge.kind,
-                "color": {"color": _EDGE_COLORS.get(edge.kind, "#64748b"), "opacity": 0.5},
+                "color": {
+                    "color": _EDGE_COLORS.get(edge.kind, "#64748b"),
+                    "opacity": 0.5,
+                },
             }
         )
 
@@ -120,7 +126,9 @@ _LEGEND_ITEM = """
 
 def _legend_html() -> str:
     return "".join(
-        _LEGEND_ITEM.format(color=_KIND_COLORS[kind]["background"], label=label, kind=kind)
+        _LEGEND_ITEM.format(
+            color=_KIND_COLORS[kind]["background"], label=label, kind=kind
+        )
         for kind, label in _KIND_LABELS
     )
 

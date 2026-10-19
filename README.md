@@ -64,6 +64,31 @@ This installs both the `buddhi` CLI command and the `buddhi-mcp` Stdio server en
 
 ## Usage
 
+### Code Graph & Blast Radius Analysis (`buddhi graph`)
+
+Inspect repository architecture, trace dependencies, and compute the blast radius of changes:
+```bash
+# Analyze change impact (transitive callers, affected communities, god nodes)
+buddhi graph blast-radius
+
+# Run topological analysis (god nodes, surprising connections, review questions)
+buddhi graph analyze
+
+# Trace shortest path between two symbols with disambiguation
+buddhi graph path MyService AuthManager
+
+# Find circular import chains
+buddhi graph cycles
+
+# Inspect community clustering and cohesion
+buddhi graph community
+
+# Check graph counts, confidence breakdown, and git staleness
+buddhi graph stats
+```
+
+
+
 ### `buddhi init` — full setup (recommended)
 
 ```sh

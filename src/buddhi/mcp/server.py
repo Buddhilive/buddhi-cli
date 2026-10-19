@@ -47,6 +47,77 @@ def _get_db_path(cwd: str | None = None) -> Path:
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def buddhi_graph(
+    action: Annotated[
+        str,
+        "Graph operation: 'blast_radius', 'god_nodes', 'surprises', 'questions', 'shortest_path', 'cycles', 'community', or 'stats'",
+    ],
+    targets: Annotated[
+        list[str] | None,
+        "Target file paths or symbol names/IDs for 'blast_radius'",
+    ] = None,
+    git_ref: Annotated[
+        str | None,
+        "Git revision or commit for 'blast_radius' diff",
+    ] = None,
+    staged: Annotated[
+        bool,
+        "Check staged git changes for 'blast_radius'",
+    ] = False,
+    source: Annotated[
+        str | None,
+        "Source symbol name or ID for 'shortest_path'",
+    ] = None,
+    target: Annotated[
+        str | None,
+        "Target symbol name or ID for 'shortest_path'",
+    ] = None,
+    community_id: Annotated[
+        int | None,
+        "Community ID for 'community' inspection",
+    ] = None,
+    max_hops: Annotated[
+        int,
+        "Maximum hops for 'blast_radius' (1-6) or 'shortest_path'",
+    ] = 3,
+    top_n: Annotated[
+        int,
+        "Maximum items to return for diagnostics",
+    ] = 10,
+    as_json: Annotated[
+        bool,
+        "Return structured JSON format",
+    ] = False,
+    cwd: Annotated[
+        str | None,
+        "Working directory override",
+    ] = None,
+) -> str:
+    """Analyze code graph topology, blast radius, hubs, surprises, cycles, and stats."""
+    from buddhi.mcp.tools.graph import execute_buddhi_graph
+
+    db_path = _get_db_path(cwd)
+    root_dir = Path(cwd).resolve() if cwd else OVERRIDE_ROOT
+    try:
+        return execute_buddhi_graph(
+            action=action,
+            db_path=str(db_path),
+            root_path=root_dir,
+            targets=targets,
+            git_ref=git_ref,
+            staged=staged,
+            source=source,
+            target=target,
+            community_id=community_id,
+            max_hops=max_hops,
+            top_n=top_n,
+            as_json=as_json,
+        )
+    except Exception as e:  # noqa: BLE001
+        return f"Error executing graph operation: {e}"
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def buddhi_search(
     query: Annotated[
         str,
@@ -86,7 +157,7 @@ def buddhi_search(
             budget=budget,
             root_path=root_dir,
         )
-    except Exception as e:  # noqa: BLE001  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
         return f"Error executing search: {e}"
 
 
@@ -125,7 +196,7 @@ def buddhi_read(
             query=query,
             root_path=root_dir,
         )
-    except Exception as e:  # noqa: BLE001  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001  # noqa: BLE001
         return f"Error executing read: {e}"
 
 
@@ -274,7 +345,7 @@ def buddhi_memory(
             expand_imports=expand_imports,
             root_path=root_dir,
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:  # noqa: BLE001  # noqa: BLE001
         return f"Error executing memory operation: {e}"
 
 

@@ -37,12 +37,36 @@ class GraphNode:
     community_id: int | None = None
 
 
+CONFIDENCE_EXTRACTED = "EXTRACTED"
+CONFIDENCE_INFERRED = "INFERRED"
+CONFIDENCE_AMBIGUOUS = "AMBIGUOUS"
+
+CONTEXT_CONTAINS = "contains"
+CONTEXT_IMPORT = "import"
+CONTEXT_CALL = "call"
+CONTEXT_INHERIT = "inherit"
+CONTEXT_TYPE_REF = "type_ref"
+
+
 @dataclass
 class GraphEdge:
     source: str
     target: str
     kind: str
     resolved: bool = True
+    confidence: str = CONFIDENCE_EXTRACTED
+    confidence_score: float = 1.0
+    context: str = CONTEXT_CONTAINS
+
+
+@dataclass
+class CommunityInfo:
+    id: int
+    label: str
+    node_count: int
+    cohesion: float
+    hub_node_id: str | None = None
+    top_files: list[str] = field(default_factory=list)
 
 
 def file_node_id(rel_path: str) -> str:
@@ -65,6 +89,8 @@ def external_node_id(dotted_name: str) -> str:
 class CodeGraph:
     nodes: dict[str, GraphNode] = field(default_factory=dict)
     edges: list[GraphEdge] = field(default_factory=list)
+    communities: dict[int, CommunityInfo] = field(default_factory=dict)
+    built_at_commit: str | None = None
 
     def add_node(self, node: GraphNode) -> GraphNode:
         existing = self.nodes.get(node.id)

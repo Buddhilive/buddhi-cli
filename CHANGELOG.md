@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Graphify-Inspired Code Graph Intelligence, Blast Radius & Antigravity Integration**:
+  - Upgraded code graph engine, MCP server, CLI, and Spec-Driven Development (SDD) workflow inspired by `graphify` (Safi Shamsi, Apache-2.0 / MIT).
+  - **Core Code Graph & Resolution (`src/buddhi/graph/`)**:
+    - Added `@inherit.base` and `@import.symbol` tree-sitter captures across all 9 supported languages (Python, TS, JS, Go, Rust, Java, Kotlin, C#, Swift).
+    - Added project-wide `SymbolIndex` in `resolver.py` resolving cross-file `CALLS` and `INHERITS` edges with discrete confidence tiers (`EXTRACTED`, `INFERRED`, `AMBIGUOUS`) and relationship contexts (`call`, `import`, `inherit`, `type_ref`).
+    - Upgraded `clustering.py` with canonical edge sorting (100% hash-seed determinism), super-hub exclusion (`degree > max(50, p99_degree)`) with neighbor-majority reattachment, sub-splitting, cohesion score calculation, and hub-based community naming.
+    - Added SQLite Schema v2 with `communities`, `extract_cache` (SHA-256 incremental AST caching), and `meta.built_at_commit` git HEAD tracking.
+  - **Blast Radius & Topological Analytics (`buddhi_graph` & `buddhi graph`)**:
+    - Implemented `compute_blast_radius` evaluating transitive callers, affected communities, impacted god nodes, crossed bridges, import cycles, and risk levels across working diffs or git revisions.
+    - Implemented `analyze.py` providing `god_nodes`, `surprising_connections`, `suggest_questions`, `find_shortest_path` with symbol disambiguation, and `find_import_cycles`.
+    - Added `buddhi_graph` unified MCP tool supporting 8 actions with Markdown and JSON outputs.
+    - Added `buddhi graph` Typer CLI command group (`blast-radius`, `analyze`, `path`, `cycles`, `community`, `stats`).
+    - Upgraded `buddhi_search` with IDF-weighted multi-field scoring with squared coverage and Hub-Blocked 2-Hop BFS.
+  - **SDD Integration**:
+    - Added `buddhi sdd impact` and injected `GRAPH_CONTEXT` topological context summaries into `buddhi sdd setup-plan`.
+    - Updated SDD skills and templates with topological grounding and blast-radius verification gates.
+  - **Antigravity Customizations (Rules, Subagents, Hooks)**:
+    - Added official Antigravity YAML frontmatter (`trigger: always_on`) to rules in `.agents/rules/*.md`.
+    - Equipped specialist subagents in `.agents/agents/*.md` with `buddhi_graph`, `buddhi_search`, `buddhi_read`, and `buddhi_memory`.
+    - Implemented stdlib-only, fail-open `<50ms` `graph_context.py` hook on `SessionStart` (staleness check) and `PreToolUse` (file symbol and community context injection via `additionalContext`).
+    - Updated `ACKNOWLEDGMENTS.md` with full attribution for `Graphify`.
+
 - **A11Y.md Accessibility Framework Integration**:
   - Adapted the `A11Y.md` framework ([https://github.com/fecarrico/A11Y.md](https://github.com/fecarrico/A11Y.md), Felipe A. Carriço) into the Google Antigravity harness and Spec-Driven Development (SDD) workflow initialized via `buddhi init`.
   - **`a11y` Skill & Modular Guides (`.agents/skills/a11y/`)**:
