@@ -108,15 +108,20 @@ tests/
 from dataclasses import dataclass
 from typing import Callable, Optional
 
+
 @dataclass(frozen=True)
 class SkillRegistryEntry:
-    name: str                        # "repo-to-skill"
-    flag: str                        # "--repo-to-skill"
-    title: str                       # "Repo to Skill Generator"
-    description: str                 # "Turn any GitHub repo or directory into an Antigravity agent skill"
-    template_pkg: str                # "buddhi.templates.custom_skills.repo_to_skill"
-    target_dir_name: str             # "repo-to-skill"
-    runner: Optional[Callable] = None # Function called when running `buddhi skills run repo-to-skill`
+    name: str  # "repo-to-skill"
+    flag: str  # "--repo-to-skill"
+    title: str  # "Repo to Skill Generator"
+    description: (
+        str  # "Turn any GitHub repo or directory into an Antigravity agent skill"
+    )
+    template_pkg: str  # "buddhi.templates.custom_skills.repo_to_skill"
+    target_dir_name: str  # "repo-to-skill"
+    runner: Optional[Callable] = (
+        None  # Function called when running `buddhi skills run repo-to-skill`
+    )
 ```
 
 An extensible registry table `SKILL_REGISTRY: dict[str, SkillRegistryEntry]` will hold all available skills. Future skills simply register here and place their templates in `templates/custom_skills/`.

@@ -77,3 +77,6 @@ dev = [
     "ruff>=0.16.3",
     "types-pyyaml>=6.0.12.20260906",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

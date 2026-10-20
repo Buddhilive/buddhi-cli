@@ -349,6 +349,78 @@ def buddhi_memory(
         return f"Error executing memory operation: {e}"
 
 
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False))
+def stage_skill(
+    action: Annotated[
+        str, "Action: 'create', 'update', 'patch', 'remove_file', or 'delete'"
+    ],
+    name: Annotated[str, "Skill identifier (lowercase, hyphenated)"],
+    layer: Annotated[str, "Target layer: 'project' (default) or 'global'"] = "project",
+    body: Annotated[str | None, "Full Markdown body including YAML frontmatter"] = None,
+    old_string: Annotated[
+        str | None, "Exact target text to replace (for 'patch')"
+    ] = None,
+    new_string: Annotated[str | None, "Replacement text (for 'patch')"] = None,
+    files: Annotated[
+        dict[str, str] | None, "Relative subfile mapping {filepath: content}"
+    ] = None,
+    reason: Annotated[str, "Why this mutation is needed"] = "",
+    evidence: Annotated[
+        str, "Concrete log/code evidence demonstrating the problem/rule"
+    ] = "",
+    absorbed_into: Annotated[
+        str | None, "Target surviving umbrella skill name (for 'delete')"
+    ] = None,
+    cwd: Annotated[str | None, "Workspace root override"] = None,
+) -> str:
+    """Stage a self-learned skill mutation into the AutoHarness intent queue for admission validation and promotion."""
+    from buddhi.scripts.autoharness.intent_queue import append_intent
+    from buddhi.scripts.autoharness.models import SkillIntent
+
+    if action not in ("create", "update", "patch", "remove_file", "delete"):
+        return f"Error: Invalid action '{action}'. Must be one of create, update, patch, remove_file, delete."
+
+    if not name:
+        return "Error: Skill name is required."
+
+    if action in ("create", "update") and not body:
+        return f"Error: Action '{action}' requires a Markdown body."
+
+    if action == "patch" and (not old_string or new_string is None):
+        return "Error: Action 'patch' requires 'old_string' and 'new_string'."
+
+    if action != "delete" and not evidence.strip():
+        return f"Error: Action '{action}' requires non-empty 'evidence'."
+
+    if not reason.strip():
+        return f"Error: Action '{action}' requires non-empty 'reason'."
+
+    if action == "delete" and not absorbed_into:
+        return "Error: Action 'delete' requires 'absorbed_into' naming the surviving skill."
+
+    intent = SkillIntent(
+        action=action,  # type: ignore[arg-type]
+        name=name,
+        layer=layer if layer in ("project", "global") else "project",  # type: ignore[arg-type]
+        body=body,
+        old_string=old_string,
+        new_string=new_string,
+        files=files or {},
+        reason=reason,
+        evidence=evidence,
+        absorbed_into=absorbed_into,
+    )
+
+    project_root = (
+        Path(cwd).resolve() if cwd else (OVERRIDE_ROOT or Path.cwd().resolve())
+    )
+    try:
+        append_intent(intent, run_id="interactive", project_root=project_root)
+        return f"[AutoHarness] Staged intent '{action} {name}'. Will be validated and landed on turn completion."
+    except Exception as exc:  # noqa: BLE001
+        return f"Error staging skill intent: {exc}"
+
+
 def main() -> None:
     """CLI entrypoint for running the MCP server."""
     parser = argparse.ArgumentParser(description="Buddhi MCP Server (StdIO)")

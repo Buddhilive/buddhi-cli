@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -400,3 +401,294 @@ def receipts_cmd(
 
     exit_code = 0 if all_passed else 1
     raise typer.Exit(code=exit_code)
+
+
+autoharness_app = typer.Typer(
+    name="autoharness",
+    help="AutoHarness self-learning agent skill layer management and diagnostics.",
+    invoke_without_command=True,
+    no_args_is_help=True,
+)
+scripts_app.add_typer(autoharness_app, name="autoharness")
+
+
+@autoharness_app.callback(invoke_without_command=True)
+def autoharness_main(
+    ctx: typer.Context,
+    selftest: bool = typer.Option(False, "--selftest", help="Run built-in self-tests."),
+) -> None:
+    """AutoHarness self-learning skill layer entrypoint."""
+    if selftest:
+        from buddhi.scripts.autoharness.selftest import run_selftest
+
+        code, msg = run_selftest()
+        if code == 0:
+            console.print(f"[bold green]pass:[/bold green] {msg}")
+        else:
+            err_console.print(f"[bold red]fail:[/bold red] {msg}")
+        raise typer.Exit(code=code)
+
+
+@autoharness_app.command(name="stage")
+def autoharness_stage_cmd(
+    action: str = typer.Argument(
+        ..., help="Action: create, update, patch, remove_file, delete."
+    ),
+    name: str = typer.Argument(..., help="Skill name (lowercase, hyphenated)."),
+    layer: str = typer.Option(
+        "project", "--layer", "-l", help="Layer: project or global."
+    ),
+    body: str | None = typer.Option(
+        None, "--body", help="Full Markdown body including YAML frontmatter."
+    ),
+    old_string: str | None = typer.Option(
+        None, "--old", help="Exact string to replace (for patch)."
+    ),
+    new_string: str | None = typer.Option(
+        None, "--new", help="Replacement string (for patch)."
+    ),
+    reason: str = typer.Option(
+        "", "--reason", "-r", help="Why this mutation is needed."
+    ),
+    evidence: str = typer.Option(
+        "", "--evidence", "-e", help="Concrete failure/runbook evidence."
+    ),
+    absorbed_into: str | None = typer.Option(
+        None, "--absorbed-into", help="Surviving umbrella skill (for delete)."
+    ),
+    run_id: str = typer.Option(
+        "interactive", "--run-id", help="Target intent queue run ID."
+    ),
+) -> None:
+    """Stage a skill mutation proposal into the intent queue."""
+    from buddhi.scripts.autoharness.intent_queue import append_intent
+    from buddhi.scripts.autoharness.models import SkillIntent
+
+    if action not in ("create", "update", "patch", "remove_file", "delete"):
+        err_console.print(f"[red]error:[/red] invalid action '{action}'.")
+        raise typer.Exit(code=1)
+
+    intent = SkillIntent(
+        action=action,  # type: ignore[arg-type]
+        name=name,
+        layer=layer if layer in ("project", "global") else "project",  # type: ignore[arg-type]
+        body=body,
+        old_string=old_string,
+        new_string=new_string,
+        reason=reason,
+        evidence=evidence,
+        absorbed_into=absorbed_into,
+    )
+    append_intent(intent, run_id=run_id)
+    console.print(
+        f"[green]done[/green] staged intent '[bold]{action} {name}[/bold]' in queue [cyan]{run_id}[/cyan]."
+    )
+
+
+@autoharness_app.command(name="promote")
+def autoharness_promote_cmd(
+    layer: str = typer.Option(
+        "project", "--layer", "-l", help="Layer: project or global."
+    ),
+    run_id: str = typer.Option(
+        "interactive", "--run-id", help="Target intent queue run ID."
+    ),
+    json_mode: bool = typer.Option(
+        False, "--json", help="Output run account in JSON format."
+    ),
+) -> None:
+    """Drain queued intents, validate through 6 gates, and land approved skills atomically."""
+    from buddhi.scripts.autoharness.promoter import drain_and_promote
+
+    account = drain_and_promote(layer=layer, run_id=run_id)
+    if json_mode:
+        data = {
+            "run_id": account.run_id,
+            "timestamp": account.timestamp,
+            "landed": account.landed,
+            "rejected": account.rejected,
+            "spawn_error": account.spawn_error,
+        }
+        console.print(json.dumps(data, indent=2))
+    else:
+        console.print(
+            f"[bold cyan]AutoHarness Promotion Run '{account.run_id}'[/bold cyan] ({account.timestamp})"
+        )
+        if account.landed:
+            console.print(
+                f"[bold green]Landed ({len(account.landed)}):[/bold green] {', '.join(account.landed)}"
+            )
+        else:
+            console.print("[dim]Landed: none[/dim]")
+
+        if account.rejected:
+            err_console.print(
+                f"[bold red]Rejected ({len(account.rejected)}):[/bold red]"
+            )
+            for r in account.rejected:
+                err_console.print(
+                    f"  - [bold]{r.get('name')}[/bold] ({r.get('gate', 'unknown')}): {r.get('reason')}"
+                )
+        else:
+            console.print("[dim]Rejected: none[/dim]")
+
+
+@autoharness_app.command(name="validate")
+def autoharness_validate_cmd(
+    skill_path: Annotated[
+        Path, typer.Argument(help="Path to skill directory or SKILL.md file.")
+    ],
+) -> None:
+    """Validate a skill against the 6 deterministic AutoHarness admission gates."""
+    from buddhi.scripts.autoharness.models import SkillIntent
+    from buddhi.scripts.autoharness.sidecar import is_agent_created
+    from buddhi.scripts.autoharness.validate import validate_skill_candidate
+
+    target_dir = skill_path if skill_path.is_dir() else skill_path.parent
+    skill_file = target_dir / "SKILL.md"
+    if not skill_file.is_file():
+        err_console.print(f"[red]error:[/red] cannot find SKILL.md at {target_dir}")
+        raise typer.Exit(code=1)
+
+    body = skill_file.read_text(encoding="utf-8")
+    intent = SkillIntent(
+        action="update",
+        name=target_dir.name,
+        layer="project",
+        body=body,
+        reason="Manual validation",
+        evidence="Manual validation",
+    )
+    agents_dir = target_dir.parent.parent
+    val_res = validate_skill_candidate(
+        intent=intent,
+        assembled_body=body,
+        target_is_agent_created=is_agent_created(target_dir),
+        target_exists=True,
+        layer_root=agents_dir,
+    )
+
+    if val_res.valid:
+        console.print(
+            f"[bold green]pass:[/bold green] skill '{target_dir.name}' passes all 6 admission gates."
+        )
+        raise typer.Exit(code=0)
+    else:
+        err_console.print(
+            f"[bold red]fail:[/bold red] skill '{target_dir.name}' has {len(val_res.findings)} gate violation(s):"
+        )
+        for f in val_res.findings:
+            err_console.print(f"  - [{f.gate}] {f.code}: {f.message}")
+        raise typer.Exit(code=1)
+
+
+@autoharness_app.command(name="check-links")
+def autoharness_check_links_cmd(
+    root: Annotated[
+        Path | None,
+        typer.Argument(help="Root directory to scan for markdown links."),
+    ] = None,
+) -> None:
+    """Scan markdown files for broken relative links (skipping .archive/)."""
+    from buddhi.scripts.autoharness.check_doc_links import check_markdown_links
+
+    scan_root = root if root is not None else Path(".")
+    broken = check_markdown_links(scan_root.resolve())
+    if not broken:
+        console.print(
+            "[bold green]pass:[/bold green] all relative markdown links are valid."
+        )
+        raise typer.Exit(code=0)
+    else:
+        err_console.print(
+            f"[bold red]fail:[/bold red] found {len(broken)} broken relative markdown link(s):"
+        )
+        for b in broken:
+            err_console.print(f"  {b['source_file']}:{b['line']} -> {b['target']}")
+        raise typer.Exit(code=1)
+
+
+@autoharness_app.command(name="capture")
+def autoharness_capture_cmd(
+    transcript: Annotated[Path, typer.Argument(help="Path to transcript.jsonl file.")],
+    offset: Annotated[
+        int, typer.Option("--offset", help="Byte offset to start slicing.")
+    ] = 0,
+    out_dir: Annotated[
+        Path | None,
+        typer.Option("--out-dir", "-o", help="Output directory for episode bundle."),
+    ] = None,
+) -> None:
+    """Slice and redact session transcript into a bounded episode bundle."""
+    from buddhi.scripts.autoharness.capture import (
+        build_prior_digest,
+        slice_transcript_window,
+    )
+
+    if not transcript.is_file():
+        err_console.print(f"[red]error:[/red] transcript not found at {transcript}")
+        raise typer.Exit(code=1)
+
+    window, new_offset = slice_transcript_window(transcript, offset=offset)
+    digest = build_prior_digest(transcript, end_offset=offset)
+
+    target_out_dir = out_dir if out_dir is not None else Path(".")
+    target_out_dir.mkdir(parents=True, exist_ok=True)
+    (target_out_dir / "episode.md").write_text(window, encoding="utf-8")
+    (target_out_dir / "digest.md").write_text(digest, encoding="utf-8")
+
+    console.print(
+        f"[green]done[/green] sliced episode ({len(window)} bytes, new offset {new_offset}) into {target_out_dir}"
+    )
+
+
+@autoharness_app.command(name="curate")
+def autoharness_curate_cmd(
+    layer: Annotated[
+        str, typer.Option("--layer", "-l", help="Layer: project or global.")
+    ] = "project",
+    out_dir: Annotated[
+        Path | None,
+        typer.Option("--out-dir", "-o", help="Output directory for snapshot tarball."),
+    ] = None,
+) -> None:
+    """Create a rotating pre-curation .tar.gz snapshot of active skills."""
+    import tarfile
+    import time
+
+    from buddhi.scripts.autoharness.config import get_snapshot_keep
+    from buddhi.scripts.autoharness.layer import (
+        resolve_autoharness_dir,
+        resolve_skills_dir,
+    )
+
+    skills_dir = resolve_skills_dir(layer)
+    if not skills_dir.is_dir():
+        err_console.print(
+            f"[red]error:[/red] skills directory not found at {skills_dir}"
+        )
+        raise typer.Exit(code=1)
+
+    autoharness_dir = resolve_autoharness_dir(layer)
+    snapshots_dir = out_dir or (autoharness_dir / "snapshots")
+    snapshots_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = int(time.time())
+    tar_path = snapshots_dir / f"snapshot-{timestamp}.tar.gz"
+
+    with tarfile.open(tar_path, "w:gz") as tar:
+        tar.add(skills_dir, arcname="skills")
+
+    console.print(f"[green]done[/green] created snapshot [cyan]{tar_path}[/cyan]")
+
+    # Rotate old snapshots keeping SNAPSHOT_KEEP
+    keep_limit = get_snapshot_keep()
+    existing = sorted(
+        snapshots_dir.glob("snapshot-*.tar.gz"), key=lambda p: p.stat().st_mtime
+    )
+    if len(existing) > keep_limit:
+        for old_tar in existing[:-keep_limit]:
+            try:
+                old_tar.unlink()
+            except OSError:
+                pass

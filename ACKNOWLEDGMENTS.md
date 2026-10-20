@@ -2,6 +2,54 @@
 
 `buddhi-cli` incorporates concepts, skills, rules, specifications, and contrast-checking logic adapted from the following open-source projects and architectural standards:
 
+## AutoHarness
+
+- **Repository**: [https://github.com/tigerless-labs/autoharness](https://github.com/tigerless-labs/autoharness)
+- **Author**: Ryan / Tigerless Labs
+- **License**: MIT License
+
+### Description & Adapted Components
+
+`autoharness` is a self-learning skill layer for AI coding agents that distills procedural knowledge from session episodes, merges overlapping skills, and prunes unused skills with usage-driven graduation. `buddhi-cli` adapts the `autoharness` architecture for Google Antigravity and Spec-Driven Development (SDD):
+- **Core Architecture (`src/buddhi/scripts/autoharness/`)**: Deterministic 6-gate admission validator, regex secrets & PII redaction engine with Luhn checksum validation, static AST threat scanner across 6 threat families, cross-platform file locking (`msvcrt`/`fcntl`), atomic file writing, and append-only `.ledger.jsonl` provenance.
+- **Sidecar Ownership Protection (`.sidecar.json`)**: Enforcing strict ownership isolation (`created_by: "agent"`) so agent-learning pipelines can never mutate, patch, or delete native harness or human-crafted skills.
+- **Probation & Graduation Engine**: Tenure tracking, usage rate graduation, and capacity eviction archiving stale skills to `.agents/skills/.archive/`.
+- **FastMCP Tool (`stage_skill`)**: Tool-based intent staging on `buddhi-mcp` with immediate parameter and structure validation.
+- **Antigravity Customizations**: Interactive `/learn` skill (`.agents/skills/learn/` with `references/format_spec.md`), always-on rule (`.agents/rules/autoharness.md`), read-only subagents (`.agents/agents/reflector.md` and `curator.md`), and fail-open lifecycle hook (`.agents/hooks/autoharness_hook.py` registered in `hooks.json`).
+- **CLI Subcommand Group (`buddhi scripts autoharness`)**: Providing `stage`, `promote`, `validate`, `status`, `capture`, `curate`, `check-links`, and `--selftest`.
+
+We express our gratitude to Ryan and Tigerless Labs for authoring and sharing the `autoharness` project.
+
+---
+
+### Upstream MIT License (`autoharness`)
+
+```text
+MIT License
+
+Copyright (c) 2026 ryan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+---
+
 ## Claude Code Memory
 
 - **Documentation**: [https://code.claude.com/docs/en/memory](https://code.claude.com/docs/en/memory)
