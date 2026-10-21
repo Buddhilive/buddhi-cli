@@ -11,7 +11,8 @@ from pathlib import Path
 BUDDHI_DIR_NAME = ".buddhi"
 GRAPHS_DIR_NAME = "graphs"
 DOCS_DIR_NAME = "docs"
-GITIGNORE_CONTENT = "graphs/\n"
+SITE_DIR_NAME = "site"
+GITIGNORE_CONTENT = "graphs/\nsite/\n"
 
 AGENTS_GITIGNORE_RULES = [
     "memory.local/",
@@ -51,6 +52,16 @@ def ensure_docs_dir(root: Path) -> Path:
     except OSError as exc:
         raise BuddhiFsError(f"could not prepare {docs_dir}: {exc}") from exc
     return docs_dir
+
+
+def ensure_site_dir(root: Path) -> Path:
+    """Ensure `.buddhi/site/` exists under root; return it."""
+    site_dir = root / BUDDHI_DIR_NAME / SITE_DIR_NAME
+    try:
+        site_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise BuddhiFsError(f"could not prepare {site_dir}: {exc}") from exc
+    return site_dir
 
 
 @dataclass

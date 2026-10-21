@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation Portal | {{ SITENAME }}{% endblock %}
+
+{% block content %}
+<section class="portal-home">
+  <header class="portal-header">
+    <h1>{{ SITENAME or "Codebase Knowledge Base" }}</h1>
+    <p class="lead">Grounded documentation powered by Google Open Knowledge Format and Code Graph.</p>
+  </header>
+
+  <div class="portal-grid">
+    <div class="portal-card">
+      <h2>Architecture Report</h2>
+      <p>Topological health, god nodes, surprising connections, and knowledge gaps.</p>
+      <a href="{{ SITEURL }}/architecture-report.html" class="card-link">View Architecture Report &rarr;</a>
+    </div>
+
+    <div class="portal-card">
+      <h2>Interactive Code Graph</h2>
+      <p>Interactive graph network of modules, classes, and call relationships.</p>
+      <a href="{{ SITEURL }}/graphs/tree-graph.html" class="card-link">Open Graph Visualizer &rarr;</a>
+    </div>
+  </div>
+
+  <section class="portal-pages-list">
+    <h2>All Documentation Concepts</h2>
+    <ul>
+      {% for p in pages %}
+      <li><a href="{{ SITEURL }}/{{ p.url }}">{{ p.title }}</a> {% if p.summary %}<span>&mdash; {{ p.summary }}</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </section>
+</section>
+{% endblock %}
+

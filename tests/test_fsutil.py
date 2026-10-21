@@ -21,7 +21,7 @@ def test_creates_gitignore_with_graphs_content(tmp_path: Path) -> None:
     ensure_buddhi_dirs(tmp_path)
 
     gitignore = tmp_path / ".buddhi" / ".gitignore"
-    assert gitignore.read_text(encoding="utf-8") == "graphs/\n"
+    assert gitignore.read_text(encoding="utf-8") == "graphs/\nsite/\n"
 
 
 def test_does_not_overwrite_existing_gitignore(tmp_path: Path) -> None:

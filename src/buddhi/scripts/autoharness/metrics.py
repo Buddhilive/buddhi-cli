@@ -49,4 +49,3 @@ def collect_metrics(layer: str = "project", project_root: Path | None = None) ->
         "archived_skills": total_archived,
         "last_run": last_run_data,
     }
-

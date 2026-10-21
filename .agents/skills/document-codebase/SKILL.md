@@ -22,6 +22,7 @@ buddhi's code graph and the RepoAgent-style bottom-up doc-generation method.
 2. Apply the `repoagent-doc-generation` skill: read the plan, process every entry
    with `needs_generation: true` in the order given, write each OKF concept doc,
    and update the affected `index.md` / `log.md` files.
-3. Report a summary: how many entries were in the plan, how many were already
+3. Build or preview the documentation portal: run `buddhi docs build` to compile the static site into `.buddhi/site/`, or run `buddhi docs` to serve the live portal with hot-reloading.
+4. Report a summary: how many entries were in the plan, how many were already
    current and skipped, and how many were (re)generated this run.
 

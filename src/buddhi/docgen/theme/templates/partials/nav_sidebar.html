@@ -1,0 +1,33 @@
+<div class="sidebar-section">
+  <div class="sidebar-heading">Navigation</div>
+  <ul class="nav-list">
+    <li><a href="{{ SITEURL }}/index.html"{% if page and page.url == "index.html" %} aria-current="page"{% endif %}>Portal Index</a></li>
+    <li><a href="{{ SITEURL }}/architecture-report.html"{% if page and page.url == "architecture-report.html" %} aria-current="page"{% endif %}>Architecture Report</a></li>
+    <li><a href="{{ SITEURL }}/graphs/tree-graph.html">Interactive Code Graph</a></li>
+  </ul>
+</div>
+
+{% if pages %}
+<div class="sidebar-section">
+  <div class="sidebar-heading">Communities</div>
+  <ul class="nav-list">
+    {% for p in pages %}
+    {% if p.url and p.url.startswith("communities/") %}
+    <li><a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>{{ p.title }}</a></li>
+    {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+
+<div class="sidebar-section">
+  <div class="sidebar-heading">God Nodes</div>
+  <ul class="nav-list">
+    {% for p in pages %}
+    {% if p.url and p.url.startswith("god-nodes/") %}
+    <li><a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>{{ p.title }}</a></li>
+    {% endif %}
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+

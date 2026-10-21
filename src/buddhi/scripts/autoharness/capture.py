@@ -75,4 +75,3 @@ def build_prior_digest(transcript_path: Path, end_offset: int) -> str:
     recent = exchanges[-DIGEST_EXCHANGES:]
     raw_digest = "\n".join(recent)[:MAX_DIGEST_BYTES]
     return redact_text(raw_digest)
-

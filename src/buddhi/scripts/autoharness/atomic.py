@@ -48,4 +48,3 @@ def atomic_write_bytes(target_path: Path, data: bytes) -> None:
 def atomic_write_text(target_path: Path, content: str, encoding: str = "utf-8") -> None:
     """Atomically write text content to target_path."""
     atomic_write_bytes(target_path, content.encode(encoding))
-

@@ -8,4 +8,3 @@ from __future__ import annotations
 from buddhi.scripts.autoharness.selftest import run_selftest
 
 __all__ = ["run_selftest"]
-

@@ -145,7 +145,24 @@ buddhi generate [path]
 Scans `path` and rebuilds all three graph artifacts under `.buddhi/graphs/` (`tree-graph.json`, `tree-graph.db`, `tree-graph.html`) without modifying `.buddhi/docs-plan.json` or `.agents/`.
 **Use this whenever the codebase grows or changes** to update the SQLite graph database queried by the Buddhi MCP server (`buddhi_search` and `buddhi_read`).
 
-### `buddhi docs plan` — refresh documentation plan
+### `buddhi docs` — Pelican static site, live server & OKF documentation plan
+
+```sh
+# Generate OKF markdown from the code graph, build the Pelican static site, and run the live server
+buddhi docs [path] [--host 127.0.0.1] [--port 8000] [--open]
+
+# Explicitly run the live-reloading documentation server
+buddhi docs serve [path] [--host 127.0.0.1] [--port 8000] [--no-reload]
+
+# Build the static HTML documentation site into .buddhi/site/ without starting a server
+buddhi docs build [path] [--output <dir>]
+```
+
+`buddhi docs` combines the [Google Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format), the [Pelican](https://docs.getpelican.com/en/latest/index.html) static site generator, and `buddhi-cli`'s Schema v2 code graph (inspired by `graphify`):
+- **Graph-Grounded OKF Markdown Bundle (`.buddhi/docs/`)**: Generates `.buddhi/docs/architecture-report.md` (corpus summary, confidence tiers `EXTRACTED`/`INFERRED`/`AMBIGUOUS`, git commit freshness, god nodes, surprising connections, import cycles, review questions), Leiden community articles (`.buddhi/docs/communities/<slug>.md`), god-node deep dives (`.buddhi/docs/god-nodes/<slug>.md`), and per-symbol OKF concept files while preserving LLM-authored prose (`status: stable`) whenever `sources[0].content_hash` matches.
+- **Pelican Static Site & Live Server (`.buddhi/site/`)**: Uses a custom `OKFMarkdownReader` to parse OKF YAML frontmatter (`sources`, `relations`, `generated`, `status`, `confidence`) into an accessible (WCAG 2.2 AA), light/dark documentation site with client-side symbol search (`search-index.json`), Mermaid diagrams, and embedded interactive graph visualization (`tree-graph.html`).
+
+#### `buddhi docs plan` — refresh documentation plan
 
 ```sh
 buddhi docs plan [path]
@@ -266,13 +283,13 @@ Run standalone developer utilities:
 ### Documentation format
 
 Generated docs under `.buddhi/docs/` follow the
-[Open Knowledge Format](https://okf.org/) (OKF): one concept file per
+[Google Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) (OKF): one concept file per
 module/class/function, each carrying frontmatter that names its source file
 and line range, a content hash for staleness detection, and a status. The
 bottom-up generation order — document a symbol only after everything it
 depends on is already documented — is inspired by the
 [RepoAgent](https://arxiv.org/abs/2402.16667) paper's approach to
-whole-repository, dependency-aware documentation.
+whole-repository, dependency-aware documentation, combined with [Graphify](https://github.com/Graphify-Labs/graphify)-inspired topological community/god-node articles and compiled into a static and live-reloading site via [Pelican](https://docs.getpelican.com/en/latest/index.html) (`buddhi docs`).
 
 ## Notes on accuracy
 
@@ -337,5 +354,7 @@ file, and the `pypi` environment.
 The `anti-slop` filter suite and contrast-checking scripts are adapted from [anti-slop](https://github.com/miqdadbadjuber/anti-slop) by Miqdad Badjuber (MIT License).
 
 The software factory agent skills, visual diffing, and critique verification scripts are adapted from [dzhng/skills](https://github.com/dzhng/skills) by David Zhang (MIT License), with sub-attributions to Matt Pocock, Thariq, wheresryan22, and helloianneo.
+
+The knowledge-graph topological analysis, blast radius, and wiki/report documentation concepts are inspired by [Graphify](https://github.com/Graphify-Labs/graphify) by Safi Shamsi (Apache-2.0 / MIT), structured with the [Google Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format) (Apache-2.0), and compiled into a static and live-reloading documentation site using [Pelican](https://docs.getpelican.com/en/latest/index.html).
 
 See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.

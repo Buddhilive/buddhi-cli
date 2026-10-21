@@ -21,7 +21,7 @@ def test_generate_end_to_end(tmp_path: Path) -> None:
     assert (graphs_dir / "tree-graph.html").exists()
     assert (tmp_path / ".buddhi" / ".gitignore").read_text(
         encoding="utf-8"
-    ) == "graphs/\n"
+    ) == "graphs/\nsite/\n"
 
 
 def test_generate_bad_path_errors_cleanly(tmp_path: Path) -> None:

@@ -1,5 +1,8 @@
 # Memory Mutation Log
 
+## 2026-10-27 16:04:46Z - [SAVED] `mem-decision-pelican-static-site-generator-for-okf-v0-2-documentation`: Pelican Static Site Generator for OKF v0.2 Documentation
+Kind: decision, Summary: Adopted Pelican static site generator with custom OKFMarkdownReader for live documentation.
+
 ## 2026-10-27 05:51:26Z - [SAVED] `mem-decision-single-sqlite-schema-v2-for-graph-intelligence-ast-cache-and`: Single SQLite Schema v2 for Graph Intelligence, AST Cache, and Blast Radius
 Kind: decision, Summary: Store communities, SHA-256 extract_cache, and edge confidence/context in .buddhi/graphs/tree-graph.db and expose via buddhi_graph MCP and <50ms stdlib hooks
 

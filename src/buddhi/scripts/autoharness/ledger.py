@@ -54,4 +54,3 @@ def read_ledger(skill_dir: Path) -> list[dict]:
     except (OSError, json.JSONDecodeError):
         pass
     return entries
-

@@ -46,4 +46,3 @@ def test_skills_guard_threat_detection() -> None:
     # Safe code
     safe_hits = scan_guard("uv run pytest tests/")
     assert len(safe_hits) == 0
-

@@ -70,4 +70,3 @@ def bump_sidecar_counter(skill_dir: Path, counter_name: str, delta: int = 1) -> 
         elif counter_name == "reused_gen":
             sidecar.reused_gen += delta
         write_sidecar(skill_dir, sidecar)
-

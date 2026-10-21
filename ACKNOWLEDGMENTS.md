@@ -75,12 +75,45 @@ We express our gratitude to Anthropic and the Claude Code team for publishing th
 
 ### Description & Adapted Components
 
-The Open Knowledge Format (OKF v0.2) specifies portable, machine-readable knowledge bundles of Markdown files with structured YAML frontmatter. `buddhi-cli` adapts OKF v0.2 for project memory concepts:
+The Open Knowledge Format (OKF) specifies portable, machine-readable knowledge bundles of Markdown files with structured YAML frontmatter. `buddhi-cli` adapts OKF across both codebase documentation (`.buddhi/docs/`) and project memory concepts (`.agents/memory/`):
+- **Codebase Documentation & Live Site (`.buddhi/docs/` & `buddhi docs`)**: Structured OKF concept documents for modules, classes, functions/methods, Leiden communities, god nodes, and architecture reports, compiled into a browsable static documentation site via Pelican's custom `OKFMarkdownReader`.
 - **Concept Frontmatter Schema**: Standardized YAML frontmatter (`id`, `kind`, `title`, `summary`, `status`, `confidence`, `paths`, `tags`, `sources`, `relations`).
 - **Source Code Provenance & Staleness**: Anchoring memories to source code line ranges (`resource#L10-L40`) and tracking staleness via SHA-256 `content_hash` comparison.
 - **Bundle Topology**: Directory structures with topic `index.md` files, a chronological mutation `log.md`, and an entrypoint `MEMORY.md` declaring `okf_version: "0.2"`.
 
 We express our gratitude to the Google Cloud Platform team and contributors for the Open Knowledge Format specification.
+
+---
+
+## Pelican Static Site Generator
+
+- **Documentation**: [https://docs.getpelican.com/en/latest/index.html](https://docs.getpelican.com/en/latest/index.html)
+- **Repository**: [https://github.com/getpelican/pelican](https://github.com/getpelican/pelican)
+- **Author**: Justin Mayer and the Pelican contributors
+- **License**: AGPL-3.0 / MIT (used as an unmodified library dependency via Python API)
+
+### Description & Integration
+
+Pelican is a Python-based static site generator powered by Jinja2 templates and `python-markdown`. `buddhi-cli` integrates Pelican as the static site compilation and live-reloading server engine for `buddhi docs`:
+- **Programmatic Site Generation (`pelican.Pelican` & `pelican.settings.read_settings`)**: Compiles `.buddhi/docs/` into `.buddhi/site/` without requiring external configuration files in the user's project root.
+- **Custom `OKFMarkdownReader` (`pelican.readers.BaseReader`)**: Bridges Google Open Knowledge Format (OKF) YAML frontmatter (`sources`, `relations`, `generated`, `status`, `confidence`) into Pelican `Page` metadata and Jinja2 template context.
+- **Live Server & Watcher (`buddhi docs` / `buddhi docs serve`)**: Uses Pelican's HTTP server and auto-reload pipeline to serve live codebase documentation locally.
+
+We express our gratitude to Justin Mayer and the Pelican community for building and maintaining Pelican.
+
+---
+
+## RepoAgent
+
+- **Paper**: [https://arxiv.org/abs/2402.16667](https://arxiv.org/abs/2402.16667)
+- **Repository**: [https://github.com/OpenBMB/RepoAgent](https://github.com/OpenBMB/RepoAgent)
+- **Authors**: OpenBMB / Tsinghua University
+
+### Description & Adapted Components
+
+`RepoAgent` introduces an LLM-powered, dependency-aware repository documentation methodology using AST call graphs. `buddhi-cli` adapts RepoAgent's bottom-up topological ordering (`topological_doc_order`) so callees and class members are documented before callers and containers, combined with SHA-256 snippet hashing (`content_hash`) for incremental staleness detection in `.buddhi/docs-plan.json`.
+
+We express our gratitude to the RepoAgent authors for their research on dependency-aware codebase documentation.
 
 ---
 
@@ -247,6 +280,7 @@ SOFTWARE.
 - **Blast Radius Analysis**: Evaluating transitive callers, affected communities, and impacted hubs across working trees and git diff revisions.
 - **Token-Efficient Retrieval**: Hub-blocked traversal (preventing high-degree utility hubs from exploding neighborhood bounds) and IDF-weighted multi-field anchor scoring.
 - **Hook-Based Context Injection**: Sub-50ms non-blocking context injection for agent file-reads and session staleness checks.
+- **Graph-Grounded Documentation Wiki & Architecture Reports**: Generating agent-crawlable and human-navigable community hubs (`communities/<slug>.md`), god-node articles (`god-nodes/<slug>.md`), and structural audit reports (`architecture-report.md`) with two-pass Windows `MAX_PATH`-safe slugging, case-insensitive deduplication, atomic writes (`write_text_atomic_if_changed`), and orphan sweeping (inspired by `graphify/wiki.py` and `graphify/report.py`).
 
 We express our gratitude to Safi Shamsi and the Graphify contributors for sharing their knowledge-graph architecture.
 

@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Pelican Static Site & Live Documentation with OKF and Code Graph (`buddhi docs`)**:
+  - Upgraded the `buddhi-cli` documentation pipeline to combine **Google Open Knowledge Format (OKF)** (`https://github.com/GoogleCloudPlatform/open-knowledge-format`), the **Pelican** static site generator (`https://docs.getpelican.com/en/latest/index.html`), and `buddhi-cli`'s **Schema v2 Code Graph** (inspired by `graphify`'s `wiki.py` and `report.py`).
+  - **Live Documentation CLI (`buddhi docs`)**:
+    - `buddhi docs` / `buddhi docs serve`: Refreshes the code graph and OKF Markdown bundle (`.buddhi/docs/`), compiles the Pelican static site (`.buddhi/site/`), and starts a local live-reloading HTTP server (`http://127.0.0.1:8000`).
+    - `buddhi docs build`: Synthesizes graph-backed OKF Markdown docs and builds the static HTML documentation site into `.buddhi/site/` with client-side search (`search-index.json`) and embedded interactive code graph (`tree-graph.html`).
+    - `buddhi docs plan`: Enriches `.buddhi/docs-plan.json` with Leiden community metadata (`community_id`, `community_label`, `cohesion`), god-node indicators, symbol signatures, edge confidence breakdowns (`EXTRACTED`, `INFERRED`, `AMBIGUOUS`), and typed OKF relations.
+  - **Graph-Grounded OKF Wiki & Architecture Report (`src/buddhi/docgen/`)**:
+    - Deterministic generation of `.buddhi/docs/architecture-report.md` (corpus statistics, edge confidence distribution, git `built_at_commit` freshness, god nodes, surprising cross-community connections, import cycles, knowledge gaps, and suggested review questions).
+    - Deterministic generation of `.buddhi/docs/communities/<slug>.md` (Leiden community hubs with cohesion scores, degree-ranked members, cross-community links, confidence audit trails, and Mermaid dependency diagrams) and `.buddhi/docs/god-nodes/<slug>.md` (core abstraction deep dives grouped by relation and confidence tier).
+    - Two-pass Windows `MAX_PATH`-safe slug resolution, case-insensitive collision deduplication, `write_text_atomic_if_changed` (preventing file-watcher rebuild loops), and end-of-run orphan sweeping while preserving LLM-authored symbol prose (`status: stable`) when `sources[0].content_hash` matches.
+  - **Custom Pelican `OKFMarkdownReader` & Accessible Theme**:
+    - Implemented `OKFMarkdownReader` subclassing `pelican.readers.BaseReader` to parse nested OKF YAML frontmatter (`sources`, `generated`, `relations`, `status`, `confidence`, `tags`), strip forbidden OKF Attested Computation fields, and transform portable `.md` links into `.html` links.
+    - Bundled a WCAG 2.2 AA (`a11y`) and `antislop`-compliant documentation theme (`src/buddhi/docgen/theme/`) with light/dark mode parity, semantic HTML5 landmarks, keyboard-operable search, OKF provenance badges, and Mermaid diagram rendering.
+  - Updated `ACKNOWLEDGMENTS.md` and `README.md` with references for Pelican, Google Open Knowledge Format (OKF), and Graphify.
+
 - **Graphify-Inspired Code Graph Intelligence, Blast Radius & Antigravity Integration**:
   - Upgraded code graph engine, MCP server, CLI, and Spec-Driven Development (SDD) workflow inspired by `graphify` (Safi Shamsi, Apache-2.0 / MIT).
   - **Core Code Graph & Resolution (`src/buddhi/graph/`)**:

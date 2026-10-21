@@ -182,7 +182,9 @@ def verify_a11y_cmd(
         report_dir=rep_path,
         warn_only=warn_only,
     )
-    console.print(result.output_text, markup=False)
+    encoding = sys.stdout.encoding or "utf-8"
+    out_text = result.output_text.encode(encoding, errors="replace").decode(encoding)
+    console.print(out_text, markup=False)
     raise typer.Exit(code=result.exit_code)
 
 
