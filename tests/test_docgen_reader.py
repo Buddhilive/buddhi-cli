@@ -107,3 +107,36 @@ Body text here.
     _, metadata = reader.read(str(doc_path))
 
     assert metadata["title"] == "Heading One Title"
+
+
+def test_okf_reader_preprocesses_mermaid_blocks_and_routes_templates(
+    tmp_path: Path,
+) -> None:
+    # 1. Mermaid code block conversion
+    doc_path = tmp_path / "graph_doc.md"
+    content = """---
+title: Graph Callflow
+---
+
+# Architecture
+
+```mermaid
+flowchart LR
+  A --> B
+```
+"""
+    doc_path.write_text(content, encoding="utf-8")
+
+    reader = OKFMarkdownReader(settings={"PATH": str(tmp_path)})
+    html, metadata = reader.read(str(doc_path))
+
+    assert '<pre class="mermaid">' in html
+    assert "flowchart LR" in html
+    assert metadata["template"] == "page"
+    assert metadata["doc_section"] == "Overview"
+
+    # 2. Root index routes to index template
+    idx_path = tmp_path / "index.md"
+    idx_path.write_text("---\ntitle: Home\n---\n# Home\n", encoding="utf-8")
+    _, idx_meta = reader.read(str(idx_path))
+    assert idx_meta["template"] == "index"

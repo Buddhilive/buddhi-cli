@@ -1,5 +1,5 @@
 <div class="sidebar-section">
-  <div class="sidebar-heading">Navigation</div>
+  <div class="sidebar-heading">Overview</div>
   <ul class="nav-list">
     <li><a href="{{ SITEURL }}/index.html"{% if page and page.url == "index.html" %} aria-current="page"{% endif %}>Portal Index</a></li>
     <li><a href="{{ SITEURL }}/architecture-report.html"{% if page and page.url == "architecture-report.html" %} aria-current="page"{% endif %}>Architecture Report</a></li>
@@ -8,26 +8,72 @@
 </div>
 
 {% if pages %}
-<div class="sidebar-section">
-  <div class="sidebar-heading">Communities</div>
-  <ul class="nav-list">
-    {% for p in pages %}
-    {% if p.url and p.url.startswith("communities/") %}
-    <li><a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>{{ p.title }}</a></li>
-    {% endif %}
-    {% endfor %}
-  </ul>
-</div>
+{% set comm_pages = [] %}
+{% set god_pages = [] %}
+{% set concept_pages = [] %}
+{% for p in pages %}
+  {% if p.doc_section == "communities" or (p.url and p.url.startswith("communities/")) %}
+    {% set _ = comm_pages.append(p) %}
+  {% elif p.doc_section == "god-nodes" or (p.url and p.url.startswith("god-nodes/")) %}
+    {% set _ = god_pages.append(p) %}
+  {% elif p.doc_section != "Overview" and p.url not in ("index.html", "architecture-report.html") %}
+    {% set _ = concept_pages.append(p) %}
+  {% endif %}
+{% endfor %}
 
-<div class="sidebar-section">
-  <div class="sidebar-heading">God Nodes</div>
+{% if comm_pages %}
+<details class="sidebar-details"{% if page and page.doc_section == "communities" %} open{% else %} open{% endif %}>
+  <summary class="sidebar-summary">
+    <span class="sidebar-heading">Communities ({{ comm_pages|length }})</span>
+  </summary>
   <ul class="nav-list">
-    {% for p in pages %}
-    {% if p.url and p.url.startswith("god-nodes/") %}
+    {% for p in comm_pages[:8] %}
     <li><a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>{{ p.title }}</a></li>
+    {% endfor %}
+    {% if comm_pages|length > 8 %}
+    <li class="nav-view-all"><a href="{{ SITEURL }}/architecture-report.html#community-hubs">View all {{ comm_pages|length }} communities &rarr;</a></li>
     {% endif %}
+  </ul>
+</details>
+{% endif %}
+
+{% if god_pages %}
+<details class="sidebar-details"{% if page and page.doc_section == "god-nodes" %} open{% endif %}>
+  <summary class="sidebar-summary">
+    <span class="sidebar-heading">God Nodes ({{ god_pages|length }})</span>
+  </summary>
+  <ul class="nav-list">
+    {% for p in god_pages %}
+    <li><a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>{{ p.title }}</a></li>
     {% endfor %}
   </ul>
+</details>
+{% endif %}
+
+{% if concept_pages %}
+<div class="sidebar-section sidebar-codebase-section">
+  <div class="sidebar-heading">Codebase Concepts ({{ concept_pages|length }})</div>
+  {% for sec, sec_pages in concept_pages | groupby("doc_section") %}
+  {% if sec and sec != "Overview" and sec != "communities" and sec != "god-nodes" %}
+  <details class="sidebar-subdetails"{% if page and page.doc_section == sec %} open{% endif %}>
+    <summary class="sidebar-subheading">
+      <span>{{ sec }}</span>
+      <span class="count-badge">{{ sec_pages|length }}</span>
+    </summary>
+    <ul class="nav-list nav-sublist">
+      {% for p in sec_pages %}
+      <li>
+        <a href="{{ SITEURL }}/{{ p.url }}"{% if page and page.url == p.url %} aria-current="page"{% endif %}>
+          <span class="nav-badge-pill {{ p.okf_type|lower if p.okf_type else 'concept' }}">{{ (p.okf_type or 'C')[:1] }}</span>
+          <span class="nav-item-title">{{ p.title }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+  {% endfor %}
 </div>
 {% endif %}
 
+{% endif %}

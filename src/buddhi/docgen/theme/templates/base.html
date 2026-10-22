@@ -68,5 +68,20 @@
 
   <script src="{{ SITEURL }}/theme/js/search.js" defer></script>
   <script src="{{ SITEURL }}/theme/js/theme-toggle.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.mermaid) {
+        var isDark = document.documentElement.getAttribute("data-theme") === "dark" ||
+          (!localStorage.getItem("buddhi_theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: isDark ? "dark" : "default",
+          securityLevel: "loose",
+          flowchart: { useMaxWidth: true, htmlLabels: true, curve: "basis" }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

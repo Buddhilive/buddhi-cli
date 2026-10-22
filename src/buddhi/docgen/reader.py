@@ -19,6 +19,25 @@ _MD_LINK_RE = re.compile(
     re.IGNORECASE,
 )
 
+_MERMAID_BLOCK_RE = re.compile(r"```mermaid\r?\n(.*?)\r?\n```", re.DOTALL)
+
+
+def classify_doc_section(rel_path: Path) -> str:
+    """Classify relative document path into a human-friendly documentation section."""
+    parts = rel_path.parts
+    if len(parts) <= 1:
+        return "Overview"
+    top = parts[0]
+    if top in ("communities", "god-nodes"):
+        return top
+    if top == "src" and len(parts) >= 3:
+        return parts[2].replace("_", " ").title()
+    if top == ".agents":
+        return "Harness & Skills"
+    if top == "tests":
+        return "Tests"
+    return top.replace("_", " ").title()
+
 
 class OKFMarkdownReader(BaseReader):
     """Pelican reader parsing OKF v0.2 YAML frontmatter and rendering Markdown."""
@@ -70,16 +89,21 @@ class OKFMarkdownReader(BaseReader):
         html_rel = rel_path.with_suffix(".html").as_posix()
         metadata["save_as"] = html_rel
         metadata["url"] = html_rel
-        metadata["template"] = data.get("template") or "page"
+        default_tpl = "index" if html_rel == "index.html" else "page"
+        metadata["template"] = data.get("template") or default_tpl
+        metadata["doc_section"] = classify_doc_section(rel_path)
 
-        # 3. Render Markdown with standard extensions
+        # 3. Preprocess Mermaid code blocks to <pre class="mermaid"> and render Markdown
+        processed_body = _MERMAID_BLOCK_RE.sub(
+            r'<pre class="mermaid">\n\1\n</pre>', body
+        )
         md = markdown.Markdown(
             extensions=["fenced_code", "tables", "toc", "codehilite"],
             extension_configs={
                 "codehilite": {"css_class": "highlight", "guess_lang": False}
             },
         )
-        html_content = md.convert(body)
+        html_content = md.convert(processed_body)
 
         # 4. Relative link rewriting: [Text](path/doc.md#anchor) -> <a href="path/doc.html#anchor">
         def _rewrite_link(m: re.Match) -> str:

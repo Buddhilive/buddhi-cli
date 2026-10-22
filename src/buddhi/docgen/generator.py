@@ -420,6 +420,7 @@ def generate_docs_bundle(
             "description": f"Index of OKF documentation concepts and code graph for {root.name}.",
             "status": "stable",
             "okf_version": "0.2",
+            "template": "index",
             "tags": ["index", "catalog"],
             "generated": {"by": "buddhi-docgen", "at": today},
         }
@@ -450,15 +451,19 @@ def generate_docs_bundle(
         should_write_index = True
         if existing_index.is_file():
             try:
-                exist_meta, _ = split_frontmatter(
-                    existing_index.read_text(encoding="utf-8")
-                )
+                raw_idx = existing_index.read_text(encoding="utf-8")
+                exist_meta, _ = split_frontmatter(raw_idx)
                 gen = (
                     exist_meta.get("generated")
                     if isinstance(exist_meta, dict)
                     else None
                 )
-                if not isinstance(gen, dict) or gen.get("by") != "buddhi-docgen":
+                is_legacy = raw_idx.strip().startswith(
+                    'okf_version: "0.2"'
+                ) and not raw_idx.startswith("---")
+                if not is_legacy and (
+                    not isinstance(gen, dict) or gen.get("by") != "buddhi-docgen"
+                ):
                     should_write_index = False
             except (OSError, ValueError):
                 should_write_index = False
