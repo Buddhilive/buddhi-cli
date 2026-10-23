@@ -328,6 +328,15 @@ def generate_docs_bundle(
     god_nodes_dir = docs_dir / "god-nodes"
     god_nodes_dir.mkdir(parents=True, exist_ok=True)
 
+    if graph is None:
+        try:
+            from buddhi.graph.pipeline import run_pipeline
+
+            result = run_pipeline(root)
+            graph = result.build_ctx.graph
+        except Exception:  # noqa: BLE001, S110
+            pass
+
     db_path = root / ".buddhi" / "graphs" / "tree-graph.db"
     should_close_conn = False
     if conn is None and db_path.is_file():

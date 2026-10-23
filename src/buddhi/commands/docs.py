@@ -8,7 +8,11 @@ from rich.console import Console
 
 from buddhi.docgen.planner import build_docs_plan, plan_to_json
 from buddhi.docgen.site import compile_site, serve_docs
+from buddhi.graph.model import CodeGraph
 from buddhi.graph.pipeline import run_pipeline
+from buddhi.persist.html_writer import write_html
+from buddhi.persist.json_writer import write_json
+from buddhi.persist.sqlite_writer import write_sqlite
 from buddhi.util.fsutil import (
     BuddhiFsError,
     ensure_buddhi_dirs,
@@ -30,22 +34,46 @@ def _prepare_directories_and_graph(
     no_graph_refresh: bool = False,
     max_file_size: int = 2_000_000,
     verbose: bool = False,
-) -> None:
-    """Ensure .buddhi dirs exist and graph is initialized."""
+) -> CodeGraph | None:
+    """Ensure .buddhi dirs exist and graph artifacts are initialized."""
     try:
-        ensure_buddhi_dirs(root)
+        graphs_dir = ensure_buddhi_dirs(root)
         ensure_docs_dir(root)
         ensure_site_dir(root)
     except BuddhiFsError as exc:
         err_console.print(f"[red]error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
 
-    db_path = root / ".buddhi" / "graphs" / "tree-graph.db"
-    if not no_graph_refresh or not db_path.exists():
+    db_path = graphs_dir / "tree-graph.db"
+    html_path = graphs_dir / "tree-graph.html"
+    json_path = graphs_dir / "tree-graph.json"
+
+    graph: CodeGraph | None = None
+    if not no_graph_refresh or not db_path.exists() or not html_path.exists():
         result = run_pipeline(root, max_file_size=max_file_size)
+        graph = result.build_ctx.graph
         if verbose:
             for warning in result.build_ctx.warnings:
                 err_console.print(f"[yellow]warning:[/yellow] {warning}")
+        try:
+            write_json(result.build_ctx.graph, json_path)
+            write_sqlite(
+                result.build_ctx.graph,
+                db_path,
+                root_path=str(root),
+                extract_cache_entries=result.build_ctx.extract_cache_entries,
+            )
+            write_html(
+                result.build_ctx.graph,
+                html_path,
+                root_label=root.name or str(root),
+            )
+        except OSError as exc:
+            err_console.print(
+                f"[yellow]warning:[/yellow] failed writing graph artifacts: {exc}"
+            )
+
+    return graph
 
 
 def _run_docs_serve(
@@ -63,7 +91,7 @@ def _run_docs_serve(
         err_console.print(f"[red]error:[/red] not a directory: {root}")
         raise typer.Exit(code=1)
 
-    _prepare_directories_and_graph(
+    graph = _prepare_directories_and_graph(
         root, no_graph_refresh=no_graph_refresh, verbose=verbose
     )
 
@@ -75,6 +103,7 @@ def _run_docs_serve(
             reload=reload,
             open_browser=open_browser,
             output_dir=output,
+            graph=graph,
             verbose=verbose,
         )
     except OSError as exc:
@@ -91,7 +120,7 @@ def default_docs_callback(
         True, "--reload/--no-reload", help="Auto-reload on file changes."
     ),
     open_browser: bool = typer.Option(
-        False, "--open/--no-open", help="Open browser on start."
+        True, "--open/--no-open", help="Open browser on start."
     ),
     no_graph_refresh: bool = typer.Option(
         False, "--no-graph-refresh", help="Skip graph refresh check."
@@ -126,7 +155,7 @@ def serve_command(
         True, "--reload/--no-reload", help="Auto-reload on file changes."
     ),
     open_browser: bool = typer.Option(
-        False, "--open/--no-open", help="Open browser on start."
+        True, "--open/--no-open", help="Open browser on start."
     ),
     no_graph_refresh: bool = typer.Option(
         False, "--no-graph-refresh", help="Skip graph refresh check."
@@ -170,12 +199,12 @@ def build_command(
         err_console.print(f"[red]error:[/red] not a directory: {root}")
         raise typer.Exit(code=1)
 
-    _prepare_directories_and_graph(
+    graph = _prepare_directories_and_graph(
         root, no_graph_refresh=no_graph_refresh, verbose=verbose
     )
 
     try:
-        out = compile_site(root=root, output_dir=output, verbose=verbose)
+        out = compile_site(root=root, output_dir=output, graph=graph, verbose=verbose)
         console.print(
             f"[bold green]done[/bold green] compiled documentation site at {out}"
         )

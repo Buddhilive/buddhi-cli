@@ -21,6 +21,7 @@ from pelican.settings import read_settings  # type: ignore[import-untyped]
 
 from buddhi.docgen.generator import generate_docs_bundle
 from buddhi.docgen.reader import OKFMarkdownReader
+from buddhi.graph.model import CodeGraph
 from buddhi.memory.frontmatter import split_frontmatter
 
 
@@ -137,10 +138,28 @@ def copy_interactive_graph(root: Path, output_dir: Path) -> None:
             pass
 
 
+class BuddhiHTTPRequestHandler(ComplexHTTPRequestHandler):
+    """Custom request handler with cache-control headers and clean favicon handling."""
+
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        super().end_headers()
+
+    def do_GET(self) -> None:
+        if self.path == "/favicon.ico":
+            self.send_response(204)
+            self.end_headers()
+            return
+        super().do_GET()
+
+
 def compile_site(
     root: Path,
     output_dir: Path | None = None,
     theme_dir: Path | None = None,
+    graph: CodeGraph | None = None,
     verbose: bool = False,
 ) -> Path:
     """Compile OKF documentation under .buddhi/docs/ into static HTML via Pelican."""
@@ -150,7 +169,7 @@ def compile_site(
     out.mkdir(parents=True, exist_ok=True)
 
     # 0. Synthesize graph-grounded OKF markdown bundle if database exists
-    generate_docs_bundle(root)
+    generate_docs_bundle(root, graph=graph)
 
     # 1. Read / prepare settings
     sitename = f"{root.name} Documentation"
@@ -235,16 +254,19 @@ def serve_docs(
     host: str = "127.0.0.1",
     port: int = 8000,
     reload: bool = True,
-    open_browser: bool = False,
+    open_browser: bool = True,
     output_dir: Path | None = None,
     theme_dir: Path | None = None,
+    graph: CodeGraph | None = None,
     verbose: bool = False,
 ) -> None:
     """Compile and serve documentation locally with live reload."""
     out = (output_dir or root / ".buddhi" / "site").resolve()
 
     # Compile initial site
-    compile_site(root, output_dir=out, theme_dir=theme_dir, verbose=verbose)
+    compile_site(
+        root, output_dir=out, theme_dir=theme_dir, graph=graph, verbose=verbose
+    )
 
     if not is_port_available(host, port):
         raise OSError(
@@ -257,7 +279,7 @@ def serve_docs(
         reloader.start()
 
     server_address = (host, port)
-    httpd = RootedHTTPServer(str(out), server_address, ComplexHTTPRequestHandler)
+    httpd = RootedHTTPServer(str(out), server_address, BuddhiHTTPRequestHandler)
 
     url = f"http://{host}:{port}/"
     print(f"Serving documentation at {url}")

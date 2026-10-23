@@ -199,6 +199,10 @@ _TEMPLATE = """<!doctype html>
             <span id="physics-btn-icon"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg></span>
             <span id="physics-indicator" class="text-xs font-semibold">Engine Active</span>
         </button>
+        <a href="../index.html" class="flex items-center space-x-1.5 bg-slate-900/60 hover:bg-slate-800 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200 hover:text-white transition-all">
+            <span>&larr;</span>
+            <span>Documentation Portal</span>
+        </a>
     </div>
 </header>
 
@@ -258,6 +262,7 @@ const container = document.getElementById('network-container');
 const data = {{ nodes: nodesDataSet, edges: edgesDataSet }};
 
 const options = {{
+    layout: {{ improvedLayout: false }},
     nodes: {{
         shape: 'dot', size: 16,
         font: {{ color: '#f8fafc', size: 13, face: 'Outfit', strokeWidth: 2, strokeColor: '#0b0f19' }},
@@ -271,7 +276,7 @@ const options = {{
     physics: {{
         solver: 'forceAtlas2Based',
         forceAtlas2Based: {{ gravitationalConstant: -50, centralGravity: 0.01, springLength: 100, springConstant: 0.08, damping: 0.4 }},
-        stabilization: {{ enabled: true, iterations: 200, updateInterval: 25 }},
+        stabilization: {{ enabled: false }},
     }},
     interaction: {{ hover: true, tooltipDelay: 300, selectable: true, selectConnectedEdges: true }},
 }};
