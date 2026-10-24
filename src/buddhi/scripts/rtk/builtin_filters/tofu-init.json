@@ -1,0 +1,36 @@
+{
+  "name": "tofu-init",
+  "description": "Compact OpenTofu init output",
+  "match_command": "^tofu\\s+init(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^- Downloading",
+    "^- Installing",
+    "^- Using previously-installed",
+    "^\\s*$",
+    "^Initializing provider",
+    "^Initializing the backend",
+    "^Initializing modules"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 20,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "tofu init: ok",
+  "source": "rtk-ai/rtk (src/filters/tofu-init.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips downloading/installing lines",
+      "input": "Initializing the backend...\nInitializing provider plugins...\n- Downloading hashicorp/aws 5.0.0...\n- Installing hashicorp/aws 5.0.0...\n- Using previously-installed hashicorp/random 3.5.1\n\nOpenTofu has been successfully initialized!\n",
+      "expected": "OpenTofu has been successfully initialized!"
+    },
+    {
+      "name": "on_empty when all noise stripped",
+      "input": "Initializing the backend...\nInitializing provider plugins...\n- Using previously-installed hashicorp/aws 5.0.0\n\n",
+      "expected": "tofu init: ok"
+    }
+  ]
+}

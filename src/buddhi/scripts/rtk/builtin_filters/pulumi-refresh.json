@@ -1,0 +1,49 @@
+{
+  "name": "pulumi-refresh",
+  "description": "Compact Pulumi refresh (state reconciliation) output",
+  "match_command": "^pulumi\\s+refresh(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Refreshing \\(",
+    "^Previewing (refresh|update)",
+    "^View in Browser",
+    "^View Live:",
+    "^Duration:",
+    "^Permalink:",
+    "^\\s*Type\\s+Name\\s+",
+    "^Loading policy packs",
+    "^@ (Previewing refresh|Refreshing)",
+    "^More information at:",
+    "^Use `pulumi ",
+    "^\\s+.*\\brefreshing\\s+\\(",
+    "^\\s+[~+\\-]\\s+[^ ]+\\s+\\S+\\s+refreshing\\s*$",
+    "^\\s{4,}at\\s+\\S+\\s*\\(",
+    "^\\s{4,}at\\s+/",
+    "^\\s+at\\s+processTicksAndRejections",
+    "^\\s+promise:\\s+Promise",
+    "^\\s+\\[Circular",
+    "^\\s*<ref\\s+\\*\\d"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": null,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "pulumi refresh: no drift",
+  "source": "rtk-ai/rtk (src/filters/pulumi-refresh.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips refresh header and passes drift rows",
+      "input": "Refreshing (dev)\n\nView in Browser (Ctrl+O): https://app.pulumi.com/org/my-proj/dev/updates/44\n\n     Type                          Name              Status\n ~   aws:s3:Bucket                 my-bucket         refreshed\n\nResources:\n    ~ 1 updated\n\nDuration: 4s\n",
+      "expected": " ~   aws:s3:Bucket                 my-bucket         refreshed\nResources:\n    ~ 1 updated"
+    },
+    {
+      "name": "on_empty when no drift detected",
+      "input": "Refreshing (dev)\n\nView in Browser (Ctrl+O): https://app.pulumi.com/org/my-proj/dev/updates/44\n\nDuration: 2s\n",
+      "expected": "pulumi refresh: no drift"
+    }
+  ]
+}

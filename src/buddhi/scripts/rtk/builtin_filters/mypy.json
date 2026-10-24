@@ -1,0 +1,24 @@
+{
+  "name": "mypy",
+  "description": "Filters mypy type checking output",
+  "match_command": "^(?:uv\\s+run\\s+)?mypy\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [
+    "^.*:\\d+:\\s+error:.*",
+    "^.*:\\d+:\\s+note:.*",
+    "^Found \\d+ errors?.*",
+    "^Success: no issues found in \\d+ source files$"
+  ],
+  "error_patterns": [
+    "^.*:\\d+:\\s+error:.*",
+    "(?i)\\b(error|failed)\\b"
+  ],
+  "max_lines": 80,
+  "source": "rtk-ai/rtk (src/cmds/python/mypy_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

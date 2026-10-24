@@ -1,0 +1,32 @@
+{
+  "name": "iptables",
+  "description": "Compact iptables output",
+  "match_command": "^iptables\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Chain DOCKER",
+    "^Chain BR-"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/iptables.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips Docker chains, preserves real rules",
+      "input": "Chain INPUT (policy ACCEPT)\nnum  target     prot opt source               destination\n1    ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0\nChain DOCKER (1 references)\n    DOCKER     all  --  0.0.0.0/0            0.0.0.0/0\nChain BR-abcdef (0 references)\n",
+      "expected": "Chain INPUT (policy ACCEPT)\nnum  target     prot opt source               destination\n1    ACCEPT     all  --  0.0.0.0/0            0.0.0.0/0\n    DOCKER     all  --  0.0.0.0/0            0.0.0.0/0"
+    },
+    {
+      "name": "preserves FORWARD and OUTPUT chains",
+      "input": "Chain FORWARD (policy DROP)\n1 ACCEPT tcp\nChain OUTPUT (policy ACCEPT)\n1 ACCEPT all",
+      "expected": "Chain FORWARD (policy DROP)\n1 ACCEPT tcp\nChain OUTPUT (policy ACCEPT)\n1 ACCEPT all"
+    }
+  ]
+}

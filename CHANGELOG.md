@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **RTK (Rust Token Killer) Output Compression Engine & Antigravity Hook (`buddhi scripts rtk`)**:
+  - Implemented high-performance, token-saving CLI proxy and filtering suite adapted from `rtk` (rtk-ai, Apache-2.0), reducing LLM token consumption by 60–90% on common development tools (Git, Pytest, Ruff, Mypy, UV, Cargo, NPM, Docker, etc.) while running in pure Python (3.10+) without new runtime dependencies.
+  - **Core Filtering Engine (`src/buddhi/scripts/rtk/`)**:
+    - Declarative JSON filter format (`FilterSpec`) supporting regex line stripping, keeping, replacement rules, `match_output` short-circuiting, line-length truncation (`truncate_lines_at`), consecutive duplicate collapsing, blank-line normalization, and non-destructive head/tail windowing.
+    - Guaranteed error-line protection: compiler error diagnostics, tracebacks, failure summaries, and panics are never suppressed during filtering or truncation.
+    - Generic fallback filter (`generic.py`) applying ANSI sequence stripping, blank/duplicate collapse, and head/tail truncation with salvaged error lines when no specific tool filter matches.
+    - Process execution runner (`runner.py`) preserving exact process exit codes, streaming output capture, and automated raw failure logging under `.buddhi/rtk/raw/` for auditing.
+  - **Broad Port of Builtin Filters (`builtin_filters/`)**:
+    - Ported and validated 62 declarative filters across Python, Rust, Go, JS/TS, JVM, PHP, Ruby, and cloud/system CLI tools from upstream `rtk` Apache-2.0 specifications into zero-dependency JSON, with full embedded test suites verified.
+    - Ported high-priority core filters for `git status`, `git diff`, `git log`, `pytest`, `ruff`, `mypy`, `uv`, `npm`, `cargo`, and `docker`.
+  - **Google Antigravity Lifecycle Hook & SDD Integration**:
+    - Added `PreToolUse` lifecycle hook (`.agents/hooks/rtk_hook.py`) registered in `.agents/hooks.json` that transparently rewrites supported tool commands (e.g. `git status` -> `buddhi scripts rtk run -- git status`) while remaining fail-open and respecting destructive guards (`guard_destructive.py`).
+    - Added always-on Antigravity rule (`.agents/rules/rtk.md`) and `/rtk` skill (`.agents/skills/rtk/SKILL.md`).
+    - Updated `terminal-runner` agent (`.agents/agents/terminal-runner.md`) and SDD verification skills (`/verify`, `/implement`) to route verbose diagnostic commands through RTK and report recovery log paths on failure.
+    - Synchronized all new agent rules, skills, subagent definitions, and hooks into `src/buddhi/templates/agents/` so generated harnesses automatically inherit token reduction.
+  - **Observability & Custom Filter Trust (`tracking.py`, `trust.py`)**:
+    - Local append-only token ledger (`.buddhi/rtk/runs.jsonl`) recording raw vs. filtered token counts with parameter/secret redaction.
+    - `buddhi scripts rtk gain` summary table and JSON metrics breakdown.
+    - SHA-256 hash pinning and trust management (`buddhi scripts rtk trust`) gating project-local filters in `.buddhi/rtk/filters/`.
+    - Filter catalog inspection and embedded test suite execution via `buddhi scripts rtk filters list|test`.
+  - Updated `ACKNOWLEDGMENTS.md` with explicit Apache-2.0 license attribution for `rtk-ai/rtk` and clear statement excluding BUSL-1.1 components (`engine/` and `proxy/`).
+
 - **Pelican Static Site & Live Documentation with OKF and Code Graph (`buddhi docs`)**:
   - Upgraded the `buddhi-cli` documentation pipeline to combine **Google Open Knowledge Format (OKF)** (`https://github.com/GoogleCloudPlatform/open-knowledge-format`), the **Pelican** static site generator (`https://docs.getpelican.com/en/latest/index.html`), and `buddhi-cli`'s **Schema v2 Code Graph** (inspired by `graphify`'s `wiki.py` and `report.py`).
   - **Live Documentation CLI (`buddhi docs`)**:

@@ -1,0 +1,28 @@
+{
+  "name": "mix-format",
+  "description": "Compact mix format output",
+  "match_command": "^mix\\s+format(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 20,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "mix format: ok",
+  "source": "rtk-ai/rtk (src/filters/mix-format.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "empty output returns ok",
+      "input": "",
+      "expected": "mix format: ok"
+    },
+    {
+      "name": "changed files pass through",
+      "input": "lib/my_app.ex\ntest/my_app_test.exs",
+      "expected": "lib/my_app.ex\ntest/my_app_test.exs"
+    }
+  ]
+}

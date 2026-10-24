@@ -1,0 +1,30 @@
+{
+  "name": "du",
+  "description": "Compact du output",
+  "match_command": "^du\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/du.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "preserves sizes, strips blank lines",
+      "input": "4.0K\t./src\n\n8.0K\t./tests\n16K\t.",
+      "expected": "4.0K\t./src\n8.0K\t./tests\n16K\t."
+    },
+    {
+      "name": "single line passthrough",
+      "input": "128K\t.",
+      "expected": "128K\t."
+    }
+  ]
+}

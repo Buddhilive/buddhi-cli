@@ -29,6 +29,7 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - An **OKF v0.2 & Claude Code Memory Layer** providing structured, budget-bounded per-project memory (`buddhi memory`), automatic legacy migration, and SDD integration.
 - An **A11Y.md Accessibility System** providing an always-on rule (`a11y.md`), 31 component pattern guides (`guide-*.md`), governance templates (`REPORT.md`, `EXCEPTIONS.md`, `A11Y-DECISIONS.md`), static gate auditing (`buddhi scripts verify-a11y`), and SDD memory promotion.
 - An **Anti-Slop Filter Suite** (`antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-code`) preventing generic AI slop in UI, text, and code comments.
+- An **RTK Token-Saving Output Compression Engine** (`buddhi scripts rtk`) reducing LLM token consumption by 60–90% on dev commands (Git, Pytest, Ruff, Mypy, UV, Cargo, NPM, Docker, etc.) via declarative filters, an automatic Antigravity `PreToolUse` hook, error line retention, and auditable failure logs.
 - A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
   2. `/spec-plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
@@ -229,6 +230,14 @@ Run standalone developer utilities:
 - `buddhi scripts check-file-size --all [--max-tokens N]` — Check and ratchet source file sizes against token budget (default 8,000 tokens / 32 KB).
 - `buddhi scripts visual-parity-diff [--candidate-dir DIR] [--reference-dir DIR] [--out-dir DIR]` — Compute solo scene metrics or reference-vs-candidate parity diffing with 8 diagnostic PNG artifacts.
 - `buddhi scripts receipts [--json|--label] [--window N] <report.md>...` — Verify execution receipt blocks against prose measurement claims and SHA-256 artifact hashes.
+- `buddhi scripts rtk run [--raw] [--generic] -- <command...>` — Execute a command with output filtered by declarative tool patterns (or generic fallback) to save 60–90% LLM tokens while preserving exit codes and error lines. On non-zero exit, full raw output is automatically saved to `.buddhi/rtk/raw/`.
+- `buddhi scripts rtk rewrite [--json] <command...>` — Test whether a shell command matches RTK rewrite candidates.
+- `buddhi scripts rtk gain [--json]` — Display aggregate token savings and reduction percentages across sessions.
+- `buddhi scripts rtk filters list [--json]` — List all 60+ builtin and project-local filters with command patterns and license status.
+- `buddhi scripts rtk filters test <filter-name>` — Run embedded verification test cases for a specific filter.
+- `buddhi scripts rtk trust [filter_path]` — Approve and SHA-256 hash-pin project-local filter files in `.buddhi/rtk/filters/`.
+
+> **Note on Tool Permissions & Rewriting**: When using Antigravity, the `PreToolUse` RTK hook transparently rewrites supported noisy commands to `buddhi scripts rtk run -- <cmd>`. Because Antigravity evaluates permissions *after* lifecycle hooks rewrite commands, ensure your workspace command allowlists permit `buddhi scripts rtk run` or `buddhi scripts rtk *`.
 
 ## The Antigravity agent harness
 
@@ -356,5 +365,7 @@ The `anti-slop` filter suite and contrast-checking scripts are adapted from [ant
 The software factory agent skills, visual diffing, and critique verification scripts are adapted from [dzhng/skills](https://github.com/dzhng/skills) by David Zhang (MIT License), with sub-attributions to Matt Pocock, Thariq, wheresryan22, and helloianneo.
 
 The knowledge-graph topological analysis, blast radius, and wiki/report documentation concepts are inspired by [Graphify](https://github.com/Graphify-Labs/graphify) by Safi Shamsi (Apache-2.0 / MIT), structured with the [Google Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format) (Apache-2.0), and compiled into a static and live-reloading documentation site using [Pelican](https://docs.getpelican.com/en/latest/index.html).
+
+The command output token-saving filter concepts, declarative filter rules, and lifecycle hook integration are adapted from [rtk](https://github.com/rtk-ai/rtk) by rtk-ai (Apache License 2.0). Components licensed under BUSL-1.1 are strictly excluded.
 
 See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.

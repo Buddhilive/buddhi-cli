@@ -1,0 +1,37 @@
+{
+  "name": "make",
+  "description": "Compact make output",
+  "match_command": "^make\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^make\\[\\d+\\]:",
+    "^\\s*$",
+    "^Nothing to be done"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "make: ok",
+  "source": "rtk-ai/rtk (src/filters/make.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips entering/leaving lines",
+      "input": "make[1]: Entering directory '/home/user'\ngcc -O2 foo.c\nmake[1]: Leaving directory '/home/user'\n",
+      "expected": "gcc -O2 foo.c\n"
+    },
+    {
+      "name": "strips blank lines",
+      "input": "gcc -O2 foo.c\n\ngcc -O2 bar.c\n",
+      "expected": "gcc -O2 foo.c\ngcc -O2 bar.c\n"
+    },
+    {
+      "name": "on_empty when all stripped",
+      "input": "make[1]: Entering directory '/home/user'\nmake[1]: Leaving directory '/home/user'\n",
+      "expected": "make: ok"
+    }
+  ]
+}

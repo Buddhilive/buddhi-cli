@@ -1,0 +1,37 @@
+{
+  "name": "task",
+  "description": "Compact go-task output \u2014 strip task headers, keep command results",
+  "match_command": "^task\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^task: \\[.*\\] ",
+    "^task: Task .* is up to date"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": 150,
+  "on_empty": "task: ok",
+  "source": "rtk-ai/rtk (src/filters/task.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips task headers, keeps output",
+      "input": "task: [build] go build ./...\n\ntask: [test] go test ./...\nok  myapp 0.5s\n\ntask: Task \"lint\" is up to date",
+      "expected": "ok  myapp 0.5s"
+    },
+    {
+      "name": "preserves error output",
+      "input": "task: [build] go build ./...\n./main.go:10: undefined: foo\ntask: Failed to run task \"build\": exit status 1",
+      "expected": "./main.go:10: undefined: foo\ntask: Failed to run task \"build\": exit status 1"
+    },
+    {
+      "name": "all up to date",
+      "input": "task: Task \"build\" is up to date\ntask: Task \"lint\" is up to date\n",
+      "expected": "task: ok"
+    }
+  ]
+}

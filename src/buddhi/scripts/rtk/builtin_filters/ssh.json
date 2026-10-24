@@ -1,0 +1,41 @@
+{
+  "name": "ssh",
+  "description": "Compact ssh output \u2014 strip connection banners, keep command output",
+  "match_command": "^ssh(?:\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Warning: Permanently added",
+    "^Connection to .+ closed",
+    "^Authenticated to",
+    "^debug1:",
+    "^OpenSSH_",
+    "^Pseudo-terminal"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 200,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/ssh.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips connection banners, keeps command output",
+      "input": "Warning: Permanently added '192.168.1.10' (ED25519) to the list of known hosts.\n\ntotal 32\ndrwxr-xr-x 4 user user 4096 Mar 10 12:00 app\n-rw-r--r-- 1 user user 1234 Mar 10 11:00 config.yaml\n\nConnection to 192.168.1.10 closed.\n",
+      "expected": "total 32\ndrwxr-xr-x 4 user user 4096 Mar 10 12:00 app\n-rw-r--r-- 1 user user 1234 Mar 10 11:00 config.yaml"
+    },
+    {
+      "name": "verbose debug lines stripped",
+      "input": "debug1: Connecting to host.example.com port 22.\ndebug1: Connection established.\nAuthenticated to host.example.com ([1.2.3.4]:22).\nuptime: 12:00:00 up 42 days, load average: 0.10, 0.15, 0.12\nConnection to host.example.com closed.\n",
+      "expected": "uptime: 12:00:00 up 42 days, load average: 0.10, 0.15, 0.12"
+    },
+    {
+      "name": "empty input passes through",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

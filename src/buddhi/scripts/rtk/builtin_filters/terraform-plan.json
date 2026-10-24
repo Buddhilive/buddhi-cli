@@ -1,0 +1,34 @@
+{
+  "name": "terraform-plan",
+  "description": "Compact Terraform plan output",
+  "match_command": "^terraform\\s+plan(\\s|$|[;|&()<>])",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^Refreshing state",
+    "^\\s*#.*unchanged",
+    "^\\s*$",
+    "^Acquiring state lock",
+    "^Releasing state lock"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 80,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "terraform plan: no changes detected",
+  "source": "rtk-ai/rtk (src/filters/terraform-plan.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips Refreshing state lines and blank lines",
+      "input": "Acquiring state lock. This may take a few moments...\nRefreshing state... [id=vpc-abc]\nRefreshing state... [id=sg-123]\nReleasing state lock. This may take a few moments...\n\nTerraform will perform the following actions:\n\n  # aws_instance.web will be created\n  + resource \"aws_instance\" \"web\" {}\n\nPlan: 1 to add, 0 to change, 0 to destroy.\n",
+      "expected": "Terraform will perform the following actions:\n  # aws_instance.web will be created\n  + resource \"aws_instance\" \"web\" {}\nPlan: 1 to add, 0 to change, 0 to destroy."
+    },
+    {
+      "name": "strips noise, preserves non-blank content",
+      "input": "Refreshing state... [id=vpc-abc]\nNo changes. Your infrastructure matches the configuration.",
+      "expected": "No changes. Your infrastructure matches the configuration."
+    }
+  ]
+}

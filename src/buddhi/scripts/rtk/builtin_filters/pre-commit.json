@@ -1,0 +1,33 @@
+{
+  "name": "pre-commit",
+  "description": "Compact pre-commit output",
+  "match_command": "^pre-commit\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\[INFO\\] Installing environment",
+    "^\\[INFO\\] Once installed this environment will be reused",
+    "^\\[INFO\\] This may take a few minutes",
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/pre-commit.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips INFO install noise, keeps hook results",
+      "input": "[INFO] Installing environment for https://github.com/psf/black.\n[INFO] Once installed this environment will be reused.\n[INFO] This may take a few minutes...\nTrim Trailing Whitespace.................................................Passed\nFix End of Files.........................................................Passed\nCheck Yaml...............................................................Failed\n- hook id: check-yaml\n- exit code: 1\n",
+      "expected": "Trim Trailing Whitespace.................................................Passed\nFix End of Files.........................................................Passed\nCheck Yaml...............................................................Failed\n- hook id: check-yaml\n- exit code: 1"
+    },
+    {
+      "name": "all passed \u2014 no INFO noise",
+      "input": "[INFO] Installing environment for https://github.com/pre-commit/mirrors-isort.\n[INFO] Once installed this environment will be reused.\nisort....................................................................Passed\nblack....................................................................Passed\n",
+      "expected": "isort....................................................................Passed\nblack....................................................................Passed"
+    }
+  ]
+}

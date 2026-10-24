@@ -1,0 +1,24 @@
+{
+  "name": "uv",
+  "description": "Filters uv package manager output",
+  "match_command": "^uv\\s+(?:sync|pip|install|add|remove|lock)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Audited \\d+ packages? in.*",
+    "^Resolved \\d+ packages? in.*"
+  ],
+  "keep_lines_matching": [
+    "^Installed \\d+ packages? in.*",
+    "^Uninstalled \\d+ packages? in.*",
+    "^Up to date.*"
+  ],
+  "error_patterns": [
+    "(?i)\\b(error|failed|fatal)\\b"
+  ],
+  "max_lines": 50,
+  "source": "rtk-ai/rtk (src/cmds/python/uv_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

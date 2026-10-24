@@ -1,0 +1,25 @@
+{
+  "name": "docker",
+  "description": "Filters docker and podman build/run output",
+  "match_command": "^(?:docker|podman)\\s+(?:build|run|ps|images)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^#\\d+\\s+\\[internal\\].*",
+    "^#\\d+\\s+CACHED.*",
+    "^#\\d+\\s+DONE.*"
+  ],
+  "keep_lines_matching": [
+    "^#\\d+\\s+ERROR.*",
+    "^Successfully built\\s+.*",
+    "^Successfully tagged\\s+.*"
+  ],
+  "error_patterns": [
+    "(?i)\\b(error|failed|failed to solve)\\b"
+  ],
+  "max_lines": 70,
+  "source": "rtk-ai/rtk (src/cmds/cloud/container.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

@@ -1,0 +1,40 @@
+{
+  "name": "pytest",
+  "description": "Filters pytest output to preserve failures and summary while omitting noisy passing progress",
+  "match_command": "^(?:uv\\s+run\\s+|poetry\\s+run\\s+)?(?:python\\s+-m\\s+)?pytest\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^platform\\s+[\\w\\-]+.*",
+    "^cachedir:.*",
+    "^rootdir:.*",
+    "^configfile:.*",
+    "^plugins:.*",
+    "^collecting \\.{3}.*",
+    "^collected \\d+ items?$",
+    "^[\\.sFExX]{5,}$"
+  ],
+  "keep_lines_matching": [
+    "^===+ FAILURES ===+",
+    "^===+ ERRORS ===+",
+    "^===+ short test summary info ===+",
+    "(?i)^FAILED\\s+.*::",
+    "(?i)^ERROR\\s+.*::",
+    "^E\\s{3,}.*",
+    "^>\\s{3,}.*",
+    "^===+.*\\b(?:passed|failed|skipped|error).*===+"
+  ],
+  "error_patterns": [
+    "(?i)\\b(failed|failure|error|exception|traceback|assertionerror)\\b",
+    "^E\\s{3,}.*",
+    "^>\\s{3,}.*"
+  ],
+  "max_lines": 100,
+  "head_lines": 30,
+  "tail_lines": 70,
+  "on_empty": "tests completed successfully",
+  "source": "rtk-ai/rtk (src/cmds/python/pytest_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

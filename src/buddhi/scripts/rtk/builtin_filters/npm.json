@@ -1,0 +1,24 @@
+{
+  "name": "npm",
+  "description": "Filters npm/pnpm/yarn package manager output",
+  "match_command": "^(?:npm|pnpm|yarn|bun)\\s+(?:test|run|install|add|build)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^>\\s*[^@\\s]+@\\S+\\s+.*",
+    "^added \\d+ packages in.*"
+  ],
+  "keep_lines_matching": [
+    "^ERR!.*",
+    "^npm error.*",
+    "^error Command failed.*"
+  ],
+  "error_patterns": [
+    "(?i)\\b(error|failed|err!|exception)\\b"
+  ],
+  "max_lines": 60,
+  "source": "rtk-ai/rtk (src/cmds/js/npm_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

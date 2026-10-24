@@ -1,0 +1,36 @@
+{
+  "name": "helm",
+  "description": "Compact helm output",
+  "match_command": "^helm\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^W\\d{4}"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": null,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/helm.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips blank lines, preserves release info",
+      "input": "NAME: my-release\nLAST DEPLOYED: Mon Jan 15 10:30:00 2024\nNAMESPACE: default\nSTATUS: deployed\nREVISION: 3\n\nNOTES:\nApplication is running.\n",
+      "expected": "NAME: my-release\nLAST DEPLOYED: Mon Jan 15 10:30:00 2024\nNAMESPACE: default\nSTATUS: deployed\nREVISION: 3\nNOTES:\nApplication is running."
+    },
+    {
+      "name": "strips glog W-prefix warnings",
+      "input": "W0115 10:30:00 warning message from internal\nNAME: my-chart\nSTATUS: deployed",
+      "expected": "NAME: my-chart\nSTATUS: deployed"
+    },
+    {
+      "name": "helm template output is not truncated",
+      "input": "# Source: my-chart/templates/namespace.yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: my-ns\n---\n# Source: my-chart/templates/secret.yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: my-secret\n---\n# Source: my-chart/templates/configmap.yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: my-cm\n---\n# Source: my-chart/templates/pvc.yaml\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: my-pvc\n---\n# Source: my-chart/templates/service.yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: my-svc\n---\n# Source: my-chart/templates/deployment.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-deploy\n",
+      "expected": "# Source: my-chart/templates/namespace.yaml\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: my-ns\n---\n# Source: my-chart/templates/secret.yaml\napiVersion: v1\nkind: Secret\nmetadata:\n  name: my-secret\n---\n# Source: my-chart/templates/configmap.yaml\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: my-cm\n---\n# Source: my-chart/templates/pvc.yaml\napiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: my-pvc\n---\n# Source: my-chart/templates/service.yaml\napiVersion: v1\nkind: Service\nmetadata:\n  name: my-svc\n---\n# Source: my-chart/templates/deployment.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: my-deploy"
+    }
+  ]
+}

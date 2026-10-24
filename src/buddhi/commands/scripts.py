@@ -390,7 +390,7 @@ def receipts_cmd(
                 for f in all_findings
             ],
         }
-        console.print(json.dumps(data, indent=2))
+        console.print(json.dumps(data, indent=2), markup=False, highlight=False)
     elif not label_mode:
         if all_passed:
             console.print(
@@ -511,7 +511,7 @@ def autoharness_promote_cmd(
             "rejected": account.rejected,
             "spawn_error": account.spawn_error,
         }
-        console.print(json.dumps(data, indent=2))
+        console.print(json.dumps(data, indent=2), markup=False, highlight=False)
     else:
         console.print(
             f"[bold cyan]AutoHarness Promotion Run '{account.run_id}'[/bold cyan] ({account.timestamp})"
@@ -694,3 +694,312 @@ def autoharness_curate_cmd(
                 old_tar.unlink()
             except OSError:
                 pass
+
+
+# ============================================================================
+# RTK (Token-saving command output filter) CLI
+# ============================================================================
+
+rtk_app = typer.Typer(
+    name="rtk",
+    help="Token-saving command output filter and proxy.",
+    invoke_without_command=True,
+    no_args_is_help=True,
+)
+scripts_app.add_typer(rtk_app, name="rtk")
+
+
+@rtk_app.command(
+    name="run",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def rtk_run_cmd(
+    ctx: typer.Context,
+    raw: bool = typer.Option(
+        False, "--raw", help="Bypass filtering and print raw output."
+    ),
+    generic: bool = typer.Option(
+        False, "--generic", help="Force generic fallback filter."
+    ),
+) -> None:
+    """Execute a command, compress output to save LLM tokens, and preserve exit code."""
+    from buddhi.scripts.rtk.runner import run_command_filtered
+
+    cmd_args = ctx.args
+    if not cmd_args:
+        err_console.print(
+            "[red]error:[/red] no command specified to execute. Use: buddhi scripts rtk run -- <command>"
+        )
+        raise typer.Exit(code=1)
+
+    result = run_command_filtered(
+        cmd_args=cmd_args,
+        force_generic=generic,
+    )
+
+    if raw:
+        output = result.raw_output
+    else:
+        output = result.filtered_output
+
+    if output:
+        sys.stdout.write(output)
+        if not output.endswith("\n"):
+            sys.stdout.write("\n")
+        sys.stdout.flush()
+
+    if result.exit_code != 0 and result.raw_log_path:
+        typer.echo(f"[rtk: full raw output saved to {result.raw_log_path}]", err=True)
+
+    raise typer.Exit(code=result.exit_code)
+
+
+@rtk_app.command(
+    name="rewrite",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
+def rtk_rewrite_cmd(
+    ctx: typer.Context,
+    json_mode: bool = typer.Option(
+        False, "--json", help="Output rewrite decision as JSON."
+    ),
+) -> None:
+    """Evaluate whether a command would be rewritten by the RTK hook."""
+    from buddhi.scripts.rtk.rewrite import evaluate_rewrite
+
+    cmd_args = ctx.args
+    if not cmd_args:
+        err_console.print("[red]error:[/red] no command specified to evaluate.")
+        raise typer.Exit(code=1)
+
+    cmd_str = " ".join(cmd_args)
+    decision = evaluate_rewrite(cmd_str)
+
+    if json_mode:
+        import json
+
+        data = {
+            "action": decision.action,
+            "reason": decision.reason,
+            "original": decision.original_command,
+            "rewritten": decision.rewritten_command,
+        }
+        console.print(json.dumps(data, indent=2), markup=False, highlight=False)
+    else:
+        if decision.action == "rewrite":
+            console.print(decision.rewritten_command)
+        else:
+            console.print(f"[dim]no rewrite ({decision.reason}): {cmd_str}[/dim]")
+
+    if decision.action != "rewrite":
+        raise typer.Exit(code=1)
+
+
+@rtk_app.command(name="gain")
+def rtk_gain_cmd(
+    json_mode: bool = typer.Option(
+        False, "--json", help="Output token savings summary as JSON."
+    ),
+) -> None:
+    """Display estimated token savings achieved through RTK output filtering."""
+    from rich.table import Table
+
+    from buddhi.scripts.rtk.tracking import aggregate_savings
+
+    summary = aggregate_savings()
+
+    if json_mode:
+        import json
+
+        data = {
+            "total_runs": summary.total_runs,
+            "total_raw_tokens": summary.total_raw_tokens,
+            "total_filtered_tokens": summary.total_filtered_tokens,
+            "total_saved_tokens": summary.total_saved_tokens,
+            "savings_percentage": summary.savings_percentage,
+            "by_command": summary.by_command,
+        }
+        console.print(json.dumps(data, indent=2), markup=False, highlight=False)
+        return
+
+    if summary.total_runs == 0:
+        console.print(
+            "[dim]No RTK runs recorded yet. Run commands with 'buddhi scripts rtk run -- <cmd>'[/dim]"
+        )
+        return
+
+    table = Table(title="RTK Token Savings Summary")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="bold green")
+
+    table.add_row("Total Commands Filtered", str(summary.total_runs))
+    table.add_row("Raw Tokens (Est.)", f"{summary.total_raw_tokens:,}")
+    table.add_row("Tokens After Filtering (Est.)", f"{summary.total_filtered_tokens:,}")
+    table.add_row("Tokens Saved", f"{summary.total_saved_tokens:,}")
+    table.add_row("Overall Reduction", f"{summary.savings_percentage}%")
+
+    console.print(table)
+
+    if summary.by_command:
+        breakdown_table = Table(title="Savings by Command")
+        breakdown_table.add_column("Command / Filter", style="cyan")
+        breakdown_table.add_column("Runs", justify="right")
+        breakdown_table.add_column("Raw Tokens", justify="right")
+        breakdown_table.add_column("Filtered", justify="right")
+        breakdown_table.add_column("Saved", style="bold green", justify="right")
+        breakdown_table.add_column("Reduction", justify="right")
+
+        for cmd, stats in summary.by_command.items():
+            raw_t = stats["raw"]
+            saved_t = stats["saved"]
+            pct = round((saved_t / raw_t * 100.0), 1) if raw_t > 0 else 0.0
+            breakdown_table.add_row(
+                cmd,
+                str(stats["runs"]),
+                f"{raw_t:,}",
+                f"{stats['filtered']:,}",
+                f"{saved_t:,}",
+                f"{pct}%",
+            )
+
+        console.print(breakdown_table)
+
+
+@rtk_app.command(name="trust")
+def rtk_trust_cmd(
+    filter_path: Annotated[
+        Path | None,
+        typer.Argument(
+            help="Path to project filter file to trust. Omit to trust all in .buddhi/rtk/filters/."
+        ),
+    ] = None,
+) -> None:
+    """Approve and pin the SHA-256 hash of project-local filter files."""
+    from buddhi.scripts.rtk.trust import DEFAULT_PROJECT_FILTERS_DIR, trust_filter_file
+
+    target_files: list[Path] = []
+    if filter_path is not None:
+        if not filter_path.is_file():
+            err_console.print(f"[red]error:[/red] file not found: {filter_path}")
+            raise typer.Exit(code=1)
+        target_files.append(filter_path)
+    else:
+        if DEFAULT_PROJECT_FILTERS_DIR.is_dir():
+            target_files.extend(sorted(DEFAULT_PROJECT_FILTERS_DIR.glob("*.json")))
+
+    if not target_files:
+        console.print("[dim]No project filter files found to trust.[/dim]")
+        return
+
+    for p in target_files:
+        h = trust_filter_file(p)
+        console.print(f"[green]trusted:[/green] {p.name} (sha256: {h[:12]}...)")
+
+
+filters_app = typer.Typer(
+    name="filters",
+    help="Inspect and test RTK command output filters.",
+    invoke_without_command=True,
+    no_args_is_help=True,
+)
+rtk_app.add_typer(filters_app, name="filters")
+
+
+@filters_app.command(name="list")
+def rtk_filters_list_cmd(
+    json_mode: bool = typer.Option(
+        False, "--json", help="Output filter catalog as JSON."
+    ),
+) -> None:
+    """List all available builtin and project-local RTK filters."""
+    from rich.table import Table
+
+    from buddhi.scripts.rtk.filters import load_builtin_filters
+    from buddhi.scripts.rtk.trust import DEFAULT_PROJECT_FILTERS_DIR, is_filter_trusted
+
+    builtin = load_builtin_filters()
+    project_files = (
+        sorted(DEFAULT_PROJECT_FILTERS_DIR.glob("*.json"))
+        if DEFAULT_PROJECT_FILTERS_DIR.is_dir()
+        else []
+    )
+
+    if json_mode:
+        import json
+
+        data = {
+            "builtin": [f.to_dict() for f in builtin],
+            "project": [
+                {
+                    "file": str(p),
+                    "name": p.stem,
+                    "trusted": is_filter_trusted(p),
+                }
+                for p in project_files
+            ],
+        }
+        console.print(json.dumps(data, indent=2), markup=False, highlight=False)
+        return
+
+    table = Table(
+        title=f"RTK Filters ({len(builtin)} Builtin, {len(project_files)} Project)"
+    )
+    table.add_column("Type", style="dim")
+    table.add_column("Name", style="bold cyan")
+    table.add_column("Command Match", style="yellow")
+    table.add_column("Description")
+    table.add_column("Status / License", style="green")
+
+    for f in builtin:
+        table.add_row(
+            "builtin", f.name, f.match_command[:30], f.description[:40], f.license
+        )
+
+    for p in project_files:
+        trusted = is_filter_trusted(p)
+        status_style = "[green]trusted[/green]" if trusted else "[red]untrusted[/red]"
+        table.add_row(
+            "project", p.name, "(custom)", "Project-local filter", status_style
+        )
+
+    console.print(table)
+
+
+@filters_app.command(name="test")
+def rtk_filters_test_cmd(
+    filter_name: Annotated[str, typer.Argument(help="Name of the filter to test.")],
+) -> None:
+    """Run embedded test cases for a specific RTK filter."""
+    from buddhi.scripts.rtk.engine import apply_filter
+    from buddhi.scripts.rtk.filters import load_builtin_filters
+
+    filters = load_builtin_filters()
+    target = next((f for f in filters if f.name == filter_name), None)
+
+    if target is None:
+        err_console.print(f"[red]error:[/red] filter '{filter_name}' not found.")
+        raise typer.Exit(code=1)
+
+    if not target.tests:
+        console.print(f"[dim]Filter '{filter_name}' has no embedded test cases.[/dim]")
+        return
+
+    console.print(
+        f"[bold cyan]Running {len(target.tests)} test(s) for filter '{filter_name}':[/bold cyan]"
+    )
+    failed = 0
+    for idx, t in enumerate(target.tests, 1):
+        actual = apply_filter(t.input, target)
+        norm_actual = actual.strip().replace("\r\n", "\n")
+        norm_exp = t.expected.strip().replace("\r\n", "\n")
+        if norm_actual == norm_exp:
+            console.print(f"  [green]PASS[/green] ({idx}) {t.name}")
+        else:
+            console.print(f"  [red]FAIL[/red] ({idx}) {t.name}")
+            console.print(f"    Expected: {norm_exp!r}")
+            console.print(f"    Got:      {norm_actual!r}")
+            failed += 1
+
+    if failed > 0:
+        raise typer.Exit(code=1)
+    console.print(f"[bold green]All {len(target.tests)} test(s) passed.[/bold green]")

@@ -1,0 +1,33 @@
+{
+  "name": "tofu-validate",
+  "description": "Compact OpenTofu validate output",
+  "match_command": "^tofu\\s+validate(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "Success! The configuration is valid",
+      "message": "ok (valid)"
+    }
+  ],
+  "max_lines": null,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/tofu-validate.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "success short-circuits to ok",
+      "input": "Success! The configuration is valid.",
+      "expected": "ok (valid)"
+    },
+    {
+      "name": "error passes through unchanged",
+      "input": "Error: Invalid resource type\n  on main.tf line 3: resource \"aws_instancee\" \"web\"",
+      "expected": "Error: Invalid resource type\n  on main.tf line 3: resource \"aws_instancee\" \"web\""
+    }
+  ]
+}

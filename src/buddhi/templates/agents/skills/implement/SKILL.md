@@ -1,10 +1,10 @@
 ---
 name: implement
 description: Execute the tasks defined in tasks.md sequentially by user story, respecting dependencies and parallelism markers, updating task progress, and grounding changes in codebase OKF docs. Use when implementing tasks with /implement.
-version: 1.2.0
+version: 1.3.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context
-optional_skills: refactor-clean, code-review, audit-choices, handoff-spec, a11y
+optional_skills: refactor-clean, code-review, audit-choices, handoff-spec, a11y, rtk
 artifact_outputs: implementation
 ---
 
@@ -31,7 +31,7 @@ onwards and keeping `tasks.md` progress up to date.
      proceed directly with existing source files.
 3. **Phased execution**:
    Execute tasks phase by phase:
-   - **Phase 1: Setup**: Run project/tooling setup commands via `terminal-runner` or create initial files.
+   - **Phase 1: Setup**: Run project/tooling setup commands via `terminal-runner` (or `buddhi scripts rtk run --`) to keep context lean.
    - **Phase 2: Foundational**: Implement core blocking items (schemas, models, base routes, configs).
      *Checkpoint*: Verify foundation builds cleanly before proceeding to user stories.
    - **Phase 3+: User Story N (P1 MVP → P2 → P3...)**:

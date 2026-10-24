@@ -1,0 +1,30 @@
+{
+  "name": "fail2ban-client",
+  "description": "Compact fail2ban-client output",
+  "match_command": "^fail2ban-client\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/fail2ban-client.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips blank lines",
+      "input": "Status for the jail: sshd\n|- Filter\n|  |- Currently failed: 3\n\n|- Actions\n   `- Total banned: 42",
+      "expected": "Status for the jail: sshd\n|- Filter\n|  |- Currently failed: 3\n|- Actions\n   `- Total banned: 42"
+    },
+    {
+      "name": "single line passthrough",
+      "input": "Shutdown successful",
+      "expected": "Shutdown successful"
+    }
+  ]
+}

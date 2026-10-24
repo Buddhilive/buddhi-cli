@@ -1,0 +1,52 @@
+{
+  "name": "bundle-install",
+  "description": "Compact bundle install/update \u2014 strip 'Using' lines, keep installs and errors",
+  "match_command": "^bundle\\s+(install|update)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^Using ",
+    "^\\s*$",
+    "^Fetching gem metadata",
+    "^Resolving dependencies"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "Bundle complete!",
+      "message": "ok bundle: complete"
+    },
+    {
+      "pattern": "Bundle updated!",
+      "message": "ok bundle: updated"
+    }
+  ],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/bundle-install.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "all cached short-circuits",
+      "input": "Using bundler 2.5.6\nUsing rake 13.1.0\nUsing ast 2.4.2\nUsing base64 0.2.0\nUsing minitest 5.22.2\nBundle complete! 85 Gemfile dependencies, 200 gems now installed.\nUse `bundle info [gemname]` to see where a bundled gem is installed.\n",
+      "expected": "ok bundle: complete"
+    },
+    {
+      "name": "mixed install keeps Fetching and Installing lines",
+      "input": "Fetching gem metadata from https://rubygems.org/.........\nResolving dependencies...\nUsing rake 13.1.0\nUsing ast 2.4.2\nFetching rspec 3.13.0\nInstalling rspec 3.13.0\nUsing rubocop 1.62.0\nFetching simplecov 0.22.0\nInstalling simplecov 0.22.0\nBundle complete! 85 Gemfile dependencies, 202 gems now installed.\n",
+      "expected": "ok bundle: complete"
+    },
+    {
+      "name": "update output",
+      "input": "Fetching gem metadata from https://rubygems.org/.........\nResolving dependencies...\nUsing rake 13.1.0\nFetching rspec 3.14.0 (was 3.13.0)\nInstalling rspec 3.14.0 (was 3.13.0)\nBundle updated!\n",
+      "expected": "ok bundle: updated"
+    },
+    {
+      "name": "empty output",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

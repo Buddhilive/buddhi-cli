@@ -41,3 +41,8 @@ temp/
 
 # MacOS
 .DS_Store
+
+
+# Buddhi RTK logs & ledgers
+.buddhi/rtk/raw/
+.buddhi/rtk/runs.jsonl

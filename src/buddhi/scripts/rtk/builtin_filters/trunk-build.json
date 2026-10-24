@@ -1,0 +1,35 @@
+{
+  "name": "trunk-build",
+  "description": "Compact trunk build output",
+  "match_command": "^trunk\\s+build(\\s|$|[;|&()<>])",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^\\s*Compiling\\s",
+    "^\\s*Downloading\\s",
+    "^\\s*Fetching\\s",
+    "^\\s*Fresh\\s",
+    "^\\s*Checking\\s"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 30,
+  "tail_lines": 10,
+  "truncate_lines_at": null,
+  "on_empty": "trunk build: ok",
+  "source": "rtk-ai/rtk (src/filters/trunk-build.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips compile noise, keeps tail summary",
+      "input": "   Compiling tokio v1.35.0\n   Compiling hyper v0.14.28\n   Compiling my-crate v0.1.0\n   Downloading serde v1.0.195\n   Fresh regex v1.10.2\n\n   Finished release [optimized] target(s) in 45.23s\n   Binary: target/release/my-crate (5.2MB)\n",
+      "expected": "   Finished release [optimized] target(s) in 45.23s\n   Binary: target/release/my-crate (5.2MB)"
+    },
+    {
+      "name": "on_empty when all noise stripped",
+      "input": "   Compiling my-crate v0.1.0\n   Fresh serde v1.0\n   Checking tokio v1.35.0\n\n",
+      "expected": "trunk build: ok"
+    }
+  ]
+}

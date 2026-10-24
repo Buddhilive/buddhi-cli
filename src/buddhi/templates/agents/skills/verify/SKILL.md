@@ -1,11 +1,11 @@
 ---
 name: verify
 description: Prove that changes work and satisfy acceptance criteria by running real build, lint, and test commands via the terminal-runner agent, mapping evidence to SDD user stories when available, and reporting genuine pass/fail evidence. Use when validating changes with /verify.
-version: 2.2.0
+version: 1.3.0
 requires_agents: terminal-runner
 requires_skills: okf-context
-optional_skills: compare-screenshots, screenshot-critique, review, close-spec, a11y
-artifact_outputs: verification-report, convergence-report
+optional_skills: compare-screenshots, screenshot-critique, refactor-clean, code-review, write-docs, a11y, rtk
+artifact_outputs: verification-report
 ---
 
 # /verify
@@ -32,8 +32,9 @@ against acceptance criteria, rather than claiming success from static reading.
    files to detect the exact build, lint, typecheck, and test commands genuinely used by this
    project. Never guess or assume generic commands without confirming them in project configuration.
 4. **Execute verification via terminal-runner**:
-   Execute every verification command exclusively through the `terminal-runner` agent. Never execute
-   verification commands directly in the main agent's context.
+   Execute every verification command exclusively through the `terminal-runner` agent. Commands
+   should leverage `buddhi scripts rtk run --` to keep context lean while preserving all errors
+   and saving full raw logs under `.buddhi/rtk/raw/` on failure for complete auditability.
 5. **Visual & Accessibility verification gates (for UI/Visual changes)**:
    - When the feature touches UI, visual styling, or frontend templates:
      * Run `buddhi scripts verify-a11y` (or MCP `verify_a11y`) via the `terminal-runner` agent to run the static gate (anti-patterns, contrast evidence, freshness, and artifact integrity). Verify that `REPORT.md` contains fresh execution records and passes the gate.
@@ -43,14 +44,5 @@ against acceptance criteria, rather than claiming success from static reading.
 6. **Code closeout verification**:
    - Run a consolidated `/review` pass (`refactor-clean` → `code-review` → `write-docs`) to ensure the codebase remains free of legacy wrappers, dead references, and stale docs.
 7. **Analyze and report evidence**:
-   - For each executed command, report the exact command string, exit code, and a condensed summary
-     of stdout/stderr (e.g. test counts, error lines, warnings) — never a paraphrase of expected behavior.
-   - **In SDD Convergence Mode**: Map the test execution results directly back to each user story
-     in `spec.md`. Report pass/fail status per user story with concrete evidence from the test output.
-8. **Flag manual verification requirements**:
-   Flag anything that could not be verified automatically (UI flows, browser interactions, third-party
-   services, interactive prompts) as requiring manual testing.
-9. **Next step (Spec Closeout)**:
-   Once all user stories and acceptance criteria are verified and passing, inform the user and suggest
-   running `/close-spec` to archive the spec into `.buddhi/specs/done/<branch>/` and rewrite it into a
-   durable architectural rationale record.
+   - Map each execution outcome (command, real exit code, filtered output, and raw recovery log path if failed) to the relevant acceptance criteria in `spec.md`.
+   - Never claim a requirement is verified without presenting actual execution evidence.

@@ -1,0 +1,50 @@
+{
+  "name": "pulumi-destroy",
+  "description": "Compact Pulumi destroy output",
+  "match_command": "^pulumi\\s+destroy(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Destroying \\(",
+    "^Previewing (update|destroy)",
+    "^View in Browser",
+    "^View Live:",
+    "^Duration:",
+    "^Permalink:",
+    "^\\s*Type\\s+Name\\s+",
+    "^Loading policy packs",
+    "^@ (Previewing (update|destroy)|Destroying)",
+    "^More information at:",
+    "^Use `pulumi ",
+    "^The resources in the stack have been deleted",
+    "^If you want to remove the stack completely",
+    "^\\s+-\\s+.*\\bdeleting\\s+\\(",
+    "^\\s{4,}at\\s+\\S+\\s*\\(",
+    "^\\s{4,}at\\s+/",
+    "^\\s+at\\s+processTicksAndRejections",
+    "^\\s+promise:\\s+Promise",
+    "^\\s+\\[Circular",
+    "^\\s*<ref\\s+\\*\\d"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": null,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "pulumi destroy: nothing to destroy",
+  "source": "rtk-ai/rtk (src/filters/pulumi-destroy.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips destroy header and url banner",
+      "input": "Destroying (dev)\n\nView in Browser (Ctrl+O): https://app.pulumi.com/org/my-proj/dev/updates/43\n\n     Type                          Name              Status\n -   pulumi:pulumi:Stack           my-proj-dev       deleted\n -   \u2514\u2500 aws:s3:Bucket              my-bucket         deleted\n\nResources:\n    - 2 deleted\n\nDuration: 7s\n",
+      "expected": " -   pulumi:pulumi:Stack           my-proj-dev       deleted\n -   \u2514\u2500 aws:s3:Bucket              my-bucket         deleted\nResources:\n    - 2 deleted"
+    },
+    {
+      "name": "on_empty when nothing to destroy",
+      "input": "Destroying (dev)\n\nView in Browser (Ctrl+O): https://app.pulumi.com/org/my-proj/dev/updates/43\n\nDuration: 1s\n",
+      "expected": "pulumi destroy: nothing to destroy"
+    }
+  ]
+}

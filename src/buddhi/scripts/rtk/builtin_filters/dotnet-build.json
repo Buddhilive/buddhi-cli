@@ -1,0 +1,43 @@
+{
+  "name": "dotnet-build",
+  "description": "Compact dotnet build output \u2014 short-circuit on success, strip banners",
+  "match_command": "^dotnet\\s+build\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Microsoft \\(R\\)",
+    "^Copyright \\(C\\)",
+    "^  Determining projects"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "0 Warning\\(s\\)\\n\\s+0 Error\\(s\\)",
+      "message": "ok (build succeeded)"
+    }
+  ],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/dotnet-build.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "successful build short-circuits to ok",
+      "input": "Microsoft (R) Build Engine version 17.8.3+195e7f5a3\nCopyright (C) Microsoft Corporation. All rights reserved.\n\n  Determining projects to restore...\n  All projects are up-to-date for restore.\n  MyApp -> /home/user/MyApp/bin/Debug/net8.0/MyApp.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:02.34\n",
+      "expected": "ok (build succeeded)"
+    },
+    {
+      "name": "build with warnings not short-circuited",
+      "input": "Microsoft (R) Build Engine version 17.8.3+195e7f5a3\nCopyright (C) Microsoft Corporation. All rights reserved.\n\n  Determining projects to restore...\n  MyApp -> /home/user/MyApp/bin/Debug/net8.0/MyApp.dll\n\nBuild succeeded.\n    3 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:01.87\n",
+      "expected": "  MyApp -> /home/user/MyApp/bin/Debug/net8.0/MyApp.dll\nBuild succeeded.\n    3 Warning(s)\n    0 Error(s)\nTime Elapsed 00:00:01.87"
+    },
+    {
+      "name": "build errors pass through",
+      "input": "Microsoft (R) Build Engine version 17.8.3+195e7f5a3\nCopyright (C) Microsoft Corporation. All rights reserved.\n\n  Determining projects to restore...\nsrc/Program.cs(10,5): error CS1002: ; expected [/home/user/MyApp/MyApp.csproj]\n\nBuild FAILED.\n    0 Warning(s)\n    1 Error(s)\n",
+      "expected": "src/Program.cs(10,5): error CS1002: ; expected [/home/user/MyApp/MyApp.csproj]\nBuild FAILED.\n    0 Warning(s)\n    1 Error(s)"
+    }
+  ]
+}

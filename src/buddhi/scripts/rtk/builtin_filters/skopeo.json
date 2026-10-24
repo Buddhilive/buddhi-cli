@@ -1,0 +1,40 @@
+{
+  "name": "skopeo",
+  "description": "Compact skopeo output \u2014 truncate large manifests, strip verbosity",
+  "match_command": "^skopeo\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Getting image source signatures",
+    "^Copying blob",
+    "^Copying config",
+    "^Writing manifest",
+    "^Storing signatures"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": "skopeo: ok",
+  "source": "rtk-ai/rtk (src/filters/skopeo.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "copy strips progress, keeps result",
+      "input": "Getting image source signatures\nCopying blob sha256:abc123 done\nCopying blob sha256:def456 done\nCopying config sha256:789ghi done\nWriting manifest to image destination\nStoring signatures\n",
+      "expected": "skopeo: ok"
+    },
+    {
+      "name": "inspect keeps output",
+      "input": "{\n    \"Name\": \"docker.io/library/nginx\",\n    \"Tag\": \"latest\",\n    \"Digest\": \"sha256:abc123\",\n    \"RepoTags\": [\"latest\", \"1.25\"],\n    \"Created\": \"2026-01-01T00:00:00Z\"\n}\n",
+      "expected": "{\n    \"Name\": \"docker.io/library/nginx\",\n    \"Tag\": \"latest\",\n    \"Digest\": \"sha256:abc123\",\n    \"RepoTags\": [\"latest\", \"1.25\"],\n    \"Created\": \"2026-01-01T00:00:00Z\"\n}"
+    },
+    {
+      "name": "empty input returns on_empty message",
+      "input": "",
+      "expected": "skopeo: ok"
+    }
+  ]
+}

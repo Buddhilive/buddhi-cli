@@ -1,0 +1,38 @@
+{
+  "name": "uv-sync",
+  "description": "Compact uv sync/pip install output \u2014 strip downloads, short-circuit when up-to-date",
+  "match_command": "^uv\\s+(sync|pip\\s+install)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^\\s+Downloading ",
+    "^\\s+Using cached ",
+    "^\\s+Preparing "
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "Audited \\d+ package",
+      "message": "ok (up to date)"
+    }
+  ],
+  "max_lines": 20,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/uv-sync.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "audited packages short-circuits to ok",
+      "input": "Resolved 42 packages in 123ms\nAudited 42 packages in 0.05ms\n",
+      "expected": "ok (up to date)"
+    },
+    {
+      "name": "install strips download and cached lines",
+      "input": "  Downloading requests-2.31.0-py3-none-any.whl (62.6 kB)\n  Using cached certifi-2023.11.17-py3-none-any.whl (162 kB)\n  Preparing packages...\nInstalled 5 packages in 23ms\n + certifi==2023.11.17\n + charset-normalizer==3.3.2\n + idna==3.6\n + requests==2.31.0\n + urllib3==2.1.0\n",
+      "expected": "Installed 5 packages in 23ms\n + certifi==2023.11.17\n + charset-normalizer==3.3.2\n + idna==3.6\n + requests==2.31.0\n + urllib3==2.1.0"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "liquibase",
+  "description": "Compact liquibase output \u2014 strip headers and generic info",
+  "match_command": "^liquibase(?:\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Starting Liquibase at",
+    "^Liquibase (?:Community|Open Source)",
+    "^Liquibase Home:",
+    "^Java Home",
+    "^Libraries:",
+    "^\\s*-\\s+\\S+\\.jar",
+    "^INFO \\[liquibase\\.integration\\]",
+    "^INFO \\[liquibase\\.core\\] Reading resource",
+    "^INFO \\[liquibase\\.core\\] Parsing",
+    "^(?:\\[?INFO\\]?\\s*)?#+$",
+    "^\\s*##"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 200,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "liquibase: ok",
+  "source": "rtk-ai/rtk (src/filters/liquibase.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strip ascii banner and info logs from subcommand",
+      "input": "####################################################\n##   _     _             _ _                      ##\n##  | |   (_)           (_) |                     ##\n####################################################\nStarting Liquibase at 10:12:11 (version 4.29.1)\nLiquibase Version: 4.29.1\nLiquibase Open Source 4.29.1 by Liquibase\nINFO [liquibase.integration] Starting command\nINFO [liquibase.core] Reading resource db/changelog.xml\nINFO [liquibase.core] Parsing db/changelog.xml\nRunning Changeset: filepath::id::author\nChangeset filepath::id::author ran successfully\n",
+      "expected": "Liquibase Version: 4.29.1\nRunning Changeset: filepath::id::author\nChangeset filepath::id::author ran successfully"
+    },
+    {
+      "name": "strip --version noise, keep only version line",
+      "input": "####################################################\n##   _     _             _ _                      ##\n####################################################\nStarting Liquibase at 13:45:24 using Java 17.0.15 (version 4.30.0 #4943 built at 2024-10-31 17:00+0000)\nLiquibase Home: D:\\mcp\\bash\\lbr\\third-party\nJava Home C:\\Program Files\\Java\\jdk-17.0.15 (Version 17.0.15)\nLibraries:\n  - internal\\lib\\commons-io.jar: Apache Commons IO 2.17.0 By The Apache Software Foundation\n  - internal\\lib\\picocli.jar: picocli 4.7.6 By Remko Popma\n  - lib\\ojdbc10-19.30.0.0.jar: JDBC 19.30.0.0.0 By Oracle Corporation\n\nLiquibase Version: 4.30.0\nLiquibase Open Source 4.30.0 by Liquibase\n",
+      "expected": "Liquibase Version: 4.30.0"
+    },
+    {
+      "name": "keep status and error lines",
+      "input": "####################################################\n##   _     _             _ _                      ##\n####################################################\nStarting Liquibase at 10:00:00 (version 4.30.0)\nLiquibase Version: 4.30.0\nLiquibase Open Source 4.30.0 by Liquibase\nHR@jdbc:oracle:thin:@localhost:1523:XE is up to date\nLiquibase command 'status' was executed successfully.\n",
+      "expected": "Liquibase Version: 4.30.0\nHR@jdbc:oracle:thin:@localhost:1523:XE is up to date\nLiquibase command 'status' was executed successfully."
+    },
+    {
+      "name": "empty input",
+      "input": "",
+      "expected": "liquibase: ok"
+    }
+  ]
+}

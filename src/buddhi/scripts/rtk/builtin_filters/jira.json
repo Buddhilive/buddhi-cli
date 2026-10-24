@@ -1,0 +1,31 @@
+{
+  "name": "jira",
+  "description": "Compact Jira CLI output \u2014 strip verbose metadata, keep essentials",
+  "match_command": "^jira\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^\\s*--"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/jira.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips blank lines from issue list",
+      "input": "TYPE\tKEY\tSUMMARY\tSTATUS\n\nStory\tPROJ-123\tAdd login feature\tIn Progress\n\nBug\tPROJ-456\tFix crash on startup\tOpen",
+      "expected": "TYPE\tKEY\tSUMMARY\tSTATUS\nStory\tPROJ-123\tAdd login feature\tIn Progress\nBug\tPROJ-456\tFix crash on startup\tOpen"
+    },
+    {
+      "name": "single issue view",
+      "input": "KEY: PROJ-123\nSummary: Add login feature\nStatus: In Progress\nAssignee: john@example.com",
+      "expected": "KEY: PROJ-123\nSummary: Add login feature\nStatus: In Progress\nAssignee: john@example.com"
+    }
+  ]
+}

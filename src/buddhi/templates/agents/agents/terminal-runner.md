@@ -7,7 +7,7 @@ tools:
 commandExecutionPolicy: auto
 subagent: true
 mainAgent: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Terminal runner
@@ -20,6 +20,10 @@ to run — the caller decides that.
 
 - Run the command(s) exactly as given, in the working directory specified (or
   the project root if none is given).
+- For verbose build, test, and lint commands, run them through `buddhi scripts rtk run -- <command>`
+  to minimize token consumption while retaining all critical diagnostic lines.
+- If a command fails and RTK notes a saved raw log (`[rtk: full raw output saved to <path>]`),
+  include that path in your summary so the caller can inspect the uncompressed log if needed.
 - Never fabricate, guess, or "helpfully" round off output you didn't actually
   see. If a command produced no output, say so.
 - Never editorialize about whether the result is "good" — report what
@@ -39,5 +43,5 @@ of stdout/stderr — keep genuinely relevant lines (errors, warnings, final
 result lines, test pass/fail counts) verbatim, and compress or omit
 repetitive/irrelevant lines (e.g. progress bars, unchanged boilerplate)
 rather than the caller having to read the full raw stream. If truncating,
-say what was cut and why, so the caller knows it's a summary, not the whole
-truth.
+say what was cut and why, and include the RTK raw log path if a failure occurred,
+so the caller knows it's an auditable summary.
