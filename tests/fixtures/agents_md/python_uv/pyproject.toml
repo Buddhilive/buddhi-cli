@@ -1,0 +1,14 @@
+[project]
+name = "sample-uv-app"
+version = "0.1.0"
+description = "Sample Python UV project for agents-md tests"
+dependencies = []
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+
+[tool.ruff]
+line-length = 88
+
+[tool.mypy]
+strict = true

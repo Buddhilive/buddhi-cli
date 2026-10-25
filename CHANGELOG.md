@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`/agents-md` Skill, Concise AGENTS.md Generator & Safe Merger (`buddhi skills --agents-md`)**:
+  - Implemented repository facts detector and concise `AGENTS.md` generator adapted from the Agentic AI Foundation (AAIF) July 2026 benchmark study and Google Antigravity Skills & Rules specifications.
+  - **Core Brevity & Performance Principle**:
+    - Generates a tightly budgeted core block (~12–15 lines) capturing essential project overview, verified development/test/lint commands, and structural pointers to granular runbooks (`.agents/skills/`), codebase constraints (`.agents/rules/`), and symbol documentation (`.buddhi/docs/`).
+    - Eliminates worst-case command loop pathologies, aligning with AAIF findings (26% diff reduction, 27% wall clock reduction, 25% token savings) without blowing Antigravity's 20,000-token aggregate rules budget.
+  - **Multi-Ecosystem Fact Detection (`src/buddhi/skills/agents_md/detector.py`)**:
+    - Zero-guessing detection across Python (`pyproject.toml`, `uv.lock`, `poetry.lock`, `Pipfile.lock`, `requirements.txt`), Node (`package.json` scripts, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`), Rust (`Cargo.toml`), Go (`go.mod`), and `Makefile`.
+    - Auto-detects package managers, build runners, test frameworks, linters, and typecheckers based strictly on file/config evidence.
+  - **Non-Destructive Section-Aware Merge Engine (`src/buddhi/skills/agents_md/merger.py`)**:
+    - Parses markdown by section headers (`#`, `##`), updates detected command and overview sections, and preserves unmanaged user custom sections (e.g. `## Engineering Principles & Non-Negotiables`) character-for-character.
+    - Generates unified diffs (`difflib`) to allow interactive verification before applying changes to disk.
+  - **Antigravity Customization, SDD & CLI Integration**:
+    - Interactive `/agents-md` skill (`.agents/skills/agents-md/SKILL.md`) with cross-platform executable helper script `scripts/detect_agents_md.py` supporting `--diff`, `--apply`, `--json`, and `--root`.
+    - Bundled into `src/buddhi/templates/agents/skills/agents-md/` for automated `buddhi init` harness scaffolding.
+    - Registered in `buddhi.skills.registry` and `src/buddhi/commands/skills.py` with `--agents-md` flag for on-demand installation into existing harnesses.
+    - Connected to the SDD `/spec-plan` skill gate as the recommended solution when `AGENTS.md` is missing or commands are stale.
+
 - **RTK (Rust Token Killer) Output Compression Engine & Antigravity Hook (`buddhi scripts rtk`)**:
   - Implemented high-performance, token-saving CLI proxy and filtering suite adapted from `rtk` (rtk-ai, Apache-2.0), reducing LLM token consumption by 60–90% on common development tools (Git, Pytest, Ruff, Mypy, UV, Cargo, NPM, Docker, etc.) while running in pure Python (3.10+) without new runtime dependencies.
   - **Core Filtering Engine (`src/buddhi/scripts/rtk/`)**:

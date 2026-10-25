@@ -52,6 +52,11 @@ def skills_main(
         "--repo-to-skill",
         help="Add the Antigravity-optimized repo-to-skill agent skill.",
     ),
+    agents_md: bool = typer.Option(
+        False,
+        "--agents-md",
+        help="Add the Antigravity-optimized agents-md agent skill.",
+    ),
     path: Path = typer.Option(  # noqa: B008
         Path("."),
         "-p",
@@ -73,6 +78,8 @@ def skills_main(
     install_targets: list[str] = []
     if repo_to_skill:
         install_targets.append("repo-to-skill")
+    if agents_md:
+        install_targets.append("agents-md")
 
     # If no flags passed, list all available custom skills
     if not install_targets:

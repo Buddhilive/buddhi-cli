@@ -2,6 +2,38 @@
 
 `buddhi-cli` incorporates concepts, skills, rules, specifications, and contrast-checking logic adapted from the following open-source projects and architectural standards:
 
+## Agentic AI Foundation (AAIF) & AGENTS.md
+
+- **Benchmark Study**: [https://aaif.io/blog/measuring-agents-md-what-five-runs-show-that-one-doesn-t](https://aaif.io/blog/measuring-agents-md-what-five-runs-show-that-one-doesn-t)
+- **Organization**: Agentic AI Foundation (AAIF)
+- **Year**: 2026
+
+### Description & Adapted Principles
+
+The Agentic AI Foundation (AAIF) published benchmark research in July 2026 measuring the empirical impact of repo-level `AGENTS.md` files across agent runs. Key findings demonstrated that concise `AGENTS.md` files eliminate catastrophic agent command trial-and-error loops, achieving:
+- 26% reduction in diff size
+- 27% reduction in wall clock time
+- 25% reduction in token consumption
+- Essential brevity guideline: bounding the core file to ~12 lines to prevent agent context bloat.
+
+`buddhi-cli` implements these empirical principles in the `/agents-md` skill (`src/buddhi/skills/agents_md/`), generating a strict ~12-15 line core operational block and pointing to `.agents/skills/` and `.buddhi/docs/` for granular guidance.
+
+---
+
+## Google Antigravity Customization Architecture
+
+- **Skills Documentation**: [https://antigravity.google/docs/skills/](https://antigravity.google/docs/skills/)
+- **Rules Documentation**: [https://antigravity.google/docs/rules/](https://antigravity.google/docs/rules/)
+- **Author / Organization**: Google DeepMind / Google Antigravity Team
+
+### Description & Adapted Components
+
+The `/agents-md` skill and generated files adhere to the Google Antigravity Customization System standards:
+- **Hierarchical Rules (`AGENTS.md`)**: Structured as plain markdown (no frontmatter) discovered hierarchically and capped safely below Antigravity's 24 KB per-file limit and 20,000-token rules budget (`defaultRulesBudget`).
+- **On-Demand Skills (`.agents/skills/agents-md/`)**: Standard YAML frontmatter (`name: agents-md`, description), progressive disclosure, and cross-platform Python helper scripts (`scripts/detect_agents_md.py`).
+
+---
+
 ## AutoHarness
 
 - **Repository**: [https://github.com/tigerless-labs/autoharness](https://github.com/tigerless-labs/autoharness)

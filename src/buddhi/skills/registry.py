@@ -71,6 +71,17 @@ _SKILL_REGISTRY: dict[str, SkillRegistryEntry] = {
         target_dir_name="repo-to-skill",
         runner=_run_repo_to_skill_wrapper,
     ),
+    "agents-md": SkillRegistryEntry(
+        name="agents-md",
+        flag="--agents-md",
+        title="AGENTS.md Generator and Updater",
+        description=(
+            "Generate or safely update a concise AGENTS.md (~12 lines) based on "
+            "repository facts while preserving hand-crafted custom sections."
+        ),
+        template_pkg="buddhi.templates.custom_skills.agents_md",
+        target_dir_name="agents-md",
+    ),
 }
 
 

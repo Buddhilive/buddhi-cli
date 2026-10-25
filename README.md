@@ -196,6 +196,7 @@ buddhi skills [options]
 Inspect and install custom Antigravity agent skills into `.agents/skills/`:
 - `buddhi skills` — Display an inventory table of available custom skills.
 - `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
+- `buddhi skills --agents-md` — Install the Antigravity-optimized `agents-md` agent skill for generating and safely updating `AGENTS.md`.
 - `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
 - `--force` / `-f` — Overwrite existing skill files if already present.
 
@@ -245,6 +246,7 @@ Run standalone developer utilities:
 
 - **`skills/`** — Antigravity Agent Skills with standard YAML frontmatter (`name`, `description`), discoverable and invocable via slash commands:
   - **`/specify`** — Initialize a new feature branch (refreshes graph via `buddhi generate` first), scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
+  - **`/agents-md`** — Create or safely update the repository's `AGENTS.md` (~12 lines) based on project facts, build tools, and agent workflows, preserving custom sections.
   - **`/spec-plan`** — Spec-Driven Development architecture skill: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
   - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
   - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
