@@ -196,7 +196,6 @@ buddhi skills [options]
 Inspect and install custom Antigravity agent skills into `.agents/skills/`:
 - `buddhi skills` — Display an inventory table of available custom skills.
 - `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
-- `buddhi skills --agents-md` — Install the Antigravity-optimized `agents-md` agent skill for generating and safely updating `AGENTS.md`.
 - `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
 - `--force` / `-f` — Overwrite existing skill files if already present.
 

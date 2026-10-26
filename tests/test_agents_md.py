@@ -207,37 +207,45 @@ def test_merge_idempotent() -> None:
 
 
 # ---------------------------------------------------------------------------
-# US3: Antigravity Skill, CLI Flag, and Registry (P3)
+# US3: Antigravity Skill and Default Init Scaffolding (P3)
 # ---------------------------------------------------------------------------
 
 
-def test_skills_registry_listing() -> None:
+def test_agents_md_not_in_custom_skills_registry() -> None:
+    """Verify agents-md is not in optional custom skills (it is a default skill)."""
     from buddhi.skills.registry import get_skill, list_skills
 
-    entry = get_skill("agents-md")
-    assert entry is not None
-    assert entry.name == "agents-md"
-    assert entry.flag == "--agents-md"
-
+    assert get_skill("agents-md") is None
     skills = list_skills()
-    assert any(s.name == "agents-md" for s in skills)
+    assert not any(s.name == "agents-md" for s in skills)
 
 
-def test_skills_cli_install(tmp_path: Path) -> None:
-    from typer.testing import CliRunner
-
-    from buddhi.commands.skills import skills_app
-
-    runner = CliRunner()
-    result = runner.invoke(skills_app, ["--agents-md", "-p", str(tmp_path)])
-    assert result.exit_code == 0
-    assert "done" in result.stdout
-
-    installed_skill = tmp_path / ".agents" / "skills" / "agents-md"
-    assert (installed_skill / "SKILL.md").is_file()
-    assert (installed_skill / "scripts" / "detect_agents_md.py").is_file()
+def test_agents_md_default_init_template() -> None:
+    """Verify agents-md template is present in default init skills tree."""
+    template_skill = Path("src/buddhi/templates/agents/skills/agents-md")
+    assert (template_skill / "SKILL.md").is_file()
+    assert (template_skill / "scripts" / "detect_agents_md.py").is_file()
 
     # Verify SKILL.md frontmatter
-    skill_content = (installed_skill / "SKILL.md").read_text(encoding="utf-8")
+    skill_content = (template_skill / "SKILL.md").read_text(encoding="utf-8")
     assert "name: agents-md" in skill_content
     assert "description:" in skill_content
+
+
+def test_detect_agents_md_script_execution() -> None:
+    """Verify detect_agents_md.py helper script executes properly."""
+    import subprocess
+    import sys
+
+    script = Path(".agents/skills/agents-md/scripts/detect_agents_md.py")
+    assert script.is_file()
+
+    # Run with --json on this repository
+    res = subprocess.run(
+        [sys.executable, str(script), "--json", "--root", "."],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert '"commands"' in res.stdout
+    assert "pytest" in res.stdout

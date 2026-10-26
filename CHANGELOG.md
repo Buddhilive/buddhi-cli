@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **`/agents-md` Skill, Concise AGENTS.md Generator & Safe Merger (`buddhi skills --agents-md`)**:
+- **`/agents-md` Skill, Concise AGENTS.md Generator & Safe Merger (`buddhi init` default skill)**:
   - Implemented repository facts detector and concise `AGENTS.md` generator adapted from the Agentic AI Foundation (AAIF) July 2026 benchmark study and Google Antigravity Skills & Rules specifications.
   - **Core Brevity & Performance Principle**:
     - Generates a tightly budgeted core block (~12–15 lines) capturing essential project overview, verified development/test/lint commands, and structural pointers to granular runbooks (`.agents/skills/`), codebase constraints (`.agents/rules/`), and symbol documentation (`.buddhi/docs/`).
@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Antigravity Customization, SDD & CLI Integration**:
     - Interactive `/agents-md` skill (`.agents/skills/agents-md/SKILL.md`) with cross-platform executable helper script `scripts/detect_agents_md.py` supporting `--diff`, `--apply`, `--json`, and `--root`.
     - Bundled into `src/buddhi/templates/agents/skills/agents-md/` for automated `buddhi init` harness scaffolding.
-    - Registered in `buddhi.skills.registry` and `src/buddhi/commands/skills.py` with `--agents-md` flag for on-demand installation into existing harnesses.
     - Connected to the SDD `/spec-plan` skill gate as the recommended solution when `AGENTS.md` is missing or commands are stale.
 
 - **RTK (Rust Token Killer) Output Compression Engine & Antigravity Hook (`buddhi scripts rtk`)**:
