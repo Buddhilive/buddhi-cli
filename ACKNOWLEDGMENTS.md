@@ -2,6 +2,22 @@
 
 `buddhi-cli` incorporates concepts, skills, rules, specifications, and contrast-checking logic adapted from the following open-source projects and architectural standards:
 
+## Google Labs / Google Stitch DESIGN.md Specification
+
+- **Specification**: [https://stitch.withgoogle.com/docs/design-md/specification](https://stitch.withgoogle.com/docs/design-md/specification)
+- **Repository**: [https://github.com/google-labs-code/design.md](https://github.com/google-labs-code/design.md)
+- **Author / Organization**: Google Labs / Google Stitch Team
+- **License**: Apache License 2.0
+
+### Description & Adapted Components
+
+`DESIGN.md` is an open-source design system specification introduced by Google in 2026 to eliminate stateless visual drift across AI coding agent sessions. `buddhi-cli` adapts the specification into the `/design-md` agent skill and `src/buddhi/skills/design_md/` engine:
+- **Two-Layer Architecture**: Machine-readable design tokens in YAML frontmatter (`colors`, `typography`, `spacing`, `rounded`, `elevation`) paired with human-readable design rationale across 8 canonical sections (`Overview`, `Colors`, `Typography`, `Layout`, `Elevation & Depth`, `Shapes`, `Components`, `Do's and Don'ts`).
+- **Vivid Aesthetic Direction**: Prioritizes memorable, evocative aesthetic direction prose in `## Overview` as the primary mental model for coding agents.
+- **Automated Verification**: Integrates WCAG 2.2 AA contrast ratio checking for semantic token pairs with `buddhi.scripts.contrast`.
+
+---
+
 ## Agentic AI Foundation (AAIF) & AGENTS.md
 
 - **Benchmark Study**: [https://aaif.io/blog/measuring-agents-md-what-five-runs-show-that-one-doesn-t](https://aaif.io/blog/measuring-agents-md-what-five-runs-show-that-one-doesn-t)

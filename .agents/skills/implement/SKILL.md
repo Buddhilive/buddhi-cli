@@ -4,7 +4,7 @@ description: Execute the tasks defined in tasks.md sequentially by user story, r
 version: 1.3.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context
-optional_skills: refactor-clean, code-review, audit-choices, handoff-spec, a11y, rtk
+optional_skills: refactor-clean, code-review, audit-choices, handoff-spec, a11y, rtk, design-md
 artifact_outputs: implementation
 ---
 

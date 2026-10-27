@@ -4,7 +4,7 @@ description: Orchestrate an architectural implementation plan in the Spec-Driven
 version: 2.2.0
 requires_agents: frontend-specialist, backend-specialist, database-specialist, testing-specialist, security-specialist, deployment-specialist, git-specialist, terminal-runner
 requires_skills: okf-context, system-design
-optional_skills: a11y, agents-md
+optional_skills: a11y, agents-md, design-md
 artifact_outputs: implementation-plan
 ---
 
@@ -39,7 +39,7 @@ No code writing in this skill — only plan generation.
      * *Risk-first*: What are the most volatile technical risks (e.g. data consistency, perf, security) that must be de-risked early?
      * *Seam-quality*: Are boundaries clean and decoupled with zero leaked internals or temporary shims?
 6. **Synthesize implementation plan**:
-   - Fill in each section of `plan.md`: **Summary**, **Technical Context**, **AGENTS.md Compliance Check** (gate: verify build/test commands and project constraints; if `AGENTS.md` is missing or commands are stale, run `/agents-md` to initialize or update it),
+   - Fill in each section of `plan.md`: **Summary**, **Technical Context**, **AGENTS.md & DESIGN.md Compliance Check** (gate: verify build/test commands and project constraints; if AGENTS.md is missing, run /agents-md; if UI/frontend surfaces are touched, verify DESIGN.md tokens and contrast or run /design-md),
      **Project Structure** (source tree layout with concrete paths), and **Complexity Tracking**.
    - For UI features, include an Accessibility Strategy section detailing keyboard operability, contrast floors (using `buddhi scripts contrast`), and governance artifact maintenance (`REPORT.md`, `A11Y-DECISIONS.md`).
    - If the request involves a nontrivial architecture/trade-off decision (new service boundary,

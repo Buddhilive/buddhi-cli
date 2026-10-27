@@ -37,6 +37,7 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
   4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
   5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
 - A `/quick-plan` skill for lightweight, non-SDD multi-specialist planning.
+- A `/design-md` skill for establishing, updating, and linting two-layer `DESIGN.md` design system specifications with WCAG 2.2 AA contrast verification.
 - An `/ask` skill for interactive codebase comprehension and architectural Q&A grounded in the code graph.
 - A `/document-codebase` skill that generates dependency-aware OKF symbol documentation.
 - Specialized `/debug`, `/remember`, and `/status` skills for systematic root-cause investigation, persistent memory capture, and harness dashboarding.

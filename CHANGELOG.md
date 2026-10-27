@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`/design-md` Skill & Design System Codification (`buddhi init` default skill)**:
+  - Implemented design system facts detector, two-layer `DESIGN.md` generator, non-destructive merger, and WCAG 2.2 AA contrast linter adapted from the Google Labs / Google Stitch `DESIGN.md` specification (`https://stitch.withgoogle.com/docs/design-md/specification`, `https://github.com/google-labs-code/design.md`, Apache-2.0).
+  - **Two-Layer Design Contract**:
+    - **Machine-Readable YAML Frontmatter**: Extracts and enforces strict design tokens (`colors`, `typography`, `spacing`, `rounded`, `elevation`) to eliminate stateless visual drift across AI coding sessions.
+    - **Human-Readable Rationale Across 8 Canonical Sections**: Generates and preserves vivid aesthetic direction prose in `## Overview` (the primary mental model for agents, e.g. *"A graduate-level computer science lecture handout in the tradition of an old established university"*) alongside `## Colors`, `## Typography`, `## Layout`, `## Elevation & Depth`, `## Shapes`, `## Components`, and actionable `## Do's and Don'ts`.
+  - **Multi-Source Token Detection & Non-Destructive Merging (`src/buddhi/skills/design_md/`)**:
+    - Scans CSS/SCSS custom properties (`--color-*`, `--radius-*`, `--font-*`), Tailwind configs (`tailwind.config.*`), and W3C DTCG token JSON with clean neutral fallbacks for backend/CLI projects.
+    - Section-aware markdown parser preserves hand-crafted aesthetic prose and custom user sections byte-for-byte while refreshing token tables.
+  - **WCAG 2.2 AA Contrast & Structural Linting**:
+    - Integrates with `buddhi.scripts.contrast` to validate semantic foreground/background pairs (`text` on `surface`, `primary-foreground` on `primary`, etc.) against normal (`4.5:1`) and large (`3.0:1`) text thresholds.
+  - **Google Antigravity & SDD Integration**:
+    - Scaffolded automatically and idempotently into `.agents/skills/design-md/` by `buddhi init`.
+    - Integrated with `frontend-specialist`, `/spec-plan` (adding `DESIGN.md` Compliance Check), `/specify`, `/implement`, `/verify`, and rules (`antislop.md`, `a11y.md`).
+    - Cross-platform CLI script `.agents/skills/design-md/scripts/detect_design_md.py` supporting `--diff`, `--apply`, `--lint`, `--json`, and `--aesthetic`.
+
 - **`/agents-md` Skill, Concise AGENTS.md Generator & Safe Merger (`buddhi init` default skill)**:
   - Implemented repository facts detector and concise `AGENTS.md` generator adapted from the Agentic AI Foundation (AAIF) July 2026 benchmark study and Google Antigravity Skills & Rules specifications.
   - **Core Brevity & Performance Principle**:

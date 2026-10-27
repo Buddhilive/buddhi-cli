@@ -21,3 +21,5 @@ For UI, copy, people, mobile layout, or code comments work, consult the matching
 
 Before starting, follow the core's "Two Usage Modes" section: explicit session instruction first, then global preference, then ask. For a resolved mode, announce `antislop active: <mode> (session override).` or `antislop active: <mode> (global preference).` once, using the actual mode and source. Ask only when no mode is resolved.
 
+
+When styling UI or building components, always adhere to the repository DESIGN.md design system contract and tokens when present.
