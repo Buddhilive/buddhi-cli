@@ -10,7 +10,7 @@ Antigravity automatically discovers every `SKILL.md` in this directory:
 1. **Spec-Driven Development (SDD)**:
    - `specify`: Feature specification scaffolding and refinement (`/specify`).
    - `spec-plan`: Multi-specialist architectural planning (`/spec-plan`).
-   - `tasks`: Actionable user-story task breakdown (`/spec-tasks`).
+   - `spec-tasks`: Actionable user-story task breakdown (`/spec-tasks`).
    - `implement`: Step-by-step task execution with checkpoints (`/implement`).
    - `verify`: Real test execution and SDD acceptance convergence (`/verify`).
 2. **Architecture & Exploration**:

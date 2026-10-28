@@ -9,6 +9,7 @@ from buddhi.graph.pipeline import run_pipeline
 from buddhi.persist.html_writer import write_html
 from buddhi.persist.json_writer import write_json
 from buddhi.persist.sqlite_writer import write_sqlite
+from buddhi.ui.formatters import get_symbols
 from buddhi.util.fsutil import BuddhiFsError, ensure_buddhi_dirs
 
 console = Console()
@@ -82,24 +83,25 @@ def generate(
         err_console.print(f"[red]error:[/red] failed writing artifacts: {exc}")
         raise typer.Exit(code=1) from exc
 
+    symbols = get_symbols(console)
     languages_seen = sorted({f.language for f in walk_result.files})
-    console.print(f"[bold green]done[/bold green] scanned {root}")
+    console.print(f"{symbols['ok']} [bold white]Scanned {root}[/bold white]")
     cache_hits = build_ctx.stats.get("cache_hits", 0)
     console.print(
-        f"  files: {build_ctx.stats.get('files_parsed', 0)} parsed ({cache_hits} cached), "
+        f"  {symbols['bullet']} files: {build_ctx.stats.get('files_parsed', 0)} parsed ({cache_hits} cached), "
         f"{build_ctx.stats.get('files_failed', 0)} failed, "
         f"{len(walk_result.skipped_too_large)} skipped (too large)"
     )
     console.print(
-        f"  languages: {', '.join(languages_seen) if languages_seen else '(none)'}"
+        f"  {symbols['bullet']} languages: {', '.join(languages_seen) if languages_seen else '(none)'}"
     )
     console.print(
-        f"  graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges, "
+        f"  {symbols['bullet']} graph: {len(build_ctx.graph.nodes)} nodes, {len(build_ctx.graph.edges)} edges, "
         f"{result.community_count} communities"
     )
-    console.print(f"  wrote: {json_path}")
-    console.print(f"  wrote: {db_path}")
-    console.print(f"  wrote: {html_path}")
+    console.print(f"  {symbols['bullet']} wrote: {json_path}")
+    console.print(f"  {symbols['bullet']} wrote: {db_path}")
+    console.print(f"  {symbols['bullet']} wrote: {html_path}")
 
     if walk_result.skipped_unsupported_grammar:
         for lang, count in walk_result.skipped_unsupported_grammar.items():

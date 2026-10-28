@@ -13,6 +13,7 @@ from buddhi.memory.migrate import migrate_legacy_memory
 from buddhi.persist.html_writer import write_html
 from buddhi.persist.json_writer import write_json
 from buddhi.persist.sqlite_writer import write_sqlite
+from buddhi.ui import print_init_summary, render_banner
 from buddhi.util.fsutil import (
     BuddhiFsError,
     ensure_agents_gitignore,
@@ -55,6 +56,9 @@ def init(
     if not root.is_dir():
         err_console.print(f"[red]error:[/red] not a directory: {root}")
         raise typer.Exit(code=1)
+
+    # Render branded ASCII art banner
+    render_banner(console)
 
     result = run_pipeline(root, max_file_size=max_file_size)
     if verbose:
@@ -160,43 +164,43 @@ def init(
             pass
 
     stale = sum(1 for e in plan_entries if e.needs_generation)
-    console.print(f"[bold green]done[/bold green] initialized {root}")
-    console.print(
-        f"  graph: {len(result.build_ctx.graph.nodes)} nodes, "
-        f"{len(result.build_ctx.graph.edges)} edges, {result.community_count} communities"
-    )
-    console.print(
-        f"  docs plan: {len(plan_entries)} entries, {stale} need (re)generation"
-    )
-    console.print(
-        f"  .agents/: {len(sync_report.created)} file(s) added, "
-        f"{len(sync_report.kept_existing)} already present (left untouched)"
-    )
+
+    migration_notices: list[str] = []
     if (
         plan_migration_report.migrated_skill
         or plan_migration_report.removed_legacy_skill
     ):
-        console.print("  migrated legacy plan skill to spec-plan")
+        migration_notices.append("Migrated legacy plan skill to spec-plan")
     if (
         tasks_migration_report.migrated_skill
         or tasks_migration_report.removed_legacy_skill
     ):
-        console.print("  migrated legacy tasks skill to spec-tasks")
+        migration_notices.append("Migrated legacy tasks skill to spec-tasks")
     if memory_migration_report.migrated_count > 0:
-        console.print(
-            f"  migrated legacy memory: {memory_migration_report.migrated_count} entry(ies) converted to OKF concepts"
+        migration_notices.append(
+            f"Migrated legacy memory: {memory_migration_report.migrated_count} entry(ies) converted to OKF concepts"
         )
     if migration_report.migrated or migration_report.removed:
-        console.print(
-            f"  migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "
+        migration_notices.append(
+            f"Migrated legacy workflows: {len(migration_report.migrated)} converted to skills, "
             f"{len(migration_report.removed)} legacy workflow file(s) removed"
         )
+
+    artifacts: list[Path] = []
     if agents_md_created:
-        console.print(f"  wrote: {agents_md_path}")
-    console.print(f"  wrote: {json_path}")
-    console.print(f"  wrote: {db_path}")
-    console.print(f"  wrote: {html_path}")
-    console.print(f"  wrote: {plan_path}")
-    console.print(
-        "  next: open this codebase in Antigravity and run /document-codebase, then start a feature with /specify"
+        artifacts.append(agents_md_path)
+    artifacts.extend([json_path, db_path, html_path, plan_path])
+
+    print_init_summary(
+        root=root,
+        graph_nodes=len(result.build_ctx.graph.nodes),
+        graph_edges=len(result.build_ctx.graph.edges),
+        graph_communities=result.community_count,
+        docs_total=len(plan_entries),
+        docs_stale=stale,
+        harness_added=len(sync_report.created),
+        harness_existing=len(sync_report.kept_existing),
+        artifacts=artifacts,
+        migration_notices=migration_notices,
+        console=console,
     )

@@ -125,7 +125,7 @@ wheels = [
 
 [[package]]
 name = "buddhi-ai"
-version = "1.0.0b11"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "igraph" },

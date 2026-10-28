@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-30
+
 ### Added
+- **Polished CLI Output & Visual Branding (`buddhi init`, `buddhi --version`)**:
+  - Added modern ASCII art brand identity banner ("BuddhiAI CLI") with tool version display for `buddhi init` and `buddhi --version` (`src/buddhi/ui/banner.py`).
+  - Redesigned `buddhi init` output into an attractive, structured presentation featuring code graph metrics, documentation plan counts, harness sync stats, migration notices, and highlighted next steps in Rich panels and tables (`src/buddhi/ui/formatters.py`).
+  - Added `--version` / `-V` CLI flag to the root Typer command with eager banner execution.
+  - Added width-adaptive degradation (< 70 columns fallback to single-line header) and encoding-aware fallback for Windows legacy console charmaps (cp1252/cp437).
+  - Adopted shared status formatting across other CLI commands (`buddhi generate`) while keeping the large ASCII banner scoped to `init` and `--version`.
+
 - **`/design-md` Skill & Design System Codification (`buddhi init` default skill)**:
   - Implemented design system facts detector, two-layer `DESIGN.md` generator, non-destructive merger, and WCAG 2.2 AA contrast linter adapted from the Google Labs / Google Stitch `DESIGN.md` specification (`https://stitch.withgoogle.com/docs/design-md/specification`, `https://github.com/google-labs-code/design.md`, Apache-2.0).
   - **Two-Layer Design Contract**:
@@ -287,4 +296,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cytoscape.js JSON export format (`tree-graph.json`).
 - Topological community clustering using the Leiden algorithm.
 - Initial CLI commands (`buddhi init`, `buddhi generate`).
-

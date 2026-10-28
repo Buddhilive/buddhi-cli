@@ -116,7 +116,11 @@ def main() -> int:
         final_content = merge_res.content
 
     # If --lint is requested, validate final content (or existing file)
-    lint_report = lint_design_md(existing_content if (args.lint and not args.apply and not is_new) else final_content)
+    lint_report = lint_design_md(
+        existing_content
+        if (args.lint and not args.apply and not is_new)
+        else final_content
+    )
 
     if args.json:
         payload = {
@@ -156,8 +160,16 @@ def main() -> int:
             for w in lint_report.warnings:
                 print(f"  [WARN] {w}")
         for cf in lint_report.contrast_findings:
-            mark = "PASS" if cf.status == "PASS" else "FAIL" if cf.status == "FAIL" else "SKIP"
-            print(f"  [{mark}] {cf.fg_key} ({cf.fg_hex}) on {cf.bg_key} ({cf.bg_hex}) -> {cf.ratio}:1")
+            mark = (
+                "PASS"
+                if cf.status == "PASS"
+                else "FAIL"
+                if cf.status == "FAIL"
+                else "SKIP"
+            )
+            print(
+                f"  [{mark}] {cf.fg_key} ({cf.fg_hex}) on {cf.bg_key} ({cf.bg_hex}) -> {cf.ratio}:1"
+            )
         if not lint_report.is_valid:
             print("\nErrors:")
             for err in lint_report.errors:
@@ -188,13 +200,21 @@ def main() -> int:
 
     # Default summary mode
     print(f"Target: {root}")
-    print(f"UI Surface Detected: {facts.has_ui_surface} (framework: {facts.framework or 'generic'})")
-    print(f"Source Files Found: {', '.join(facts.source_files) if facts.source_files else 'None'}")
+    print(
+        f"UI Surface Detected: {facts.has_ui_surface} (framework: {facts.framework or 'generic'})"
+    )
+    print(
+        f"Source Files Found: {', '.join(facts.source_files) if facts.source_files else 'None'}"
+    )
     print(f"Color Tokens Extracted: {len(facts.tokens.colors)}")
     if is_new:
-        print("\nDESIGN.md does not exist. Run with --apply to create it, or --diff to preview.")
+        print(
+            "\nDESIGN.md does not exist. Run with --apply to create it, or --diff to preview."
+        )
     elif has_changes:
-        print("\nChanges detected in design system tokens. Run with --diff to inspect, or --apply to update.")
+        print(
+            "\nChanges detected in design system tokens. Run with --diff to inspect, or --apply to update."
+        )
     else:
         print("\nDESIGN.md is up to date.")
     return 0
@@ -202,4 +222,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

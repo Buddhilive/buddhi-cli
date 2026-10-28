@@ -1,6 +1,6 @@
 [project]
 name = "buddhi-ai"
-version = "1.0.0b11"
+version = "1.0.0"
 description = "Turn a codebase into a code graph and a grounded AI coding agent harness."
 readme = "README.md"
 license = "MIT"
@@ -19,7 +19,7 @@ keywords = [
     "documentation-generator",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",

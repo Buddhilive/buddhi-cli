@@ -320,3 +320,14 @@ def test_init_migrates_existing_project_with_legacy_tasks_skill(tmp_path: Path) 
     updated_agents = (tmp_path / "AGENTS.md").read_text(encoding="utf-8")
     assert "`/spec-tasks`" in updated_agents
     assert "`/tasks`" not in updated_agents
+
+
+def test_init_displays_ascii_banner_and_summary_presentation(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("def run():\n    pass\n")
+
+    result = runner.invoke(app, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert "BuddhiAI CLI" in result.output
+    assert "Code Graph" in result.output
+    assert "Documentation Plan" in result.output
+    assert "Next Steps" in result.output

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import typer
 
 from buddhi.commands.docs import docs_app
@@ -22,8 +24,26 @@ app.add_typer(sdd_app, name="sdd")
 app.add_typer(skills_app, name="skills")
 
 
+def version_callback(value: bool) -> None:
+    """Print banner and version then exit eagerly."""
+    if value:
+        from buddhi.ui.banner import print_banner
+
+        print_banner()
+        raise typer.Exit()
+
+
 @app.callback()
-def _root_callback() -> None:
+def _root_callback(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-V",
+        help="Show BuddhiAI CLI version and banner, then exit.",
+        callback=version_callback,
+        is_eager=True,
+    ),
+) -> None:
     """buddhi - tree-sitter code graph generator."""
 
 
