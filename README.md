@@ -33,7 +33,7 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
   2. `/spec-plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
-  3. `/tasks` — Generate a phased, story-oriented task breakdown into `tasks.md` with `[P]` parallelism markers.
+  3. `/spec-tasks` — Generate a phased, story-oriented task breakdown into `tasks.md` with `[P]` parallelism markers.
   4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
   5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
 - A `/quick-plan` skill for lightweight, non-SDD multi-specialist planning.
@@ -248,7 +248,7 @@ Run standalone developer utilities:
   - **`/specify`** — Initialize a new feature branch (refreshes graph via `buddhi generate` first), scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
   - **`/agents-md`** — Create or safely update the repository's `AGENTS.md` (~12 lines) based on project facts, build tools, and agent workflows, preserving custom sections.
   - **`/spec-plan`** — Spec-Driven Development architecture skill: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
-  - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
+  - **`/spec-tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
   - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
   - **`/verify`** — Verification skill: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
   - **`/ask`** — Conversational codebase Q&A skill: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
