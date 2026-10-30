@@ -1,0 +1,11 @@
+<aside class="toc-sidebar" aria-label="Table of Contents">
+  <div class="toc-heading">On this page</div>
+  <div class="toc-body">
+    {% if page and page.toc %}
+      {{ page.toc }}
+    {% else %}
+      <p class="toc-empty">Overview</p>
+    {% endif %}
+  </div>
+</aside>
+

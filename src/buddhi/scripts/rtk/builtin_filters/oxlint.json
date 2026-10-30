@@ -1,0 +1,37 @@
+{
+  "name": "oxlint",
+  "description": "Compact oxlint output \u2014 strip blank lines, keep diagnostics",
+  "match_command": "^oxlint\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Finished in \\d+",
+    "^Found \\d+ warning"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "oxlint: ok",
+  "source": "rtk-ai/rtk (src/filters/oxlint.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips noise, keeps diagnostics",
+      "input": "  \u00d7 eslint(no-console): Unexpected console statement.\n   \u256d\u2500[src/app.ts:5:3]\n 5 \u2502   console.log(\"debug\");\n   \u2502   ^^^^^^^^^^^\n   \u2570\u2500\u2500\u2500\u2500\n\n  \u00d7 eslint(no-unused-vars): 'x' is defined but never used.\n   \u256d\u2500[src/utils.ts:2:7]\n 2 \u2502   let x = 42;\n   \u2502       ^\n   \u2570\u2500\u2500\u2500\u2500\n\nFound 2 warnings on 2 files.\nFinished in 12ms on 100 files.\n",
+      "expected": "  \u00d7 eslint(no-console): Unexpected console statement.\n   \u256d\u2500[src/app.ts:5:3]\n 5 \u2502   console.log(\"debug\");\n   \u2502   ^^^^^^^^^^^\n   \u2570\u2500\u2500\u2500\u2500\n  \u00d7 eslint(no-unused-vars): 'x' is defined but never used.\n   \u256d\u2500[src/utils.ts:2:7]\n 2 \u2502   let x = 42;\n   \u2502       ^\n   \u2570\u2500\u2500\u2500\u2500"
+    },
+    {
+      "name": "clean output",
+      "input": "Finished in 5ms on 100 files.\n",
+      "expected": "oxlint: ok"
+    },
+    {
+      "name": "empty input returns on_empty message",
+      "input": "",
+      "expected": "oxlint: ok"
+    }
+  ]
+}

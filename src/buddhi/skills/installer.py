@@ -46,7 +46,9 @@ def install_skill(
         template_root = resources.files(entry.template_pkg)
         with resources.as_file(template_root) as src_dir:
             if not src_dir.is_dir():
-                raise BuddhiFsError(f"Template directory missing for skill '{entry.name}': {src_dir}")
+                raise BuddhiFsError(
+                    f"Template directory missing for skill '{entry.name}': {src_dir}"
+                )
 
             target_skill_dir.mkdir(parents=True, exist_ok=True)
 
@@ -68,6 +70,8 @@ def install_skill(
                 report.created.append(dest_path)
 
     except (OSError, ModuleNotFoundError, FileNotFoundError) as exc:
-        raise BuddhiFsError(f"Failed installing skill '{entry.name}' to {target_skill_dir}: {exc}") from exc
+        raise BuddhiFsError(
+            f"Failed installing skill '{entry.name}' to {target_skill_dir}: {exc}"
+        ) from exc
 
     return report

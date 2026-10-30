@@ -1,0 +1,20 @@
+<div class="provenance-strip" aria-label="Symbol Provenance and Metadata">
+  {% if page.okf_type %}
+  <span class="badge badge-type">{{ page.okf_type }}</span>
+  {% endif %}
+  {% if page.status %}
+  <span class="badge badge-status badge-{{ page.status }}">{{ page.status }}</span>
+  {% endif %}
+  {% if page.community_id is defined and page.community_id is not none %}
+  <span class="badge badge-community">Community {{ page.community_id }}</span>
+  {% endif %}
+  {% if page.cohesion is defined and page.cohesion is not none %}
+  <span class="badge badge-cohesion">Cohesion: {{ page.cohesion }}</span>
+  {% endif %}
+  {% if page.sources %}
+  {% for src in page.sources %}
+  <span class="badge badge-source">{{ src.resource }}</span>
+  {% endfor %}
+  {% endif %}
+</div>
+

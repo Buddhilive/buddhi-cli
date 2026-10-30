@@ -1,28 +1,47 @@
-# Extending this harness with tech-stack skills
+# Antigravity Skills in Buddhi
 
-This directory holds Antigravity skills. Antigravity discovers every
-`SKILL.md` under `.agents/skills/<name>/` automatically and activates it by
-matching its `description` against what's being worked on — there is no
-registry or manifest to update.
+This directory holds Google Antigravity skills (`.agents/skills/<name>/SKILL.md`).
+Antigravity automatically discovers every `SKILL.md` in this directory:
+- **Slash Commands**: You can explicitly invoke any skill by typing `/<skill-name>` in the chat prompt (e.g. `/specify`, `/spec-plan`, `/spec-tasks`, `/implement`, `/verify`, `/ask`, `/quick-plan`, `/document-codebase`, `/debug`, `/remember`, `/status`).
+- **Autonomous Discovery**: The agent evaluates the YAML frontmatter `description` of each skill against the active conversation and activates it when relevant.
 
-To add tech-stack-specific knowledge (a framework, a database, a deployment
-platform), drop a new folder here:
+## Core Buddhi Skills
+
+1. **Spec-Driven Development (SDD)**:
+   - `specify`: Feature specification scaffolding and refinement (`/specify`).
+   - `spec-plan`: Multi-specialist architectural planning (`/spec-plan`).
+   - `spec-tasks`: Actionable user-story task breakdown (`/spec-tasks`).
+   - `implement`: Step-by-step task execution with checkpoints (`/implement`).
+   - `verify`: Real test execution and SDD acceptance convergence (`/verify`).
+2. **Architecture & Exploration**:
+   - `ask`: Topological code-graph and OKF doc question answering (`/ask`).
+   - `quick-plan`: Lightweight planning for non-SDD changes (`/quick-plan`).
+   - `debug`: Systematic root-cause investigation without code changes (`/debug`).
+   - `status`: Health and state dashboard for docs, graph, plans, and git (`/status`).
+3. **Knowledge & Documentation**:
+   - `okf-context`: Primary code-reading discipline using Buddhi MCP tools and OKF docs.
+   - `document-codebase`: Bottom-up OKF doc generation command (`/document-codebase`).
+   - `repoagent-doc-generation`: Topological per-symbol documentation engine.
+   - `system-design`: Principled trade-off evaluations for structural choices.
+   - `remember`: Explicit cross-session memory capture (`/remember`).
+
+## Adding Custom or Tech-Stack Skills
+
+To add tech-stack-specific knowledge (a framework, a database, a deployment platform) or project-specific runbooks, create a new skill directory:
 
 ```
-.agents/skills/<stack-name>/SKILL.md
+.agents/skills/<skill-name>/
+├── SKILL.md            # Required: instructions with YAML frontmatter
+├── references/         # Optional: deep reference documentation
+└── scripts/            # Optional: cross-platform helper scripts
 ```
 
-with frontmatter `name` (defaults to the folder name) and a `description`
-written in third person, with the keywords that should trigger it — e.g.
-"Next.js App Router conventions, data fetching, and rendering-mode choices
-for this codebase." The specialist agents under `.agents/agents/` already
-check for a matching stack skill before falling back to generic guidance, so
-no changes are needed there when a new pack is added.
+Ensure `SKILL.md` starts with standard YAML frontmatter:
+```yaml
+---
+name: <skill-name>
+description: <What the skill does and when the agent should use it.>
+---
+```
 
-This file itself is plain documentation, not a skill — it has no `SKILL.md`
-frontmatter and Antigravity will not load it as one.
-
-Note that some skills under this directory, such as `system-design`, are
-general and ship bundled with every harness rather than being stack-specific
-packs you drop in — the "add a folder here" guidance above is for tech-stack
-knowledge, not for these bundled skills.
+You can also use `buddhi skills` to install pre-built skills (e.g. `buddhi skills --repo-to-skill`) or generate new skills from repositories.

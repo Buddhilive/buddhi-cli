@@ -71,7 +71,9 @@ def _load_spec(lang_id: str) -> LanguageSpec:
 
     query_filename = _QUERY_FILES[lang_id]
     query_text = (
-        importlib.resources.files(QUERIES_PACKAGE).joinpath(query_filename).read_text(encoding="utf-8")
+        importlib.resources.files(QUERIES_PACKAGE)
+        .joinpath(query_filename)
+        .read_text(encoding="utf-8")
     )
     query = ts.Query(language, query_text)
 

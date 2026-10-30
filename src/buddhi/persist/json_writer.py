@@ -39,11 +39,31 @@ def to_cytoscape_elements(graph: CodeGraph) -> dict:
                     "target": edge.target,
                     "kind": edge.kind,
                     "resolved": edge.resolved,
+                    "confidence": edge.confidence,
+                    "confidence_score": edge.confidence_score,
+                    "context": edge.context,
                 }
             }
         )
 
-    return {"nodes": nodes, "edges": edges}
+    communities = [
+        {
+            "id": c.id,
+            "label": c.label,
+            "node_count": c.node_count,
+            "cohesion": c.cohesion,
+            "hub_node_id": c.hub_node_id,
+            "top_files": c.top_files,
+        }
+        for c in graph.communities.values()
+    ]
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "communities": communities,
+        "built_at_commit": graph.built_at_commit,
+    }
 
 
 def write_json(graph: CodeGraph, path: Path) -> None:

@@ -1,0 +1,40 @@
+{
+  "name": "git-status",
+  "description": "Compact git status output showing branch and changed files without verbose help text",
+  "match_command": "^git\\s+status\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*\\(use \"git (?:add|restore|rm|push).*",
+    "^\\s*\\(commit or discard the untracked or modified content\\)",
+    "^\\s*\\(all conflicts fixed: run \"git commit\"\\)",
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [
+    "^On branch\\b",
+    "^Your branch is\\b",
+    "^Changes to be committed:",
+    "^Changes not staged for commit:",
+    "^Untracked files:",
+    "^Unmerged paths:",
+    "^\\s*(?:modified|new file|deleted|renamed|both modified):",
+    "^\\s+[^\\s(].*",
+    "^no changes added to commit.*",
+    "^nothing to commit.*"
+  ],
+  "error_patterns": [
+    "(?i)\\b(fatal|error|conflict)\\b"
+  ],
+  "max_lines": 50,
+  "dedup": true,
+  "on_empty": "working tree clean",
+  "source": "rtk-ai/rtk (src/cmds/git)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips help hints",
+      "input": "On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges not staged for commit:\n  (use \"git add <file>...\" to update what will be committed)\n  (use \"git restore <file>...\" to discard changes in working directory)\n\tmodified:   src/main.py\n\nno changes added to commit (use \"git add\" to track)\n",
+      "expected": "On branch main\nYour branch is up to date with 'origin/main'.\nChanges not staged for commit:\n\tmodified:   src/main.py\nno changes added to commit (use \"git add\" to track)"
+    }
+  ]
+}

@@ -106,7 +106,9 @@ def test_read_existing_content_hash_parses_frontmatter(tmp_path: Path) -> None:
     assert read_existing_content_hash(doc) == "abc123"
 
 
-def test_build_docs_plan_marks_unchanged_node_as_not_needing_generation(tmp_path: Path) -> None:
+def test_build_docs_plan_marks_unchanged_node_as_not_needing_generation(
+    tmp_path: Path,
+) -> None:
     graph = CodeGraph()
     graph.add_node(_fn("f:helper", "helper", file_path="mod.py"))
 
@@ -124,7 +126,9 @@ def test_build_docs_plan_marks_unchanged_node_as_not_needing_generation(tmp_path
     assert plan2[0].needs_generation is False
 
 
-def test_build_docs_plan_flags_changed_snippet_as_needing_regeneration(tmp_path: Path) -> None:
+def test_build_docs_plan_flags_changed_snippet_as_needing_regeneration(
+    tmp_path: Path,
+) -> None:
     graph = CodeGraph()
     node = graph.add_node(_fn("f:helper", "helper", file_path="mod.py"))
 

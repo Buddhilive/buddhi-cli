@@ -30,10 +30,9 @@ first is cheaper and more reliable than re-deriving understanding from raw sourc
    fall back to querying `.buddhi/graphs/tree-graph.db` / `tree-graph.json` directly or
    reading raw source files.
 4. **Maintain freshness**: If you generate or substantially change code such that existing OKF
-   docs go stale, suggest running the `/document-codebase` workflow (see
+   docs go stale, suggest running the `/document-codebase` skill (see
    `repoagent-doc-generation` skill) to refresh the documentation and graph.
 
 Never treat an OKF doc as authoritative over the actual source code — it's a cache of
 understanding, not the ground truth. When the two conflict, the source wins and the
 doc needs regenerating.
-

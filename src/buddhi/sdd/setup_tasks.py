@@ -88,7 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     if not paths.impl_plan.is_file():
         print(f"ERROR: plan.md not found in {paths.feature_dir}", file=sys.stderr)
         print(
-            f"Run {format_speckit_command('plan', paths.repo_root)} first to create the implementation plan.",
+            f"Run {format_speckit_command('spec-plan', paths.repo_root)} first to create the implementation plan.",
             file=sys.stderr,
         )
         return 1

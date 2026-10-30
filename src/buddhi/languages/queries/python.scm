@@ -1,5 +1,10 @@
 (class_definition
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  superclasses: (argument_list [
+    (identifier) @inherit.base
+    (attribute) @inherit.base
+  ])?
+) @definition.class
 
 (function_definition
   name: (identifier) @name) @definition.function
@@ -12,10 +17,19 @@
     name: (dotted_name) @import.path)) @import
 
 (import_from_statement
-  module_name: (dotted_name) @import.path) @import
+  module_name: [(dotted_name) (relative_import)] @import.path
+  (dotted_name) @import.symbol
+) @import
 
 (import_from_statement
-  module_name: (relative_import) @import.path) @import
+  module_name: [(dotted_name) (relative_import)] @import.path
+  (aliased_import
+    name: (dotted_name) @import.symbol)
+) @import
+
+(import_from_statement
+  module_name: [(dotted_name) (relative_import)] @import.path
+) @import
 
 (call
   function: (identifier) @call.name) @call

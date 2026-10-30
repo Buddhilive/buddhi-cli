@@ -6,7 +6,13 @@ from unittest.mock import patch
 import pytest
 
 from buddhi.graph.model import FILE, FUNCTION, CodeGraph, GraphNode
-from buddhi.mcp.server import _get_db_path, buddhi_read, buddhi_search, mcp
+from buddhi.mcp.server import (
+    _get_db_path,
+    buddhi_read,
+    buddhi_search,
+    check_contrast,
+    mcp,
+)
 from buddhi.persist.sqlite_writer import write_sqlite
 
 
@@ -17,7 +23,15 @@ def mock_db(tmp_path: Path) -> Path:
     db_file = buddhi_dir / "tree-graph.db"
 
     graph = CodeGraph()
-    graph.add_node(GraphNode(id="file:demo.py", kind=FILE, name="demo.py", qualified_name="demo.py", file_path="demo.py"))
+    graph.add_node(
+        GraphNode(
+            id="file:demo.py",
+            kind=FILE,
+            name="demo.py",
+            qualified_name="demo.py",
+            file_path="demo.py",
+        )
+    )
     graph.add_node(
         GraphNode(
             id="function:demo.py::greet",
@@ -141,3 +155,16 @@ def test_mcp_read_relative_path_with_override_root(tmp_path: Path, mock_db: Path
         assert "def salute" in result
     finally:
         server.OVERRIDE_ROOT = None
+
+
+def test_mcp_check_contrast():
+    res = check_contrast(color_a="#FFFFFF", color_b="#000000")
+    assert "ratio: 21.00:1" in res
+    assert "normal text (4.5:1): PASS" in res
+    assert "large text  (3.0:1): PASS" in res
+
+    res_fail = check_contrast(color_a="#FFFFFF", color_b="#777777")
+    assert "normal text (4.5:1): FAIL" in res_fail
+
+    res_err = check_contrast(color_a="invalid", color_b="#000000")
+    assert "Error checking contrast:" in res_err

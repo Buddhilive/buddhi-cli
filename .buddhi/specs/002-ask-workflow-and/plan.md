@@ -92,12 +92,18 @@ tests/
      ```python
      if OVERRIDE_DB_PATH is not None:
          return OVERRIDE_DB_PATH
-     start_dir = Path(cwd).resolve() if cwd else (OVERRIDE_ROOT if OVERRIDE_ROOT is not None else Path.cwd().resolve())
+     start_dir = (
+         Path(cwd).resolve()
+         if cwd
+         else (OVERRIDE_ROOT if OVERRIDE_ROOT is not None else Path.cwd().resolve())
+     )
      ```
    - Update `main()` to accept `--root` and positional `root_dir`:
      ```python
      parser.add_argument("--root", type=str, help="Workspace root directory")
-     parser.add_argument("root_dir", nargs="?", type=str, default=None, help="Workspace root directory")
+     parser.add_argument(
+         "root_dir", nargs="?", type=str, default=None, help="Workspace root directory"
+     )
      ```
      When parsed, set `OVERRIDE_ROOT = Path(root_val).resolve()`.
    - Update `buddhi_search` and `buddhi_read` to forward `OVERRIDE_ROOT` if `cwd` is omitted.

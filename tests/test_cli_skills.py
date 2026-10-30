@@ -7,7 +7,6 @@ from buddhi.cli import app
 runner = CliRunner()
 
 
-
 def test_skills_list():
     """Verify that running `buddhi skills` without arguments lists all custom skills."""
     result = runner.invoke(app, ["skills"])
@@ -16,6 +15,29 @@ def test_skills_list():
     assert "repo-to-skill" in result.stdout
     assert "--repo-to-skill" in result.stdout
     assert "To install a skill" in result.stdout
+    for removed in (
+        "renderer",
+        "launch-video",
+        "cinematic-shot",
+        "isometric-motion",
+        "xiaohei-illustrations",
+        "--graphics",
+    ):
+        assert removed not in result.stdout
+
+
+def test_skills_removed_flags_rejected():
+    """Verify that removed graphics flags are rejected by CLI."""
+    for flag in [
+        "--graphics",
+        "--renderer",
+        "--launch-video",
+        "--cinematic-shot",
+        "--isometric-motion",
+        "--xiaohei-illustrations",
+    ]:
+        res = runner.invoke(app, ["skills", flag])
+        assert res.exit_code != 0
 
 
 def test_skills_install_repo_to_skill(tmp_path: Path):
@@ -52,7 +74,9 @@ def test_skills_install_force_overwrite(tmp_path: Path):
     skill_md = tmp_path / ".agents" / "skills" / "repo-to-skill" / "SKILL.md"
     skill_md.write_text("modified content", encoding="utf-8")
 
-    res = runner.invoke(app, ["skills", "--repo-to-skill", "-p", str(tmp_path), "--force"])
+    res = runner.invoke(
+        app, ["skills", "--repo-to-skill", "-p", str(tmp_path), "--force"]
+    )
     assert res.exit_code == 0
     assert "updated skill" in res.stdout
     content = skill_md.read_text(encoding="utf-8")
@@ -74,16 +98,19 @@ def test_skills_run_repo_to_skill(tmp_path: Path):
     result = runner.invoke(app, ["skills", "run", "repo-to-skill", str(tmp_path)])
     assert result.exit_code == 0
 
-
     assert "Repository Analysis" in result.stdout
     assert "CLI Tool" in result.stdout
 
 
 def test_skills_run_repo_to_skill_json(tmp_path: Path):
     """Verify running repo-to-skill analyzer with --json flag."""
-    (tmp_path / "README.md").write_text("# Json Test\n\nTesting json output.\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text(
+        "# Json Test\n\nTesting json output.\n", encoding="utf-8"
+    )
 
-    result = runner.invoke(app, ["skills", "run", "repo-to-skill", str(tmp_path), "--json"])
+    result = runner.invoke(
+        app, ["skills", "run", "repo-to-skill", str(tmp_path), "--json"]
+    )
     assert result.exit_code == 0
     import json
 
@@ -108,10 +135,19 @@ def test_skills_installed_script_direct_execution(tmp_path: Path):
     target_project.mkdir()
     (target_project / "README.md").write_text("# My Direct Project\n", encoding="utf-8")
 
-    res_install = runner.invoke(app, ["skills", "--repo-to-skill", "-p", str(target_project)])
+    res_install = runner.invoke(
+        app, ["skills", "--repo-to-skill", "-p", str(target_project)]
+    )
     assert res_install.exit_code == 0
 
-    script_path = target_project / ".agents" / "skills" / "repo-to-skill" / "scripts" / "analyze_repo.py"
+    script_path = (
+        target_project
+        / ".agents"
+        / "skills"
+        / "repo-to-skill"
+        / "scripts"
+        / "analyze_repo.py"
+    )
     assert script_path.is_file()
 
     res = subprocess.run(
@@ -139,8 +175,3 @@ def test_init_does_not_install_custom_skills(tmp_path: Path):
     assert (agents_skills / "okf-context").is_dir()
     # Selective custom skill must NOT be installed by init
     assert not (agents_skills / "repo-to-skill").exists()
-
-
-
-
-

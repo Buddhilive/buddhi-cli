@@ -1,12 +1,14 @@
 (class_declaration
-  name: (type_identifier) @name) @definition.class
+  name: (type_identifier) @name
+  (inheritance_specifier inherits_from: (user_type (type_identifier) @inherit.base))?) @definition.class
 
 (class_declaration
   (user_type
     (type_identifier) @name)) @definition.extension
 
 (protocol_declaration
-  name: (type_identifier) @name) @definition.class
+  name: (type_identifier) @name
+  (inheritance_specifier inherits_from: (user_type (type_identifier) @inherit.base))?) @definition.class
 
 (function_declaration
   name: (simple_identifier) @name) @definition.function

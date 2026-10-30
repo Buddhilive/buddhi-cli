@@ -1,0 +1,30 @@
+{
+  "name": "hadolint",
+  "description": "Compact hadolint Dockerfile linting output",
+  "match_command": "^hadolint\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/hadolint.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "Dockerfile warnings kept, blank lines stripped",
+      "input": "Dockerfile:3 DL3008 warning: Pin versions in apt-get install\nDockerfile:5 DL3009 info: Delete apt-get lists after installing\n\nDockerfile:8 DL4006 warning: Set SHELL option -o pipefail before RUN with pipe\n",
+      "expected": "Dockerfile:3 DL3008 warning: Pin versions in apt-get install\nDockerfile:5 DL3009 info: Delete apt-get lists after installing\nDockerfile:8 DL4006 warning: Set SHELL option -o pipefail before RUN with pipe"
+    },
+    {
+      "name": "empty input passes through",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

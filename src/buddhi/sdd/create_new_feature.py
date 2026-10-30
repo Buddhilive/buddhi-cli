@@ -25,11 +25,54 @@ def _json_line(payload: object) -> str:
 
 _STOP_WORDS = frozenset(
     [
-        "i", "a", "an", "the", "to", "for", "of", "in", "on", "at", "by", "with",
-        "from", "is", "are", "was", "were", "be", "been", "being", "have", "has",
-        "had", "do", "does", "did", "will", "would", "should", "could", "can",
-        "may", "might", "must", "shall", "this", "that", "these", "those", "my",
-        "your", "our", "their", "want", "need", "add", "get", "set",
+        "i",
+        "a",
+        "an",
+        "the",
+        "to",
+        "for",
+        "of",
+        "in",
+        "on",
+        "at",
+        "by",
+        "with",
+        "from",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "should",
+        "could",
+        "can",
+        "may",
+        "might",
+        "must",
+        "shall",
+        "this",
+        "that",
+        "these",
+        "those",
+        "my",
+        "your",
+        "our",
+        "their",
+        "want",
+        "need",
+        "add",
+        "get",
+        "set",
     ]
 )
 
@@ -259,7 +302,9 @@ def main(argv: list[str] | None = None) -> int:
         branch_number = ""
 
     if args.use_timestamp:
-        feature_num = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
+        feature_num = datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y%m%d-%H%M%S"
+        )
     else:
         if branch_number:
             if not re.fullmatch(r"[0-9]+", branch_number):
@@ -368,9 +413,7 @@ def main(argv: list[str] | None = None) -> int:
         needs_spec = not spec_file.is_file()
         if needs_spec:
             try:
-                template_content = resolve_template_content(
-                    "spec-template", repo_root
-                )
+                template_content = resolve_template_content("spec-template", repo_root)
             except TemplateResolutionError as exc:
                 print(f"Error: {exc}", file=sys.stderr)
                 return 1

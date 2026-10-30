@@ -1,0 +1,30 @@
+{
+  "name": "markdownlint",
+  "description": "Compact markdownlint output \u2014 strip blank lines, limit rows",
+  "match_command": "^markdownlint\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/markdownlint.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "linting errors stripped of blank lines",
+      "input": "README.md:1:1 MD041/first-line-heading/first-line-h1 First line in file should be a top level heading\nREADME.md:10:1 MD022/blanks-around-headings Headings should be surrounded by blank lines\n\nREADME.md:15:80 MD013/line-length Line length [Expected: 80; Actual: 95]\n",
+      "expected": "README.md:1:1 MD041/first-line-heading/first-line-h1 First line in file should be a top level heading\nREADME.md:10:1 MD022/blanks-around-headings Headings should be surrounded by blank lines\nREADME.md:15:80 MD013/line-length Line length [Expected: 80; Actual: 95]"
+    },
+    {
+      "name": "empty input passes through",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

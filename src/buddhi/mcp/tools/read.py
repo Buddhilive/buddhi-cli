@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 import sqlite3
+from pathlib import Path
 
 from buddhi.mcp.compression.ast_pruner import extract_map, prune_signatures
 from buddhi.mcp.compression.classifier import resolve_mode
 from buddhi.mcp.compression.entropy import count_tokens, filter_by_entropy
+
+logger = logging.getLogger(__name__)
 
 
 def execute_buddhi_read(
@@ -56,7 +58,7 @@ def execute_buddhi_read(
 
                 conn.close()
             except sqlite3.Error as e:
-                logging.warning("Error querying graph DB: %s", e)
+                logger.warning("Error querying graph DB: %s", e)
 
         # Try native glob fallback if database had no matches or failed
         if not matches:
@@ -85,8 +87,8 @@ def execute_buddhi_read(
                                 else path.as_posix()
                             )
                             matches.append(str(display_path))
-            except Exception as e:
-                logging.warning("Native glob lookup failed: %s", e)
+            except (OSError, ValueError) as e:
+                logger.warning("Native glob lookup failed: %s", e)
 
         if matches:
             matches.sort()
@@ -114,7 +116,7 @@ def execute_buddhi_read(
 
     try:
         raw_bytes = path.read_bytes()
-    except Exception as e:
+    except OSError as e:
         return f"Error reading file '{filepath}': {e}"
 
     # Mode Resolution
@@ -143,7 +145,7 @@ def execute_buddhi_read(
     tokens = count_tokens(processed_text)
 
     if tokens > budget:
-        logging.warning(
+        logger.warning(
             "Output for %s exceeds budget (%d > %d tokens). Falling back to map mode.",
             filepath,
             tokens,

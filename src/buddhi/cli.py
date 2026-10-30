@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import typer
 
 from buddhi.commands.docs import docs_app
 from buddhi.commands.generate import generate
+from buddhi.commands.graph_cmd import graph_app
 from buddhi.commands.init import init
 from buddhi.commands.mcp import mcp_cmd
+from buddhi.commands.memory import memory_app
+from buddhi.commands.scripts import scripts_app
 from buddhi.commands.sdd import sdd_app
 from buddhi.commands.skills import skills_app
 
@@ -12,12 +17,33 @@ app.command(name="generate")(generate)
 app.command(name="init")(init)
 app.command(name="mcp")(mcp_cmd)
 app.add_typer(docs_app, name="docs")
+app.add_typer(graph_app, name="graph")
+app.add_typer(memory_app, name="memory")
+app.add_typer(scripts_app, name="scripts")
 app.add_typer(sdd_app, name="sdd")
 app.add_typer(skills_app, name="skills")
 
 
+def version_callback(value: bool) -> None:
+    """Print banner and version then exit eagerly."""
+    if value:
+        from buddhi.ui.banner import print_banner
+
+        print_banner()
+        raise typer.Exit()
+
+
 @app.callback()
-def _root_callback() -> None:
+def _root_callback(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-V",
+        help="Show BuddhiAI CLI version and banner, then exit.",
+        callback=version_callback,
+        is_eager=True,
+    ),
+) -> None:
     """buddhi - tree-sitter code graph generator."""
 
 

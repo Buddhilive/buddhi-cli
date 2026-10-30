@@ -1,0 +1,34 @@
+{
+  "name": "tofu-plan",
+  "description": "Compact OpenTofu plan output",
+  "match_command": "^tofu\\s+plan(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^Refreshing state",
+    "^\\s*#.*unchanged",
+    "^\\s*$",
+    "^Acquiring state lock",
+    "^Releasing state lock"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 80,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "tofu plan: no changes detected",
+  "source": "rtk-ai/rtk (src/filters/tofu-plan.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips Refreshing state and lock lines",
+      "input": "Acquiring state lock. This may take a few moments...\nRefreshing state... [id=vpc-abc123]\nRefreshing state... [id=sg-def456]\nReleasing state lock. This may take a few moments...\n\nOpenTofu will perform the following actions:\n\n  # aws_instance.web will be created\n  + resource \"aws_instance\" \"web\" {}\n\nPlan: 1 to add, 0 to change, 0 to destroy.\n",
+      "expected": "OpenTofu will perform the following actions:\n  # aws_instance.web will be created\n  + resource \"aws_instance\" \"web\" {}\nPlan: 1 to add, 0 to change, 0 to destroy."
+    },
+    {
+      "name": "on_empty when all noise stripped",
+      "input": "Refreshing state... [id=vpc-abc]\nAcquiring state lock. This may take a few moments...\nReleasing state lock. This may take a few moments...",
+      "expected": "tofu plan: no changes detected"
+    }
+  ]
+}

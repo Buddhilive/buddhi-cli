@@ -1,27 +1,25 @@
 from __future__ import annotations
 
-from pathlib import Path
 import sqlite3
-from buddhi.mcp.tools.search import (
-    SearchResult,
-    _tier1_strip_bridges,
-    _tier2_degrade_modes,
-    expand_query,
-    execute_buddhi_search,
-    filter_low_entropy_lines,
-    serialize_context,
-    u_curve_sort,
-)
-from buddhi.persist.sqlite_writer import write_sqlite
+from pathlib import Path
+
 from buddhi.graph.model import (
+    CALLS,
+    CONTAINS,
+    FILE,
+    FUNCTION,
     CodeGraph,
     GraphEdge,
     GraphNode,
-    CALLS,
-    CONTAINS,
-    FUNCTION,
-    FILE,
 )
+from buddhi.mcp.tools.search import (
+    SearchResult,
+    execute_buddhi_search,
+    expand_query,
+    filter_low_entropy_lines,
+    u_curve_sort,
+)
+from buddhi.persist.sqlite_writer import write_sqlite
 
 
 def test_expand_query():
@@ -85,7 +83,9 @@ def test_u_curve_sort():
 
 def test_search_execution_with_graph(tmp_path: Path):
     graph = CodeGraph()
-    n_file = GraphNode(id="file:a.py", kind=FILE, name="a.py", qualified_name="a.py", file_path="a.py")
+    n_file = GraphNode(
+        id="file:a.py", kind=FILE, name="a.py", qualified_name="a.py", file_path="a.py"
+    )
     n_fn1 = GraphNode(
         id="function:a.py::parse_input",
         kind=FUNCTION,
@@ -113,9 +113,23 @@ def test_search_execution_with_graph(tmp_path: Path):
     graph.add_node(n_file)
     graph.add_node(n_fn1)
     graph.add_node(n_fn2)
-    graph.add_edge(GraphEdge(source="file:a.py", target="function:a.py::parse_input", kind=CONTAINS))
-    graph.add_edge(GraphEdge(source="file:a.py", target="function:a.py::helper_func", kind=CONTAINS))
-    graph.add_edge(GraphEdge(source="function:a.py::parse_input", target="function:a.py::helper_func", kind=CALLS))
+    graph.add_edge(
+        GraphEdge(
+            source="file:a.py", target="function:a.py::parse_input", kind=CONTAINS
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source="file:a.py", target="function:a.py::helper_func", kind=CONTAINS
+        )
+    )
+    graph.add_edge(
+        GraphEdge(
+            source="function:a.py::parse_input",
+            target="function:a.py::helper_func",
+            kind=CALLS,
+        )
+    )
 
     db_path = tmp_path / "tree-graph.db"
     write_sqlite(graph, db_path, root_path=str(tmp_path))

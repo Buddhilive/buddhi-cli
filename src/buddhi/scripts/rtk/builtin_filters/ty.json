@@ -1,0 +1,37 @@
+{
+  "name": "ty",
+  "description": "Compact ty type checker output \u2014 strip blank lines, keep errors",
+  "match_command": "^ty\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Checking \\d+ file",
+    "^ty \\d+\\.\\d+"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "ty: ok",
+  "source": "rtk-ai/rtk (src/filters/ty.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips noise, keeps diagnostics",
+      "input": "ty 0.1.0\nChecking 15 files\n\nerror[unresolved-reference]: Name `foo` used when not defined\n  --> app/main.py:10:5\n   |\n10 |     foo()\n   |     ^^^\n   |\n\nwarning[unused-variable]: Variable `x` is not used\n  --> app/utils.py:8:9\n   |\n 8 |     x = 42\n   |     ^\n   |\n\nFound 1 error, 1 warning\n",
+      "expected": "error[unresolved-reference]: Name `foo` used when not defined\n  --> app/main.py:10:5\n   |\n10 |     foo()\n   |     ^^^\n   |\nwarning[unused-variable]: Variable `x` is not used\n  --> app/utils.py:8:9\n   |\n 8 |     x = 42\n   |     ^\n   |\nFound 1 error, 1 warning"
+    },
+    {
+      "name": "clean output",
+      "input": "ty 0.1.0\nChecking 10 files\n\nAll checks passed!\n",
+      "expected": "All checks passed!"
+    },
+    {
+      "name": "empty input returns on_empty message",
+      "input": "",
+      "expected": "ty: ok"
+    }
+  ]
+}

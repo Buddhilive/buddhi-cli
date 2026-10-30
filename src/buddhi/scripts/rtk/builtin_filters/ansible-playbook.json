@@ -1,0 +1,32 @@
+{
+  "name": "ansible-playbook",
+  "description": "Compact ansible-playbook output",
+  "match_command": "^ansible-playbook\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^ok: \\[",
+    "^skipping: \\["
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 60,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/ansible-playbook.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips ok and skipping lines, keeps changed and failures",
+      "input": "PLAY [all] *********************************************************************\n\nTASK [Gathering Facts] *********************************************************\nok: [web01]\nok: [web02]\n\nTASK [Install nginx] ***********************************************************\nchanged: [web01]\nskipping: [web02]\n\nPLAY RECAP *********************************************************************\nweb01                      : ok=2    changed=1    unreachable=0    failed=0\nweb02                      : ok=1    changed=0    unreachable=0    failed=0\n",
+      "expected": "PLAY [all] *********************************************************************\nTASK [Gathering Facts] *********************************************************\nTASK [Install nginx] ***********************************************************\nchanged: [web01]\nPLAY RECAP *********************************************************************\nweb01                      : ok=2    changed=1    unreachable=0    failed=0\nweb02                      : ok=1    changed=0    unreachable=0    failed=0"
+    },
+    {
+      "name": "failed task preserved",
+      "input": "TASK [Start service] ***\nfailed: [web01] => {\"msg\": \"Service not found\"}\nPLAY RECAP ***\nweb01 : ok=1 failed=1",
+      "expected": "TASK [Start service] ***\nfailed: [web01] => {\"msg\": \"Service not found\"}\nPLAY RECAP ***\nweb01 : ok=1 failed=1"
+    }
+  ]
+}

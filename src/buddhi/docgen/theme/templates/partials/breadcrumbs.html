@@ -1,0 +1,16 @@
+<nav aria-label="Breadcrumbs" class="breadcrumbs-nav">
+  <ol class="breadcrumb-list">
+    <li><a href="{{ SITEURL }}/index.html">Docs</a></li>
+    {% if page %}
+      {% if page.url and page.url.startswith("communities/") %}
+      <li><span>Communities</span></li>
+      {% elif page.url and page.url.startswith("god-nodes/") %}
+      <li><span>God Nodes</span></li>
+      {% elif page.url and page.url.startswith("symbols/") %}
+      <li><span>Symbols</span></li>
+      {% endif %}
+      <li aria-current="page"><span>{{ page.title }}</span></li>
+    {% endif %}
+  </ol>
+</nav>
+

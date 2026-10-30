@@ -5,8 +5,13 @@ model: inherit
 tools:
   - view_file
   - grep_search
+  - buddhi_search
+  - buddhi_read
+  - buddhi_graph
+  - buddhi_memory
 commandExecutionPolicy: sandbox
 subagent: true
+memory: project
 mainAgent: false
 version: 1.1.0
 ---
@@ -18,6 +23,7 @@ you produce a plan section, never code.
 
 ## Before planning
 
+- Consult `.agents/memory/` and `.agents/agent-memory/` for project conventions and domain decisions.
 - Consult `.buddhi/docs/` and use Buddhi MCP tools (`buddhi_search`, `buddhi_read`,
   via the `okf-context` skill) or `.buddhi/graphs/tree-graph.db`, and look for existing CI
   config (`.github/workflows/`, or equivalent) and deployment scripts — extend the existing

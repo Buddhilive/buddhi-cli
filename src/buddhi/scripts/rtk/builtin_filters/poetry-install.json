@@ -1,0 +1,44 @@
+{
+  "name": "poetry-install",
+  "description": "Compact poetry install/lock/update output \u2014 strip downloads, short-circuit when up-to-date",
+  "match_command": "^poetry\\s+(install|lock|update)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^  [-\u2022] Downloading ",
+    "^  [-\u2022] Installing .* \\(",
+    "^Creating virtualenv",
+    "^Using virtualenv"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "No dependencies to install or update|No changes\\.",
+      "message": "ok (up to date)"
+    }
+  ],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/poetry-install.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "up to date short-circuits",
+      "input": "Installing dependencies from lock file\n\nNo dependencies to install or update\n",
+      "expected": "ok (up to date)"
+    },
+    {
+      "name": "poetry 2.x bullet syntax short-circuits to ok",
+      "input": "\u2022 Installing requests (2.31.0)\n\u2022 Installing certifi (2023.11.17)\n\nNo changes.\n",
+      "expected": "ok (up to date)"
+    },
+    {
+      "name": "install strips download lines",
+      "input": "Installing dependencies from lock file\n\n  - Downloading requests-2.31.0-py3-none-any.whl (62.6 kB)\n  - Installing certifi (2023.11.17)\n  - Installing charset-normalizer (3.3.2)\n  - Installing idna (3.6)\n  - Installing urllib3 (2.1.0)\n  - Installing requests (2.31.0)\n\nWriting lock file\n",
+      "expected": "Installing dependencies from lock file\nWriting lock file"
+    }
+  ]
+}

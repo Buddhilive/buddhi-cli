@@ -1,0 +1,32 @@
+{
+  "name": "mix-compile",
+  "description": "Compact mix compile output",
+  "match_command": "^mix\\s+compile(\\s|$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^Compiling \\d+ file",
+    "^\\s*$",
+    "^Generated\\s"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 40,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "mix compile: ok",
+  "source": "rtk-ai/rtk (src/filters/mix-compile.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips compile noise, preserves warnings",
+      "input": "Compiling 12 files (.ex)\nGenerated my_app app\n\nwarning: variable \"conn\" is unused\n  lib/router.ex:42\n",
+      "expected": "warning: variable \"conn\" is unused\n  lib/router.ex:42"
+    },
+    {
+      "name": "on_empty when only noise",
+      "input": "Compiling 3 files (.ex)\nGenerated my_app app\n",
+      "expected": "mix compile: ok"
+    }
+  ]
+}

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+
 import tree_sitter as ts
 
 from buddhi.discovery.walker import EXTENSION_TO_LANGUAGE
 from buddhi.languages.registry import get_spec
+
+logger = logging.getLogger(__name__)
 
 PLACEHOLDERS = {
     ".py": "# implementation hidden",
@@ -64,7 +67,9 @@ def prune_signatures(filepath: str, code: bytes) -> str:
     tree = parser.parse(code)
 
     if tree.root_node.has_error:
-        logging.warning("Syntax error detected in %s, falling back to raw code.", filepath)
+        logger.warning(
+            "Syntax error detected in %s, falling back to raw code.", filepath
+        )
         return code.decode("utf-8", errors="replace")
 
     blocks_to_replace: list[tuple[int, int]] = []
@@ -125,7 +130,9 @@ def extract_map(filepath: str, code: bytes) -> str:
     tree = parser.parse(code)
 
     if tree.root_node.has_error:
-        logging.warning("Syntax error detected in %s, falling back to raw code.", filepath)
+        logger.warning(
+            "Syntax error detected in %s, falling back to raw code.", filepath
+        )
         return code.decode("utf-8", errors="replace")
 
     output_parts: list[str] = []
@@ -133,9 +140,11 @@ def extract_map(filepath: str, code: bytes) -> str:
     for node in tree.root_node.children:
         nt = node.type.lower()
         if "import" in nt or "require" in nt:
-            output_parts.append(code[node.start_byte:node.end_byte].decode("utf-8", errors="replace"))
+            output_parts.append(
+                code[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
+            )
         elif "class" in nt or "export" in nt or "interface" in nt or "function" in nt:
-            node_code = code[node.start_byte:node.end_byte]
+            node_code = code[node.start_byte : node.end_byte]
             pruned_node = prune_signatures(filepath, node_code)
             output_parts.append(pruned_node)
 

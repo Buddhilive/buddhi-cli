@@ -1,0 +1,15 @@
+{
+  "name": "git-log",
+  "description": "Compact git log output",
+  "match_command": "^git\\s+log\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [],
+  "max_lines": 40,
+  "head_lines": 35,
+  "tail_lines": 5,
+  "dedup": true,
+  "source": "rtk-ai/rtk (src/cmds/git)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

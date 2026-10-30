@@ -22,7 +22,11 @@ def _trim_trailing_separators(value: Path) -> str:
 def find_buddhi_root(start_dir: Path | None = None) -> Path | None:
     current = (start_dir or Path.cwd()).resolve()
     while True:
-        if (current / ".buddhi").is_dir() or (current / ".agents").is_dir() or (current / ".specify").is_dir():
+        if (
+            (current / ".buddhi").is_dir()
+            or (current / ".agents").is_dir()
+            or (current / ".specify").is_dir()
+        ):
             return current
         parent = current.parent
         if parent == current:
@@ -200,8 +204,7 @@ _SAFE_COMPONENT_PATTERN = re.compile(r"[a-z0-9-]+")
 
 def _is_safe_component(value: object) -> bool:
     return (
-        isinstance(value, str)
-        and _SAFE_COMPONENT_PATTERN.fullmatch(value) is not None
+        isinstance(value, str) and _SAFE_COMPONENT_PATTERN.fullmatch(value) is not None
     )
 
 
@@ -217,9 +220,7 @@ def _normalize_priority(value: object) -> int:
     return 10
 
 
-def _conventional_template(
-    base_dir: Path, template_name: str
-) -> Path | None:
+def _conventional_template(base_dir: Path, template_name: str) -> Path | None:
     for candidate in (
         base_dir / "templates" / f"{template_name}.md",
         base_dir / f"{template_name}.md",
@@ -261,7 +262,9 @@ class TemplateResolutionError(RuntimeError):
 
 def _get_bundled_template_content(template_name: str) -> str | None:
     try:
-        template_file = resources.files("buddhi.templates.agents.templates") / f"{template_name}.md"
+        template_file = (
+            resources.files("buddhi.templates.agents.templates") / f"{template_name}.md"
+        )
         if template_file.is_file():
             return template_file.read_text(encoding="utf-8")
     except (OSError, UnicodeError, AttributeError, ModuleNotFoundError, TypeError):
@@ -297,14 +300,18 @@ def resolve_template_content(template_name: str, repo_root: Path) -> str | None:
         try:
             return specify_override.read_bytes().decode("utf-8")
         except (OSError, UnicodeError) as exc:
-            raise TemplateResolutionError(f"Failed to read {specify_override}: {exc}") from exc
+            raise TemplateResolutionError(
+                f"Failed to read {specify_override}: {exc}"
+            ) from exc
 
     specify_core = specify_templates / f"{template_name}.md"
     if specify_core.is_file():
         try:
             return specify_core.read_bytes().decode("utf-8")
         except (OSError, UnicodeError) as exc:
-            raise TemplateResolutionError(f"Failed to read {specify_core}: {exc}") from exc
+            raise TemplateResolutionError(
+                f"Failed to read {specify_core}: {exc}"
+            ) from exc
 
     # 3. Built-in bundled template fallback
     bundled = _get_bundled_template_content(template_name)
@@ -312,6 +319,12 @@ def resolve_template_content(template_name: str, repo_root: Path) -> str | None:
         return bundled
 
     return None
+
+
+_CANONICAL_COMMANDS = {
+    "plan": "spec-plan",
+    "tasks": "spec-tasks",
+}
 
 
 def format_speckit_command(command_name: str, repo_root: Path | None = None) -> str:
@@ -322,4 +335,5 @@ def format_speckit_command(command_name: str, repo_root: Path | None = None) -> 
         name = name[len("speckit-") :]
     elif name.startswith("sdd-"):
         name = name[len("sdd-") :]
+    name = _CANONICAL_COMMANDS.get(name, name)
     return f"/{name}"

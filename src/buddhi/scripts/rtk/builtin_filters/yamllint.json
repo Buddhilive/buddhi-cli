@@ -1,0 +1,30 @@
+{
+  "name": "yamllint",
+  "description": "Compact yamllint output \u2014 strip blank lines, limit rows",
+  "match_command": "^yamllint\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/yamllint.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "multi-warning output stripped of blank lines",
+      "input": "config.yml\n  3:1     warning  missing document start \"---\"  (document-start)\n  5:12    error    too many spaces inside braces  (braces)\n\n  8:1     error    wrong indentation: expected 2 but found 4  (indentation)\n",
+      "expected": "config.yml\n  3:1     warning  missing document start \"---\"  (document-start)\n  5:12    error    too many spaces inside braces  (braces)\n  8:1     error    wrong indentation: expected 2 but found 4  (indentation)"
+    },
+    {
+      "name": "empty input passes through",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

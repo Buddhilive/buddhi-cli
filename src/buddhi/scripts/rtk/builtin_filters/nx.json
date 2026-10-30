@@ -1,0 +1,36 @@
+{
+  "name": "nx",
+  "description": "Compact Nx monorepo output \u2014 strip task graph noise, keep results",
+  "match_command": "^(pnpm\\s+)?nx\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^\\s*>\\s*NX\\s+Running target",
+    "^\\s*>\\s*NX\\s+Nx read the output",
+    "^\\s*>\\s*NX\\s+View logs",
+    "^\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+    "^\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014",
+    "^\\s+Nx \\(powered by"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 60,
+  "tail_lines": null,
+  "truncate_lines_at": 150,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/nx.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips Nx noise, keeps build output",
+      "input": "\n   > NX   Running target build for project myapp\n\n\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\u2014\nCompiled successfully.\nOutput: dist/apps/myapp\n\n   > NX   View logs at /tmp/.nx/runs/abc123\n\n   Nx (powered by computation caching)\n",
+      "expected": "Compiled successfully.\nOutput: dist/apps/myapp"
+    },
+    {
+      "name": "preserves error output",
+      "input": "ERROR: Cannot find module '@myapp/shared'\n\n   > NX   Running target build for project myapp\n\nFailed at step: build",
+      "expected": "ERROR: Cannot find module '@myapp/shared'\nFailed at step: build"
+    }
+  ]
+}

@@ -7,7 +7,9 @@ from buddhi.persist.json_writer import to_cytoscape_elements, write_json
 
 def _sample_graph() -> CodeGraph:
     graph = CodeGraph()
-    graph.add_node(GraphNode(id="file:a.py", kind="file", name="a.py", qualified_name="a.py"))
+    graph.add_node(
+        GraphNode(id="file:a.py", kind="file", name="a.py", qualified_name="a.py")
+    )
     graph.add_node(
         GraphNode(
             id="function:a.py::f",
@@ -17,7 +19,9 @@ def _sample_graph() -> CodeGraph:
             parent_id="file:a.py",
         )
     )
-    graph.add_edge(GraphEdge(source="file:a.py", target="function:a.py::f", kind=CONTAINS))
+    graph.add_edge(
+        GraphEdge(source="file:a.py", target="function:a.py::f", kind=CONTAINS)
+    )
     return graph
 
 

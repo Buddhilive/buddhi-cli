@@ -1,0 +1,30 @@
+{
+  "name": "gcloud",
+  "description": "Compact gcloud output",
+  "match_command": "^gcloud\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/gcloud.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "strips blank lines, preserves output",
+      "input": "Updated property [core/project].\n\nNAME        REGION        STATUS\nmy-cluster  us-central1   RUNNING\n",
+      "expected": "Updated property [core/project].\nNAME        REGION        STATUS\nmy-cluster  us-central1   RUNNING"
+    },
+    {
+      "name": "single line passthrough",
+      "input": "Listed 0 items.",
+      "expected": "Listed 0 items."
+    }
+  ]
+}

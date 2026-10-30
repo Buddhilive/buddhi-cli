@@ -46,7 +46,9 @@ class SkillRegistryEntry:
     def execute_runner(self, *args: Any, **kwargs: Any) -> Any:
         """Invoke runner callable if registered."""
         if self.runner is None:
-            raise NotImplementedError(f"No execution runner configured for skill '{self.name}'.")
+            raise NotImplementedError(
+                f"No execution runner configured for skill '{self.name}'."
+            )
         return self.runner(*args, **kwargs)
 
 
@@ -68,9 +70,8 @@ _SKILL_REGISTRY: dict[str, SkillRegistryEntry] = {
         template_pkg="buddhi.templates.custom_skills.repo_to_skill",
         target_dir_name="repo-to-skill",
         runner=_run_repo_to_skill_wrapper,
-    )
+    ),
 }
-
 
 
 def get_skill(name: str) -> SkillRegistryEntry | None:

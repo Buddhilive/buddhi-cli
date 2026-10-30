@@ -1,0 +1,39 @@
+{
+  "name": "biome",
+  "description": "Compact Biome lint/format output \u2014 strip blank lines, keep diagnostics",
+  "match_command": "^biome\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Checked \\d+ file",
+    "^Fixed \\d+ file",
+    "^The following command",
+    "^Run it with"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 50,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "biome: ok",
+  "source": "rtk-ai/rtk (src/filters/biome.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "lint strips noise, keeps diagnostics",
+      "input": "Checked 42 files in 0.5s\n\nsrc/app.tsx:5:3 lint/suspicious/noExplicitAny \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n  \u00d7 Unexpected any. Specify a different type.\n  3 \u2502 interface Props {\n  4 \u2502   data: any;\n  5 \u2502         ^^^\n\nsrc/utils.ts:12:1 lint/complexity/noForEach \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n  \u00d7 Prefer for...of instead of forEach.\n 12 \u2502 items.forEach(item => process(item));\n    \u2502 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nFound 2 errors.\n",
+      "expected": "src/app.tsx:5:3 lint/suspicious/noExplicitAny \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n  \u00d7 Unexpected any. Specify a different type.\n  3 \u2502 interface Props {\n  4 \u2502   data: any;\n  5 \u2502         ^^^\nsrc/utils.ts:12:1 lint/complexity/noForEach \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n  \u00d7 Prefer for...of instead of forEach.\n 12 \u2502 items.forEach(item => process(item));\n    \u2502 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nFound 2 errors."
+    },
+    {
+      "name": "clean check",
+      "input": "Checked 42 files in 0.3s\n",
+      "expected": "biome: ok"
+    },
+    {
+      "name": "empty input returns on_empty message",
+      "input": "",
+      "expected": "biome: ok"
+    }
+  ]
+}

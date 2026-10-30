@@ -1,0 +1,39 @@
+{
+  "name": "composer-install",
+  "description": "Compact composer install/update/require output \u2014 strip downloads, short-circuit when up-to-date",
+  "match_command": "^composer\\s+(install|update|require)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^  - Downloading ",
+    "^  - Installing ",
+    "^Loading composer",
+    "^Updating dependencies"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "Nothing to install, update or remove",
+      "message": "ok (up to date)"
+    }
+  ],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/composer-install.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "nothing to do short-circuits",
+      "input": "Loading composer repositories with package information\nUpdating dependencies\nLock file operations: 0 installs, 0 updates, 0 removals\nNothing to install, update or remove\nGenerating autoload files\n",
+      "expected": "ok (up to date)"
+    },
+    {
+      "name": "install strips download lines",
+      "input": "Loading composer repositories with package information\nUpdating dependencies\n  - Downloading symfony/console (v6.4.0)\n  - Installing symfony/console (v6.4.0): Extracting archive\n  - Downloading psr/log (3.0.0)\n  - Installing psr/log (3.0.0): Extracting archive\nWriting lock file\nGenerating autoload files\n",
+      "expected": "Writing lock file\nGenerating autoload files"
+    }
+  ]
+}

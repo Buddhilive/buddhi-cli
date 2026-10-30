@@ -2,6 +2,10 @@
   name: (type_identifier) @name) @definition.class
 
 (impl_item
+  trait: (type_identifier) @inherit.base
+  type: (type_identifier) @name) @definition.impl
+
+(impl_item
   type: (type_identifier) @name) @definition.impl
 
 (function_item

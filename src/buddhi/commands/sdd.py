@@ -6,6 +6,7 @@ import typer
 
 from buddhi.sdd.check_prerequisites import main as check_main
 from buddhi.sdd.create_new_feature import main as create_main
+from buddhi.sdd.impact import main as impact_main
 from buddhi.sdd.resolve_template import main as resolve_template_main
 from buddhi.sdd.setup_plan import main as setup_plan_main
 from buddhi.sdd.setup_tasks import main as setup_tasks_main
@@ -84,5 +85,17 @@ def check(ctx: typer.Context) -> None:
 def resolve_template_cmd(ctx: typer.Context) -> None:
     args = _forward_args(ctx, "resolve-template")
     exit_code = resolve_template_main(args)
+    if exit_code != 0:
+        raise typer.Exit(code=exit_code)
+
+
+@sdd_app.command(
+    name="impact",
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    help="Compute topological impact and blast radius for SDD context.",
+)
+def impact_cmd(ctx: typer.Context) -> None:
+    args = _forward_args(ctx, "impact")
+    exit_code = impact_main(args)
     if exit_code != 0:
         raise typer.Exit(code=exit_code)

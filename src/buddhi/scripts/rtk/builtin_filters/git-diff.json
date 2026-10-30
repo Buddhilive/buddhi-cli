@@ -1,0 +1,21 @@
+{
+  "name": "git-diff",
+  "description": "Compact git diff output",
+  "match_command": "^git\\s+diff\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^index [0-9a-f]+\\.\\.[0-9a-f]+(?: \\d+)?$"
+  ],
+  "keep_lines_matching": [
+    "^diff --git\\b",
+    "^(?:---|\\+\\+\\+)\\b",
+    "^@@\\s.*@@",
+    "^[\\+-].*"
+  ],
+  "max_lines": 80,
+  "head_lines": 40,
+  "tail_lines": 40,
+  "source": "rtk-ai/rtk (src/cmds/git)",
+  "license": "Apache-2.0",
+  "modified": true
+}

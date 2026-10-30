@@ -1,0 +1,40 @@
+{
+  "name": "pulumi-stack",
+  "description": "Compact Pulumi stack (ls/output) output",
+  "match_command": "^pulumi\\s+stack(\\s+(ls|output|history|select|init|rm|rename|tag|unselect|change-secrets-provider)\\b|\\s*$)",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Please choose a stack",
+    "^More information at:",
+    "^Use `pulumi ",
+    "^Current stack outputs \\(0\\):",
+    "^\\s+No output values currently"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [
+    {
+      "pattern": "No stacks found",
+      "message": "pulumi stack: empty"
+    }
+  ],
+  "max_lines": null,
+  "tail_lines": null,
+  "truncate_lines_at": null,
+  "on_empty": "pulumi stack: ok",
+  "source": "rtk-ai/rtk (src/filters/pulumi-stack.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "no stacks short-circuits",
+      "input": "No stacks found in the current workspace.\n",
+      "expected": "pulumi stack: empty"
+    },
+    {
+      "name": "keeps stack identity, strips prompt noise",
+      "input": "Please choose a stack, or create a new one:\nCurrent stack is dev:\n    Managed by my-user\n    Owner: my-org\n    Last updated: 2 hours ago\n    Pulumi version used: v3.120.0\n\nCurrent stack resources (3):\n    TYPE                          NAME\n    pulumi:pulumi:Stack           my-proj-dev\n    aws:s3:Bucket                 my-bucket\n    aws:iam:Role                  my-role\n",
+      "expected": "Current stack is dev:\n    Managed by my-user\n    Owner: my-org\n    Last updated: 2 hours ago\n    Pulumi version used: v3.120.0\nCurrent stack resources (3):\n    TYPE                          NAME\n    pulumi:pulumi:Stack           my-proj-dev\n    aws:s3:Bucket                 my-bucket\n    aws:iam:Role                  my-role"
+    }
+  ]
+}

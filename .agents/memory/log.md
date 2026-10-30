@@ -1,0 +1,27 @@
+# Memory Mutation Log
+
+## 2026-10-27 16:04:46Z - [SAVED] `mem-decision-pelican-static-site-generator-for-okf-v0-2-documentation`: Pelican Static Site Generator for OKF v0.2 Documentation
+Kind: decision, Summary: Adopted Pelican static site generator with custom OKFMarkdownReader for live documentation.
+
+## 2026-10-27 05:51:26Z - [SAVED] `mem-decision-single-sqlite-schema-v2-for-graph-intelligence-ast-cache-and`: Single SQLite Schema v2 for Graph Intelligence, AST Cache, and Blast Radius
+Kind: decision, Summary: Store communities, SHA-256 extract_cache, and edge confidence/context in .buddhi/graphs/tree-graph.db and expose via buddhi_graph MCP and <50ms stdlib hooks
+
+## 2026-10-26 13:48:19Z - [SDD-PROMOTE] `sdd-005-okf-claude-memory-layer`: Promoted 1 SDD concept(s) from branch 005-okf-claude-memory-layer
+
+## 2026-10-26 13:48:19Z - [SAVED] `mem-sdd-okf-claude-code-memory-layer-for-antigravity-harness`: SDD: OKF & Claude Code Memory Layer for Antigravity Harness
+Kind: sdd-rationale, Summary: Durable rationale for feature 005-okf-claude-memory-layer
+
+## 2026-10-26 13:38:40Z - [MIGRATED] `legacy-bundle`: Migrated 3 legacy memory entries to OKF concepts
+
+## 2026-10-26 13:38:40Z - [SAVED] `mem-feedback-this-project-what-to-avoid-what-to-keep-doing-get-ap`: this project — what to avoid, what to keep doing — get ap...
+Kind: feedback, Summary: this project — what to avoid, what to keep doing — get appended here by `/remember` or other harness work, one entry per line, newest last.
+
+## 2026-10-26 13:38:40Z - [SAVED] `mem-decision-get-appended-here-by--remember-or-other-harness-work-o`: get appended here by `/remember` or other harness work, o...
+Kind: decision, Summary: get appended here by `/remember` or other harness work, one entry per line, newest last.
+
+## 2026-10-26 13:38:40Z - [SAVED] `mem-convention-naming-structure-process-get-appended-here-by--remem`: naming, structure, process — get appended here by `/remem...
+Kind: convention, Summary: naming, structure, process — get appended here by `/remember` or other harness work, one entry per line, newest last.
+
+## 2026-10-26 13:38:07Z - [SAVED] `mem-preference-communication-style-workflow-preferences-get-appended`: communication style, workflow preferences — get appended ...
+Kind: preference, Summary: communication style, workflow preferences — get appended here by `/remember` or other harness work, one entry per line, newest last.
+

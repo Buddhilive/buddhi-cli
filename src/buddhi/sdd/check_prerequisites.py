@@ -194,7 +194,9 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if not paths.feature_dir.is_dir():
-        print(f"ERROR: Feature directory not found: {paths.feature_dir}", file=sys.stderr)
+        print(
+            f"ERROR: Feature directory not found: {paths.feature_dir}", file=sys.stderr
+        )
         print(
             f"Run {format_speckit_command('specify', paths.repo_root)} first to create the feature structure.",
             file=sys.stderr,
@@ -204,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
     if not paths.impl_plan.is_file():
         print(f"ERROR: plan.md not found in {paths.feature_dir}", file=sys.stderr)
         print(
-            f"Run {format_speckit_command('plan', paths.repo_root)} first to create the implementation plan.",
+            f"Run {format_speckit_command('spec-plan', paths.repo_root)} first to create the implementation plan.",
             file=sys.stderr,
         )
         return 1
@@ -212,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.require_tasks and not paths.tasks.is_file():
         print(f"ERROR: tasks.md not found in {paths.feature_dir}", file=sys.stderr)
         print(
-            f"Run {format_speckit_command('tasks', paths.repo_root)} first to create the task list.",
+            f"Run {format_speckit_command('spec-tasks', paths.repo_root)} first to create the task list.",
             file=sys.stderr,
         )
         return 1

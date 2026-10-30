@@ -1,0 +1,32 @@
+{
+  "name": "jj",
+  "description": "Compact Jujutsu (jj) output \u2014 strip blank lines, truncate",
+  "match_command": "^jj\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^Hint:",
+    "^Working copy now at:"
+  ],
+  "keep_lines_matching": [],
+  "match_output": [],
+  "max_lines": 30,
+  "tail_lines": null,
+  "truncate_lines_at": 120,
+  "on_empty": null,
+  "source": "rtk-ai/rtk (src/filters/jj.toml)",
+  "license": "Apache-2.0",
+  "modified": true,
+  "tests": [
+    {
+      "name": "log output stripped of hints",
+      "input": "@  qpvuntsm patrick@example.com 2026-03-10 12:00 abc123\n\u2502  feat: add new feature\n\u25c9  zzzzzzzz root()\n\nWorking copy now at: qpvuntsm abc123 feat: add new feature\nHint: use `jj log` to see the full history\n",
+      "expected": "@  qpvuntsm patrick@example.com 2026-03-10 12:00 abc123\n\u2502  feat: add new feature\n\u25c9  zzzzzzzz root()"
+    },
+    {
+      "name": "empty input passes through",
+      "input": "",
+      "expected": ""
+    }
+  ]
+}

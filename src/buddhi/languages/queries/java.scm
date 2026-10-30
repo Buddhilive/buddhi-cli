@@ -1,8 +1,11 @@
 (class_declaration
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  (superclass (type_identifier) @inherit.base)?
+  (super_interfaces (type_list (type_identifier) @inherit.base))?) @definition.class
 
 (interface_declaration
-  name: (identifier) @name) @definition.class
+  name: (identifier) @name
+  (extends_interfaces (type_list (type_identifier) @inherit.base))?) @definition.class
 
 (method_declaration
   name: (identifier) @name) @definition.method

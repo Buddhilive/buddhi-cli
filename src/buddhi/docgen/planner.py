@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -51,8 +52,7 @@ def topological_doc_order(graph: CodeGraph) -> list[GraphNode]:
     Cycles (mutual/recursive calls) can't be strictly ordered; nodes involved
     in a cycle are appended in a stable (id-sorted) order once every node
     outside the cycle that can be resolved has been. This never raises on
-    cyclic graphs — RepoAgent's own DAG assumption doesn't hold for real
-    codebases with recursion, so we degrade gracefully instead of crashing.
+    cyclic graphs.
     """
     nodes = {n.id: n for n in graph.nodes.values() if n.kind in _CLUSTERABLE_KINDS}
     if not nodes:
@@ -142,28 +142,73 @@ class PlanEntry:
     callees: list[str] = field(default_factory=list)
     doc_path: str = ""
     needs_generation: bool = True
+    # Enriched code graph topology attributes
+    community_id: int | None = None
+    community_label: str | None = None
+    cohesion: float | None = None
+    is_god_node: bool = False
+    degree: int = 0
+    signature: str | None = None
+    edge_confidences: dict[str, int] = field(default_factory=dict)
+    relations: list[dict[str, str]] = field(default_factory=list)
 
 
 def build_docs_plan(graph: CodeGraph, root: Path) -> list[PlanEntry]:
-    """Compute the ordered, staleness-annotated doc plan for `graph`."""
+    """Compute the ordered, staleness-annotated doc plan for `graph` with topology enrichment."""
     ordered_nodes = topological_doc_order(graph)
 
     callers: dict[str, set[str]] = {n.id: set() for n in ordered_nodes}
     callees: dict[str, set[str]] = {n.id: set() for n in ordered_nodes}
+    incident_confidences: dict[str, Counter] = {n.id: Counter() for n in ordered_nodes}
+    incident_relations: dict[str, list[dict[str, str]]] = {
+        n.id: [] for n in ordered_nodes
+    }
+    degrees: dict[str, int] = Counter()
+
     node_ids = set(callers)
     for edge in graph.edges:
+        src = edge.source
+        tgt = edge.target
+        if src in node_ids:
+            degrees[src] += 1
+            incident_confidences[src][edge.confidence] += 1
+            incident_relations[src].append({"kind": edge.kind, "target": tgt})
+        if tgt in node_ids:
+            degrees[tgt] += 1
+            incident_confidences[tgt][edge.confidence] += 1
+
         if edge.kind not in _ORDER_EDGE_KINDS:
             continue
-        if edge.source not in node_ids or edge.target not in node_ids:
+        if src not in node_ids or tgt not in node_ids:
             continue
-        callees[edge.source].add(edge.target)
-        callers[edge.target].add(edge.source)
+        callees[src].add(tgt)
+        callers[tgt].add(src)
+
+    # Detect top god nodes (degree >= 20 and in top 5%)
+    degree_sorted = sorted(degrees.values(), reverse=True)
+    idx = (
+        min(len(degree_sorted) - 1, max(0, len(degree_sorted) // 20))
+        if degree_sorted
+        else 0
+    )
+    god_threshold = degree_sorted[idx] if degree_sorted else 20
+    god_node_ids = {
+        nid for nid, deg in degrees.items() if deg >= max(20, god_threshold)
+    }
 
     plan: list[PlanEntry] = []
     for node in ordered_nodes:
         h = content_hash(node.snippet)
         doc_path = doc_path_for_node(node)
         existing_hash = read_existing_content_hash(root / doc_path)
+
+        cid = node.community_id
+        cinfo = graph.communities.get(cid) if cid is not None else None
+        clabel = (
+            cinfo.label if cinfo else (f"Community {cid}" if cid is not None else None)
+        )
+        cohesion = cinfo.cohesion if cinfo else None
+
         plan.append(
             PlanEntry(
                 node_id=node.id,
@@ -181,6 +226,14 @@ def build_docs_plan(graph: CodeGraph, root: Path) -> list[PlanEntry]:
                 callees=sorted(callees[node.id]),
                 doc_path=doc_path,
                 needs_generation=(existing_hash != h),
+                community_id=cid,
+                community_label=clabel,
+                cohesion=cohesion,
+                is_god_node=node.id in god_node_ids,
+                degree=degrees.get(node.id, 0),
+                signature=node.signature,
+                edge_confidences=dict(incident_confidences[node.id]),
+                relations=incident_relations[node.id][:20],
             )
         )
     return plan

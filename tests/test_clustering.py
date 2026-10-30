@@ -23,9 +23,21 @@ def test_two_disconnected_clusters_get_distinct_communities() -> None:
 
 def test_non_clusterable_kinds_stay_none() -> None:
     graph = CodeGraph()
-    graph.add_node(GraphNode(id="dir:x", kind="directory", name="x", qualified_name="x"))
-    graph.add_node(GraphNode(id="file:x.py", kind="file", name="x.py", qualified_name="x.py"))
-    graph.add_node(GraphNode(id="external:os", kind="external", name="os", qualified_name="os", external=True))
+    graph.add_node(
+        GraphNode(id="dir:x", kind="directory", name="x", qualified_name="x")
+    )
+    graph.add_node(
+        GraphNode(id="file:x.py", kind="file", name="x.py", qualified_name="x.py")
+    )
+    graph.add_node(
+        GraphNode(
+            id="external:os",
+            kind="external",
+            name="os",
+            qualified_name="os",
+            external=True,
+        )
+    )
     graph.add_node(_method("m1"))
     graph.add_node(_method("m2"))
     graph.add_edge(GraphEdge(source="m1", target="m2", kind=CALLS))
@@ -45,3 +57,16 @@ def test_empty_or_tiny_graph_is_skipped_without_crashing() -> None:
     graph.add_node(_method("solo"))
     assert assign_communities(graph) == 0
     assert graph.nodes["solo"].community_id is None
+
+
+def test_clustering_is_deterministic() -> None:
+    def _run() -> list[tuple[str, int | None]]:
+        g = CodeGraph()
+        for i in range(20):
+            g.add_node(_method(f"n_{i}"))
+        for i in range(19):
+            g.add_edge(GraphEdge(source=f"n_{i}", target=f"n_{i + 1}", kind=CALLS))
+        assign_communities(g)
+        return [(nid, g.nodes[nid].community_id) for nid in sorted(g.nodes.keys())]
+
+    assert _run() == _run()

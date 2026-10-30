@@ -1,0 +1,26 @@
+{
+  "name": "ruff",
+  "description": "Filters ruff linter and formatter output",
+  "match_command": "^(?:uv\\s+run\\s+)?ruff\\s+(?:check|format)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^All checks passed!$",
+    "^\\d+ files? left unchanged$"
+  ],
+  "keep_lines_matching": [
+    "^.*:\\d+:\\d+:\\s+[A-Z0-9]+.*",
+    "^Found \\d+ errors?.*",
+    "^Would reformat:.*"
+  ],
+  "error_patterns": [
+    "^.*:\\d+:\\d+:\\s+[A-Z0-9]+.*",
+    "(?i)\\b(error|failed)\\b"
+  ],
+  "max_lines": 80,
+  "on_empty": "All checks passed!",
+  "source": "rtk-ai/rtk (src/cmds/python/ruff_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

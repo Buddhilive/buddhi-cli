@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation Portal | {{ SITENAME }}{% endblock %}
+
+{% block content %}
+<section class="portal-home">
+  <header class="portal-hero">
+    <div class="portal-badge-strip">
+      <span class="portal-pill-badge">Google Open Knowledge Format v0.2</span>
+      <span class="portal-pill-badge">Schema v2 Code Graph</span>
+    </div>
+    <h1 class="portal-title">{{ SITENAME or "Codebase Knowledge Base" }}</h1>
+    <p class="portal-lead">Grounded, topological documentation synthesized directly from code analysis and graph structure.</p>
+    <div class="portal-hero-actions">
+      <a href="{{ SITEURL }}/architecture-report.html" class="hero-btn primary-btn">Architecture Report &rarr;</a>
+      <a href="{{ SITEURL }}/graphs/tree-graph.html" class="hero-btn secondary-btn" target="_blank" rel="noopener">Interactive Code Graph</a>
+    </div>
+  </header>
+
+  <div class="portal-grid">
+    <div class="portal-card">
+      <div class="card-icon" aria-hidden="true">&#x1F4CA;</div>
+      <h2>Architecture Report</h2>
+      <p>Topological health, god nodes, surprising cross-community bridges, confidence breakdown, and import cycles.</p>
+      <a href="{{ SITEURL }}/architecture-report.html" class="card-link">View Architecture Report &rarr;</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="card-icon" aria-hidden="true">&#x1F578;</div>
+      <h2>Interactive Code Graph</h2>
+      <p>Cytoscape network visualization mapping calls, imports, and inheritance across the entire project.</p>
+      <a href="{{ SITEURL }}/graphs/tree-graph.html" class="card-link" target="_blank" rel="noopener">Open Graph Visualizer &rarr;</a>
+    </div>
+
+    <div class="portal-card">
+      <div class="card-icon" aria-hidden="true">&#x1F9E9;</div>
+      <h2>Leiden Communities</h2>
+      <p>Modular architectural clusters with cohesion ratings, member rankings, and Mermaid callflow diagrams.</p>
+      <a href="{{ SITEURL }}/architecture-report.html#community-hubs" class="card-link">Explore Communities &rarr;</a>
+    </div>
+  </div>
+
+  {% if pages %}
+  {% set comm_pages = [] %}
+  {% set concept_pages = [] %}
+  {% for p in pages %}
+    {% if p.doc_section == "communities" or (p.url and p.url.startswith("communities/")) %}
+      {% set _ = comm_pages.append(p) %}
+    {% elif p.doc_section != "Overview" and p.url not in ("index.html", "architecture-report.html") and not (p.url and p.url.startswith("god-nodes/")) %}
+      {% set _ = concept_pages.append(p) %}
+    {% endif %}
+  {% endfor %}
+
+  {% if comm_pages %}
+  <section class="portal-section">
+    <div class="section-header-row">
+      <h2>Featured Communities</h2>
+      <a href="{{ SITEURL }}/architecture-report.html#community-hubs" class="section-more-link">View all {{ comm_pages|length }} communities &rarr;</a>
+    </div>
+    <div class="community-grid">
+      {% for cp in comm_pages[:6] %}
+      <a href="{{ SITEURL }}/{{ cp.url }}" class="community-card">
+        <div class="community-card-header">
+          <span class="community-title">{{ cp.title }}</span>
+          {% if cp.cohesion %}
+          <span class="cohesion-tag">Cohesion {{ cp.cohesion }}</span>
+          {% endif %}
+        </div>
+        <p class="community-summary">{{ cp.summary or "Leiden modularity community cluster." }}</p>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if concept_pages %}
+  <section class="portal-section">
+    <div class="section-header-row">
+      <h2>Documented Modules & Subsystems</h2>
+      <span class="section-count-tag">{{ concept_pages|length }} Concepts</span>
+    </div>
+    <div class="subsystem-grid">
+      {% for sec, sec_pages in concept_pages | groupby("doc_section") %}
+      {% if sec and sec != "Overview" and sec != "communities" and sec != "god-nodes" %}
+      <div class="subsystem-card">
+        <h3>{{ sec }}</h3>
+        <span class="subsystem-count">{{ sec_pages|length }} symbols</span>
+        <ul class="subsystem-sample-list">
+          {% for sp in sec_pages[:4] %}
+          <li><a href="{{ SITEURL }}/{{ sp.url }}">{{ sp.title }}</a></li>
+          {% endfor %}
+          {% if sec_pages|length > 4 %}
+          <li class="subsystem-more"><em>+ {{ sec_pages|length - 4 }} more</em></li>
+          {% endif %}
+        </ul>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+  {% endif %}
+
+  {% if page and page.content %}
+  <section class="portal-section portal-custom-content">
+    <div class="doc-body">
+      {{ page.content }}
+    </div>
+  </section>
+  {% endif %}
+</section>
+{% endblock %}

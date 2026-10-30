@@ -40,9 +40,13 @@ def detect_languages_and_type(root: Path) -> dict[str, Any]:
 
     if (root / "pyproject.toml").is_file() or (root / "setup.py").is_file():
         languages.append("python")
-        manifests.append("pyproject.toml" if (root / "pyproject.toml").is_file() else "setup.py")
+        manifests.append(
+            "pyproject.toml" if (root / "pyproject.toml").is_file() else "setup.py"
+        )
         if (root / "pyproject.toml").is_file():
-            content = (root / "pyproject.toml").read_text(encoding="utf-8", errors="replace")
+            content = (root / "pyproject.toml").read_text(
+                encoding="utf-8", errors="replace"
+            )
             if "project.scripts" in content or "tool.poetry.scripts" in content:
                 is_cli = True
 
@@ -50,7 +54,9 @@ def detect_languages_and_type(root: Path) -> dict[str, Any]:
         languages.append("javascript/typescript")
         manifests.append("package.json")
         try:
-            pkg_data = json.loads((root / "package.json").read_text(encoding="utf-8", errors="replace"))
+            pkg_data = json.loads(
+                (root / "package.json").read_text(encoding="utf-8", errors="replace")
+            )
             if "bin" in pkg_data:
                 is_cli = True
         except (json.JSONDecodeError, OSError):
@@ -72,12 +78,26 @@ def detect_languages_and_type(root: Path) -> dict[str, Any]:
         if (root / candidate).is_file():
             try:
                 txt = (root / candidate).read_text(encoding="utf-8", errors="replace")
-                if any(k in txt for k in ("argparse", "click", "typer", "commander", "yargs", "cobra")):
+                if any(
+                    k in txt
+                    for k in (
+                        "argparse",
+                        "click",
+                        "typer",
+                        "commander",
+                        "yargs",
+                        "cobra",
+                    )
+                ):
                     is_cli = True
             except OSError:
                 pass
 
-    project_type = "CLI Tool" if is_cli else ("Library / Package" if manifests else "General Codebase")
+    project_type = (
+        "CLI Tool"
+        if is_cli
+        else ("Library / Package" if manifests else "General Codebase")
+    )
 
     return {
         "languages": languages or ["unknown"],
@@ -97,24 +117,39 @@ def extract_readme_summary(root: Path) -> dict[str, Any]:
             break
 
     if not readme_path:
-        return {"has_readme": False, "title": root.name, "description": "", "commands": []}
+        return {
+            "has_readme": False,
+            "title": root.name,
+            "description": "",
+            "commands": [],
+        }
 
     try:
         content = readme_path.read_text(encoding="utf-8", errors="replace")
     except OSError:
-        return {"has_readme": False, "title": root.name, "description": "", "commands": []}
-
+        return {
+            "has_readme": False,
+            "title": root.name,
+            "description": "",
+            "commands": [],
+        }
 
     # Extract title
     title_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
     title = title_match.group(1).strip() if title_match else root.name
 
     # Extract first non-header paragraph
-    paragraphs = [p.strip() for p in content.split("\n\n") if p.strip() and not p.strip().startswith("#")]
+    paragraphs = [
+        p.strip()
+        for p in content.split("\n\n")
+        if p.strip() and not p.strip().startswith("#")
+    ]
     description = paragraphs[0] if paragraphs else ""
 
     # Extract command snippets from bash/shell blocks
-    code_blocks = re.findall(r"```(?:bash|shell|sh|console)?\s*\n(.*?)\n```", content, re.DOTALL)
+    code_blocks = re.findall(
+        r"```(?:bash|shell|sh|console)?\s*\n(.*?)\n```", content, re.DOTALL
+    )
     commands: list[str] = []
     for block in code_blocks:
         for line in block.splitlines():
@@ -139,7 +174,9 @@ def analyze_repository(target_path: Path) -> dict[str, Any]:
     type_info = detect_languages_and_type(target_path)
     readme_info = extract_readme_summary(target_path)
 
-    has_docs = (target_path / "docs").is_dir() or (target_path / "documentation").is_dir()
+    has_docs = (target_path / "docs").is_dir() or (
+        target_path / "documentation"
+    ).is_dir()
     has_examples = (target_path / "examples").is_dir()
 
     return {
@@ -170,10 +207,14 @@ def run_repo_to_skill(target: str, json_mode: bool = False) -> int:
         else:
             analysis_path = Path(target).resolve()
             if not analysis_path.exists():
-                err_console.print(f"[red]error:[/red] path does not exist: {analysis_path}")
+                err_console.print(
+                    f"[red]error:[/red] path does not exist: {analysis_path}"
+                )
                 return 1
             if not analysis_path.is_dir():
-                err_console.print(f"[red]error:[/red] target must be a directory: {analysis_path}")
+                err_console.print(
+                    f"[red]error:[/red] target must be a directory: {analysis_path}"
+                )
                 return 1
 
         analysis = analyze_repository(analysis_path)
@@ -183,7 +224,9 @@ def run_repo_to_skill(target: str, json_mode: bool = False) -> int:
             return 0
 
         # Rich formatted human readable output
-        table = Table(title="Repository Analysis", show_header=True, header_style="bold cyan")
+        table = Table(
+            title="Repository Analysis", show_header=True, header_style="bold cyan"
+        )
         table.add_column("Property", style="bold green")
         table.add_column("Details", style="white")
 
@@ -191,8 +234,12 @@ def run_repo_to_skill(target: str, json_mode: bool = False) -> int:
         table.add_row("Classification", analysis["project_type"])
         table.add_row("Languages", ", ".join(analysis["languages"]))
         table.add_row("Manifests", ", ".join(analysis["manifests"]) or "None detected")
-        table.add_row("Documentation", "Yes (docs/)" if analysis["has_docs"] else "README only")
-        table.add_row("Examples", "Yes (examples/)" if analysis["has_examples"] else "None")
+        table.add_row(
+            "Documentation", "Yes (docs/)" if analysis["has_docs"] else "README only"
+        )
+        table.add_row(
+            "Examples", "Yes (examples/)" if analysis["has_examples"] else "None"
+        )
 
         console.print(table)
 

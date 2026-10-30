@@ -23,16 +23,24 @@ The idea: point Buddhi AI CLI at a project, and it gives Antigravity:
 - A workspace **MCP Server** (`buddhi-mcp`) exposing:
   - `buddhi_search` — Community-aware, topology-driven code graph search across lexical anchors and bridge nodes.
   - `buddhi_read` — AST-pruned, entropy-filtered, token-budget-aware file reading (`auto`, `signatures`, `map`, `entropy`, `full`).
-- A full **Spec-Driven Development (SDD)** workflow:
+  - `buddhi_memory` — Query, read, remember, and validate OKF v0.2 + Claude Code memory concepts with path-scoped glob filtering and 5-hop `@path` import recursion.
+  - `check_contrast` — WCAG 2.x color contrast ratio checker for AI UI generation (supporting multi-pair tokens, strictness profiles, and CSS triage).
+  - `verify_a11y` — Deterministic A11Y.md static gate auditing source anti-patterns, release evidence completeness, and verification independence.
+- An **OKF v0.2 & Claude Code Memory Layer** providing structured, budget-bounded per-project memory (`buddhi memory`), automatic legacy migration, and SDD integration.
+- An **A11Y.md Accessibility System** providing an always-on rule (`a11y.md`), 31 component pattern guides (`guide-*.md`), governance templates (`REPORT.md`, `EXCEPTIONS.md`, `A11Y-DECISIONS.md`), static gate auditing (`buddhi scripts verify-a11y`), and SDD memory promotion.
+- An **Anti-Slop Filter Suite** (`antislop`, `antislop-ui`, `antislop-copywriting`, `antislop-human`, `antislop-layoutmobile`, `antislop-code`) preventing generic AI slop in UI, text, and code comments.
+- An **RTK Token-Saving Output Compression Engine** (`buddhi scripts rtk`) reducing LLM token consumption by 60–90% on dev commands (Git, Pytest, Ruff, Mypy, UV, Cargo, NPM, Docker, etc.) via declarative filters, an automatic Antigravity `PreToolUse` hook, error line retention, and auditable failure logs.
+- A full **Spec-Driven Development (SDD)** lifecycle:
   1. `/specify` — Scaffold feature branch and refine `spec.md` with prioritized, testable user stories.
-  2. `/plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
+  2. `/spec-plan` — Synthesize architectural design into `plan.md` via domain specialists and `AGENTS.md` compliance checks.
   3. `/tasks` — Generate a phased, story-oriented task breakdown into `tasks.md` with `[P]` parallelism markers.
   4. `/implement` — Execute tasks with prerequisite validation and live progress tracking in `tasks.md`.
   5. `/verify` — Evidence-based test execution mapping results to specification acceptance criteria (SDD convergence mode).
-- A `/quick-plan` workflow for lightweight, non-SDD multi-specialist planning.
-- An `/ask` workflow for interactive codebase comprehension and architectural Q&A grounded in the code graph.
-- A `/document-codebase` workflow that generates dependency-aware OKF symbol documentation.
-- Specialized `/debug`, `/remember`, and `/status` workflows for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
+- A `/quick-plan` skill for lightweight, non-SDD multi-specialist planning.
+- A `/design-md` skill for establishing, updating, and linting two-layer `DESIGN.md` design system specifications with WCAG 2.2 AA contrast verification.
+- An `/ask` skill for interactive codebase comprehension and architectural Q&A grounded in the code graph.
+- A `/document-codebase` skill that generates dependency-aware OKF symbol documentation.
+- Specialized `/debug`, `/remember`, and `/status` skills for systematic root-cause investigation, persistent memory capture, and harness dashboarding.
 - Domain specialist agents (frontend, backend, database, testing, security, deployment, git) and `terminal-runner` for delegated command execution.
 
 Supported languages: Python, JavaScript, TypeScript/TSX, Go, Rust, C#, Java,
@@ -58,6 +66,31 @@ This installs both the `buddhi` CLI command and the `buddhi-mcp` Stdio server en
 
 ## Usage
 
+### Code Graph & Blast Radius Analysis (`buddhi graph`)
+
+Inspect repository architecture, trace dependencies, and compute the blast radius of changes:
+```bash
+# Analyze change impact (transitive callers, affected communities, god nodes)
+buddhi graph blast-radius
+
+# Run topological analysis (god nodes, surprising connections, review questions)
+buddhi graph analyze
+
+# Trace shortest path between two symbols with disambiguation
+buddhi graph path MyService AuthManager
+
+# Find circular import chains
+buddhi graph cycles
+
+# Inspect community clustering and cohesion
+buddhi graph community
+
+# Check graph counts, confidence breakdown, and git staleness
+buddhi graph stats
+```
+
+
+
 ### `buddhi init` — full setup (recommended)
 
 ```sh
@@ -79,8 +112,8 @@ Writes:
 - `.buddhi/docs-plan.json` — a bottom-up, staleness-aware plan of what needs
   documenting
 - `.agents/mcp_config.json` — workspace MCP server configuration registering `buddhi-mcp` with Antigravity IDE, pre-configured with the workspace root directory (`--root`) so agents only need to pass `query`
-- `.agents/` — the Antigravity agent harness (agents, workflows, rules,
-  skills, templates, memory index — see below). **Idempotent**: rerunning `init` never
+- `.agents/` — the Antigravity agent harness (agents, skills, rules,
+  templates, memory index — see below). **Idempotent**: rerunning `init` never
   overwrites a harness file you've already edited under `.agents/`, it only
   fills in what's missing.
 
@@ -114,13 +147,30 @@ buddhi generate [path]
 Scans `path` and rebuilds all three graph artifacts under `.buddhi/graphs/` (`tree-graph.json`, `tree-graph.db`, `tree-graph.html`) without modifying `.buddhi/docs-plan.json` or `.agents/`.
 **Use this whenever the codebase grows or changes** to update the SQLite graph database queried by the Buddhi MCP server (`buddhi_search` and `buddhi_read`).
 
-### `buddhi docs plan` — refresh documentation plan
+### `buddhi docs` — Pelican static site, live server & OKF documentation plan
+
+```sh
+# Generate OKF markdown from the code graph, build the Pelican static site, and run the live server
+buddhi docs [path] [--host 127.0.0.1] [--port 8000] [--open]
+
+# Explicitly run the live-reloading documentation server
+buddhi docs serve [path] [--host 127.0.0.1] [--port 8000] [--no-reload]
+
+# Build the static HTML documentation site into .buddhi/site/ without starting a server
+buddhi docs build [path] [--output <dir>]
+```
+
+`buddhi docs` combines the [Google Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format), the [Pelican](https://docs.getpelican.com/en/latest/index.html) static site generator, and `buddhi-cli`'s Schema v2 code graph (inspired by `graphify`):
+- **Graph-Grounded OKF Markdown Bundle (`.buddhi/docs/`)**: Generates `.buddhi/docs/architecture-report.md` (corpus summary, confidence tiers `EXTRACTED`/`INFERRED`/`AMBIGUOUS`, git commit freshness, god nodes, surprising connections, import cycles, review questions), Leiden community articles (`.buddhi/docs/communities/<slug>.md`), god-node deep dives (`.buddhi/docs/god-nodes/<slug>.md`), and per-symbol OKF concept files while preserving LLM-authored prose (`status: stable`) whenever `sources[0].content_hash` matches.
+- **Pelican Static Site & Live Server (`.buddhi/site/`)**: Uses a custom `OKFMarkdownReader` to parse OKF YAML frontmatter (`sources`, `relations`, `generated`, `status`, `confidence`) into an accessible (WCAG 2.2 AA), light/dark documentation site with client-side symbol search (`search-index.json`), Mermaid diagrams, and embedded interactive graph visualization (`tree-graph.html`).
+
+#### `buddhi docs plan` — refresh documentation plan
 
 ```sh
 buddhi docs plan [path]
 ```
 
-Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/plan` Antigravity workflows call automatically before planning.
+Recomputes `.buddhi/docs-plan.json` against the current source tree without touching `.agents/` or overwriting existing graph files. This detects newly added or modified source files and marks stale OKF docs for (re)generation. This is what `/document-codebase` and `/spec-plan` Antigravity skills call automatically before planning.
 
 > [!TIP]
 > **Rerunning `buddhi init`**: You can also rerun `buddhi init` at any time to refresh both the graph and the documentation plan in one step. `buddhi init` is fully idempotent: it never overwrites your existing or customized files in `.agents/` or `AGENTS.md`.
@@ -131,47 +181,112 @@ Recomputes `.buddhi/docs-plan.json` against the current source tree without touc
 buddhi sdd <command> [options]
 ```
 
-Underlying helper commands used by the SDD workflows:
+Underlying helper commands used by the SDD skills:
 - `buddhi sdd create <description>` — Create a new feature directory under `.buddhi/specs/<branch>/`, create branch name, and instantiate `spec.md` from template.
 - `buddhi sdd setup-plan` — Set up `plan.md` for the active feature branch from `plan-template.md`.
 - `buddhi sdd setup-tasks` — Verify prerequisites and output task resolution context for `tasks.md`.
 - `buddhi sdd check` — Consolidated prerequisite checker supporting `--require-tasks`, `--include-tasks`, `--paths-only`, and `--json`.
 - `buddhi sdd resolve-template <name>` — Resolve and compose templates across `.agents/templates/` and built-in defaults.
 
+### `buddhi skills` — manage and install custom agent skills
+
+```sh
+buddhi skills [options]
+```
+
+Inspect and install custom Antigravity agent skills into `.agents/skills/`:
+- `buddhi skills` — Display an inventory table of available custom skills.
+- `buddhi skills --repo-to-skill` — Install the Antigravity-optimized `repo-to-skill` agent skill for repository analysis and automated skill generation.
+- `--path <path>` / `-p <path>` — Target project root directory (defaults to current directory).
+- `--force` / `-f` — Overwrite existing skill files if already present.
+
+### `buddhi memory` — OKF v0.2 & Claude Code memory management
+
+```sh
+buddhi memory [subcommand] [options]
+```
+
+Manage the project's OKF v0.2 concept notes and Claude Code-inspired memory hierarchy:
+- `buddhi memory status [--scope project|local|user] [--json]` — Display `MEMORY.md` line/byte budget utilization (200-line / 25KB cap), count of concepts by kind, and staleness telemetry.
+- `buddhi memory add --kind <kind> --title <title> --summary <summary> [--body <body>] [--path-glob <glob>] [--source <file#L1-L20>]` — Create an atomic concept node with automated SHA-256 source hashing.
+- `buddhi memory search <query> [--kind <kind>] [--active-file <file>] [--json]` — Search memory concepts with active file path glob filtering.
+- `buddhi memory read <node_id> [--expand-imports]` — Read a concept node with recursive `@path` inline expansion up to 5 hops.
+- `buddhi memory validate [--scope <scope>]` — Validate bundle frontmatter compliance, budget limits, and detect stale sources.
+- `buddhi memory sync [--scope <scope>]` — Reconcile topic `index.md` files and root `MEMORY.md`.
+- `buddhi memory compact [--scope <scope>]` — Demote superseded/deprecated pointers to `<topic>/index.md` to keep `MEMORY.md` within budget.
+- `buddhi memory migrate` — Non-destructively convert legacy flat memory files into OKF concept nodes.
+- `buddhi memory sdd-promote [--branch <branch>]` — Extract durable decisions from `plan.md` and verified choices from `choices.md` into OKF memory.
+
+### `buddhi scripts` — utility scripts and tools
+
+```sh
+buddhi scripts [subcommand]
+```
+
+Run standalone developer utilities:
+- `buddhi scripts contrast <color_a> <color_b>` — Check WCAG 2.x contrast ratio between two colors (hex codes or `black`/`white`). Exits with code 0 only when both normal (4.5:1) and large (3:1) text pass. Also supports `--bg <bg> --fg <fg>...` for multi-pair checking, `--css <file>` for stylesheet triage, and strictness profiles (`--profile standard|shield|launchpad`).
+- `buddhi scripts contrast --selftest` — Recompute and verify the reference contrast table against the WCAG formula.
+- `buddhi scripts verify-a11y [project_dir] [--src <dir>] [--report-dir <dir>] [--warn-only] [--selftest]` — Run the A11Y.md static gate to verify artifacts, freshness, contrast math, and 11 source anti-patterns.
+- `buddhi scripts antislop-mode [during|after|ask]` — View or set the global anti-slop usage mode in the platform configuration file (`%APPDATA%\antislop\settings.json` on Windows, `~/.config/antislop/settings.json` on macOS/Linux).
+- `buddhi scripts check-file-size --all [--max-tokens N]` — Check and ratchet source file sizes against token budget (default 8,000 tokens / 32 KB).
+- `buddhi scripts visual-parity-diff [--candidate-dir DIR] [--reference-dir DIR] [--out-dir DIR]` — Compute solo scene metrics or reference-vs-candidate parity diffing with 8 diagnostic PNG artifacts.
+- `buddhi scripts receipts [--json|--label] [--window N] <report.md>...` — Verify execution receipt blocks against prose measurement claims and SHA-256 artifact hashes.
+- `buddhi scripts rtk run [--raw] [--generic] -- <command...>` — Execute a command with output filtered by declarative tool patterns (or generic fallback) to save 60–90% LLM tokens while preserving exit codes and error lines. On non-zero exit, full raw output is automatically saved to `.buddhi/rtk/raw/`.
+- `buddhi scripts rtk rewrite [--json] <command...>` — Test whether a shell command matches RTK rewrite candidates.
+- `buddhi scripts rtk gain [--json]` — Display aggregate token savings and reduction percentages across sessions.
+- `buddhi scripts rtk filters list [--json]` — List all 60+ builtin and project-local filters with command patterns and license status.
+- `buddhi scripts rtk filters test <filter-name>` — Run embedded verification test cases for a specific filter.
+- `buddhi scripts rtk trust [filter_path]` — Approve and SHA-256 hash-pin project-local filter files in `.buddhi/rtk/filters/`.
+
+> **Note on Tool Permissions & Rewriting**: When using Antigravity, the `PreToolUse` RTK hook transparently rewrites supported noisy commands to `buddhi scripts rtk run -- <cmd>`. Because Antigravity evaluates permissions *after* lifecycle hooks rewrite commands, ensure your workspace command allowlists permit `buddhi scripts rtk run` or `buddhi scripts rtk *`.
+
 ## The Antigravity agent harness
 
 `buddhi init` scaffolds `.agents/` with:
 
-- **`workflows/`**
-  - **`/ask`** — Conversational codebase Q&A workflow: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
+- **`skills/`** — Antigravity Agent Skills with standard YAML frontmatter (`name`, `description`), discoverable and invocable via slash commands:
   - **`/specify`** — Initialize a new feature branch (refreshes graph via `buddhi generate` first), scaffold `.buddhi/specs/<branch>/spec.md`, and iteratively refine requirements into prioritized, independently testable user stories (`P1`, `P2`...).
-  - **`/plan`** — Spec-Driven Development architecture workflow: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
+  - **`/agents-md`** — Create or safely update the repository's `AGENTS.md` (~12 lines) based on project facts, build tools, and agent workflows, preserving custom sections.
+  - **`/spec-plan`** — Spec-Driven Development architecture skill: verifies `spec.md`, resolves `plan-template.md`, dispatches domain specialists in parallel, checks `AGENTS.md` compliance, and synthesizes `.buddhi/specs/<branch>/plan.md`.
   - **`/tasks`** — Break down `spec.md` and `plan.md` into actionable, phased tasks organized by user story into `tasks.md` with `[P]` parallelism markers.
   - **`/implement`** — Enforce prerequisite checks (`spec.md` + `plan.md` + `tasks.md`) and execute tasks story by story, tracking completion directly in `tasks.md`.
-  - **`/verify`** — Repurposed verification workflow: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
+  - **`/verify`** — Verification skill: runs real build/lint/test commands via `terminal-runner` and maps evidence to user story acceptance criteria (SDD convergence mode), with fallback to general verification for ad-hoc changes.
+  - **`/ask`** — Conversational codebase Q&A skill: runs `buddhi generate` via `terminal-runner` to update the code graph, then queries `buddhi_search` and `buddhi_read` to explain architecture, symbols, and dependencies with exact `file:line` citations without modifying files.
   - **`/quick-plan`** — Lightweight implementation planning for requests that do not require full SDD branching/spec overhead (refreshes graph via `buddhi generate` first).
   - **`/document-codebase`** — Generate or refresh OKF symbol documentation bottom-up.
   - **`/debug`** — Systematic bug investigation (refreshes graph via `buddhi generate` first) producing a confirmed root cause and concrete fix plan without modifying code.
   - **`/remember`** — Capture user preferences, project conventions, and technical decisions into memory.
   - **`/status`** — Dashboard of harness state (docs staleness, active plans, memory size, git branch).
+  - **`okf-context`** — Context skill guiding agents to consult `.buddhi/docs/` and use Buddhi MCP code graph tools (`buddhi_search` and `buddhi_read`) before reading raw source files.
+  - **`repoagent-doc-generation`** — Topological per-symbol documentation engine for generating OKF docs.
+  - **`system-design`** — Architecture and trade-off decision framework used during planning.
+  - **`a11y`** — Accessibility framework packaging 31 modular pattern guides (`guide-*.md`) covering interactive elements, forms, media, and navigation with lazy-loading indexing.
+  - **`antislop`** — Core always-on filter stopping generic AI slop across UI, text, and code comments.
+  - **`antislop-ui`** — UI & visual design filter: color, layout, component choices, motion, and anti-AI-aesthetic patterns.
+  - **`antislop-copywriting`** — Copywriting filter: anti-AI prose, headlines, tone, and authentic messaging.
+  - **`antislop-human`** — Accessibility and human factors filter: WCAG contrast compliance, keyboard nav, focus indicators, touch targets.
+  - **`antislop-layoutmobile`** — Mobile & responsive layout filter: reflow, fluid grids, tap targets, zoom resilience.
+  - **`antislop-code`** — Code comment hygiene filter: eliminates redundant or noisy AI-generated comments.
+  - **Software Factory Skills Suite** (adapted from `dzhng/skills`):
+    - *Discovery & Research*: **`/explore-unknowns`** (4-quadrant unknown walk), **`/auto-research`** (progressive hypothesis testing).
+    - *Implementation, Refactoring & Testing*: **`refactor-clean`** (clean structural refactoring), **`write-tests`** (behavioral tests), **`audit-tests`** (test boundary mapping), **`audit-performance`** (bounded-work runtime checks), **`ratchet-files`** (file size budget), **`write-docs`** (principles and pointers), **`marketing-pages`** (marketing site architecture).
+    - *Review, Decision Audit & Spec Lifecycle*: **`code-review`** (26-point checklist), **`review`** (sequenced closeout), **`audit-choices`** (choices ledger in `.buddhi/specs/<branch>/choices.md`), **`handoff-spec`** (session handoffs), **`close-spec`** (archive spec to `.buddhi/specs/done/<branch>/`), **`eli5`** (plain-language spec/diff explanation), **`retro`** (coding session retrospective).
+    - *Visual Review*: **`design-with-images`** (visual concept exploration), **`compare-screenshots`** (telemetry and diffing), **`screenshot-critique`** (unprimed visual review), **`preview-shots`** (cross-platform image viewing).
+    - *Authoring*: **`write-skills`** (skill authoring rulebook), **`eval-skills`** (subagent skill evaluation), **`audit-agents`** (AGENTS.md audit).
 - **`mcp_config.json`** — Auto-connects Antigravity to the workspace's `buddhi-mcp` server so agents have direct access to `buddhi_search` and `buddhi_read`.
 - **`templates/`** — Standard templates for specifications (`spec-template.md`), implementation plans (`plan-template.md`), task lists (`tasks-template.md`), review checklists (`checklist-template.md`), and agent configurations (`agents-template.md`).
 - **`agents/`** — Read-only specialist subagents (`backend-specialist`,
   `frontend-specialist`, `database-specialist`, `testing-specialist`,
   `security-specialist`, `deployment-specialist`, `git-specialist`) dispatched
-  in parallel by `/plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
+  in parallel by `/spec-plan` and `/quick-plan`, plus `terminal-runner` for delegated shell/build/test
   execution.
 - **`rules/`** — Always-on conventions: consult `.buddhi/docs/` and Buddhi MCP code graph
-  tools before raw source, require confirmation before destructive commands,
-  read/append to the memory index for durable decisions.
+  tools before raw source (`okf-docs.md`), require confirmation before destructive commands
+  and preserve conventions (`harness-core.md`), enforce accessibility invariants (`a11y.md`), and enforce the anti-slop design filter (`antislop.md`).
 - **`hooks.json`** / **`hooks/guard_destructive.py`** — A `PreToolUse`
   hook that mechanically denies destructive commands (force-push,
   `reset --hard`, `DROP`/`TRUNCATE`, disk-format commands, etc.) as a
   safety backstop.
-- **`skills/`** — `okf-context` (how to read OKF docs and use Buddhi MCP code graph tools `buddhi_search` and `buddhi_read`),
-  `repoagent-doc-generation` (how to write docs), `system-design` (an
-  architecture/trade-off decision framework used during planning), and custom skill slots (see
-  `.agents/skills/README.md`).
 - **`memory/MEMORY.md`** — A structured index into topic files under
   `.agents/memory/` (`user-preferences.md`, `project-conventions.md`,
   `tech-decisions.md`, `feedback-history.md`).
@@ -179,13 +294,13 @@ Underlying helper commands used by the SDD workflows:
 ### Documentation format
 
 Generated docs under `.buddhi/docs/` follow the
-[Open Knowledge Format](https://okf.org/) (OKF): one concept file per
+[Google Open Knowledge Format](https://github.com/GoogleCloudPlatform/open-knowledge-format) (OKF): one concept file per
 module/class/function, each carrying frontmatter that names its source file
 and line range, a content hash for staleness detection, and a status. The
 bottom-up generation order — document a symbol only after everything it
 depends on is already documented — is inspired by the
 [RepoAgent](https://arxiv.org/abs/2402.16667) paper's approach to
-whole-repository, dependency-aware documentation.
+whole-repository, dependency-aware documentation, combined with [Graphify](https://github.com/Graphify-Labs/graphify)-inspired topological community/god-node articles and compiled into a static and live-reloading site via [Pelican](https://docs.getpelican.com/en/latest/index.html) (`buddhi docs`).
 
 ## Notes on accuracy
 
@@ -242,3 +357,17 @@ release:
 This requires a trusted publisher to be configured once on PyPI for the
 `buddhi-ai` project, pointing at this repository, the `publish.yml` workflow
 file, and the `pypi` environment.
+
+---
+
+## Acknowledgments
+
+The `anti-slop` filter suite and contrast-checking scripts are adapted from [anti-slop](https://github.com/miqdadbadjuber/anti-slop) by Miqdad Badjuber (MIT License).
+
+The software factory agent skills, visual diffing, and critique verification scripts are adapted from [dzhng/skills](https://github.com/dzhng/skills) by David Zhang (MIT License), with sub-attributions to Matt Pocock, Thariq, wheresryan22, and helloianneo.
+
+The knowledge-graph topological analysis, blast radius, and wiki/report documentation concepts are inspired by [Graphify](https://github.com/Graphify-Labs/graphify) by Safi Shamsi (Apache-2.0 / MIT), structured with the [Google Open Knowledge Format (OKF)](https://github.com/GoogleCloudPlatform/open-knowledge-format) (Apache-2.0), and compiled into a static and live-reloading documentation site using [Pelican](https://docs.getpelican.com/en/latest/index.html).
+
+The command output token-saving filter concepts, declarative filter rules, and lifecycle hook integration are adapted from [rtk](https://github.com/rtk-ai/rtk) by rtk-ai (Apache License 2.0). Components licensed under BUSL-1.1 are strictly excluded.
+
+See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for full licensing details and credits.

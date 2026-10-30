@@ -1,0 +1,28 @@
+{
+  "name": "cargo",
+  "description": "Filters cargo build, check, and test output",
+  "match_command": "^cargo\\s+(?:build|check|test|clippy|run)\\b",
+  "strip_ansi": true,
+  "strip_lines_matching": [
+    "^\\s*$",
+    "^\\s*Compiling\\s+.*",
+    "^\\s*Downloading\\s+.*",
+    "^\\s*Downloaded\\s+.*",
+    "^\\s*Updating\\s+.*"
+  ],
+  "keep_lines_matching": [
+    "^error(?:\\[E\\d+\\])?:.*",
+    "^warning:.*",
+    "^\\s*Finished\\s+.*",
+    "^test result:.*"
+  ],
+  "error_patterns": [
+    "^error(?:\\[E\\d+\\])?:.*",
+    "(?i)\\b(error|failed|failure)\\b"
+  ],
+  "max_lines": 80,
+  "source": "rtk-ai/rtk (src/cmds/rust/cargo_cmd.rs)",
+  "license": "Apache-2.0",
+  "modified": true
+}
+

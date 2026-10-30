@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
-from pathlib import Path
+
+logger = logging.getLogger(__name__)
 import re
 import sqlite3
+from dataclasses import dataclass
+from pathlib import Path
 
 from buddhi.mcp.compression.entropy import calculate_entropy, count_tokens
 
@@ -49,7 +51,9 @@ def expand_query(query: str) -> list[str]:
     return [t for t in tokens if len(t) >= 2]
 
 
-def filter_low_entropy_lines(content: str, threshold: float = _ENTROPY_THRESHOLD) -> str:
+def filter_low_entropy_lines(
+    content: str, threshold: float = _ENTROPY_THRESHOLD
+) -> str:
     """Remove lines with Shannon entropy below the threshold."""
     if not content:
         return content
@@ -85,12 +89,14 @@ def extract_signature(content: str, signature: str, node_type: str) -> str:
         found_colon = False
         for line in lines:
             sig_lines.append(line)
-            if not found_colon and (line.rstrip().endswith(":") or line.rstrip().endswith("{")):
+            if not found_colon and (
+                line.rstrip().endswith(":") or line.rstrip().endswith("{")
+            ):
                 found_colon = True
                 continue
             if found_colon:
                 stripped = line.strip()
-                if stripped.startswith('"""') or stripped.startswith("'''") or stripped.startswith("/*"):
+                if stripped.startswith(('"""', "'''", "/*")):
                     sig_lines.append(line)
                     if (
                         stripped.count('"""') >= 2
@@ -100,7 +106,11 @@ def extract_signature(content: str, signature: str, node_type: str) -> str:
                         break
                     for remaining in lines[len(sig_lines) :]:
                         sig_lines.append(remaining)
-                        if '"""' in remaining or "'''" in remaining or "*/" in remaining:
+                        if (
+                            '"""' in remaining
+                            or "'''" in remaining
+                            or "*/" in remaining
+                        ):
                             break
                 break
 
@@ -112,7 +122,11 @@ def extract_signature(content: str, signature: str, node_type: str) -> str:
 
 def extract_map_entry(result: SearchResult) -> str:
     """Return a compact one-liner for map mode."""
-    loc = f"{result.file_path}:L{result.start_line}-L{result.end_line}" if result.start_line else result.file_path
+    loc = (
+        f"{result.file_path}:L{result.start_line}-L{result.end_line}"
+        if result.start_line
+        else result.file_path
+    )
     return f"{result.name} ({result.node_type}) — {loc}"
 
 
@@ -243,7 +257,7 @@ def _native_grep_search(query: str, root_path: Path | None = None) -> str:
     p = root_path if root_path else Path(".")
     try:
         pattern = re.compile(query, re.IGNORECASE)
-    except Exception:
+    except re.error:
         pattern = re.compile(re.escape(query), re.IGNORECASE)
 
     try:
@@ -271,22 +285,29 @@ def _native_grep_search(query: str, root_path: Path | None = None) -> str:
                                         if root_path and path.is_relative_to(p)
                                         else path.as_posix()
                                     )
-                                    matches.append(f"{display_path}:{idx}: {line.strip()}")
+                                    matches.append(
+                                        f"{display_path}:{idx}: {line.strip()}"
+                                    )
                                     if len(matches) >= 50:
                                         break
-                    except Exception:
+                    except (OSError, UnicodeDecodeError):
                         pass
             if len(matches) >= 50:
                 break
-    except Exception:
+    except (OSError, UnicodeDecodeError):
         pass
 
     if matches:
-        return "### [fallback: native grep] Native Grep Fallback Matches:\n" + "\n".join(matches)
+        return (
+            "### [fallback: native grep] Native Grep Fallback Matches:\n"
+            + "\n".join(matches)
+        )
     return ""
 
 
-def _direct_sql_fallback(conn: sqlite3.Connection, query: str, top_n: int = 10) -> list[SearchResult]:
+def _direct_sql_fallback(
+    conn: sqlite3.Connection, query: str, top_n: int = 10
+) -> list[SearchResult]:
     """Graceful fallback querying SQLite nodes directly via LIKE."""
     cursor = conn.cursor()
     sql_pattern = f"%{query}%"
@@ -341,7 +362,9 @@ def execute_buddhi_search(
         # Phase 1: Lexical Anchor Detection
         cursor = conn.cursor()
         expanded_terms = expand_query(query)
-        search_terms = [query] + [t for t in expanded_terms if t.lower() != query.lower()]
+        search_terms = [query] + [
+            t for t in expanded_terms if t.lower() != query.lower()
+        ]
 
         anchor_nodes: dict[str, SearchResult] = {}
         anchor_communities: set[int] = set()
@@ -432,13 +455,29 @@ def execute_buddhi_search(
 
         if anchor_communities:
             placeholders = ",".join("?" for _ in anchor_communities)
+            anchor_files = list(
+                {a.file_path for a in anchor_nodes.values() if a.file_path}
+            )
+            f_placeholders = (
+                ",".join("?" for _ in anchor_files) if anchor_files else "NULL"
+            )
+            order_clause = (
+                f"CASE WHEN file_path IN ({f_placeholders}) THEN 0 ELSE 1 END, start_line ASC"
+                if anchor_files
+                else "start_line ASC"
+            )
+            params = (
+                list(anchor_communities) + (anchor_files if anchor_files else []) + [15]
+            )
             cursor.execute(
                 f"""
                 SELECT id, name, kind, file_path, start_line, end_line, signature, snippet, community_id
                 FROM nodes
                 WHERE external = 0 AND community_id IN ({placeholders})
+                ORDER BY {order_clause}
+                LIMIT ?
                 """,
-                list(anchor_communities),
+                params,
             )
             for r in cursor.fetchall():
                 node_id = r[0]
@@ -470,7 +509,9 @@ def execute_buddhi_search(
                     """,
                     primary_ids + primary_ids,
                 )
-                bridge_ids = [row[0] for row in cursor.fetchall() if row[0] not in results_by_id]
+                bridge_ids = [
+                    row[0] for row in cursor.fetchall() if row[0] not in results_by_id
+                ]
                 if bridge_ids:
                     b_placeholders = ",".join("?" for _ in bridge_ids[:20])
                     cursor.execute(
@@ -521,7 +562,7 @@ def execute_buddhi_search(
                     if tid in results_by_id:
                         results_by_id[tid].edge_count += count
         except sqlite3.OperationalError as edge_err:
-            logging.debug("Edges table not queried: %s", edge_err)
+            logger.debug("Edges table not queried: %s", edge_err)
 
         results = list(results_by_id.values())
 
@@ -536,7 +577,7 @@ def execute_buddhi_search(
         return serialize_context(results)
 
     except Exception as e:
-        logging.exception("Error executing search: %s", e)
+        logger.exception("Error executing search")
         return f"Error executing search: {e}"
     finally:
         conn.close()

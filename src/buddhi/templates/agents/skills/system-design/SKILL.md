@@ -27,7 +27,7 @@ it to the decision itself.
 3. State the trade-offs of each alternative explicitly — what it gains, what
    it costs — rather than picking one silently and presenting it as the only
    option.
-4. Once a decision is made, record it: use the `/remember` workflow to write
+4. Once a decision is made, record it: use the `/remember` skill to write
    it into `.agents/memory/tech-decisions.md`, so the reasoning survives past
    this conversation and future specialists don't re-litigate it from
    scratch.

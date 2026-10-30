@@ -58,7 +58,6 @@ def skills_main(
         "--path",
         help="Target project root directory.",
     ),
-
     force: bool = typer.Option(
         False,
         "-f",
@@ -110,9 +109,13 @@ def skills_main(
 
 @skills_app.command(name="run", help="Run a registered skill script.")
 def run_skill(
-    skill_name: str = typer.Argument(..., help="Name of the skill (e.g. 'repo-to-skill')."),
+    skill_name: str = typer.Argument(
+        ..., help="Name of the skill (e.g. 'repo-to-skill')."
+    ),
     target: str = typer.Argument(..., help="Target repository path or URL."),
-    json_mode: bool = typer.Option(False, "--json", help="Emit structured output in JSON format."),
+    json_mode: bool = typer.Option(
+        False, "--json", help="Emit structured output in JSON format."
+    ),
 ) -> None:
     """Execute helper scripts associated with a custom agent skill."""
     entry = get_skill(skill_name)
@@ -125,5 +128,7 @@ def run_skill(
         if exit_code != 0:
             raise typer.Exit(code=exit_code)
     except Exception as exc:
-        err_console.print(f"[red]error:[/red] execution failed for skill '{skill_name}': {exc}")
+        err_console.print(
+            f"[red]error:[/red] execution failed for skill '{skill_name}': {exc}"
+        )
         raise typer.Exit(code=1) from exc
